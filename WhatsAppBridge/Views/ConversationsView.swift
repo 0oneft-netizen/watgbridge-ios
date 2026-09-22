@@ -159,9 +159,59 @@ struct ConversationsView: View {
                 )
             ) { _ in
                 Task {
-                    await loadConversations(
-                        notifyForNewMessages: true
-                    )
+                    await loadConversations()
+                }
+            }
+            .onReceive(
+                NotificationCenter.default.publisher(
+                    for: .bridgeIncomingMessage
+                )
+            ) { notification in
+                guard let message =
+                    notification.object as? RealtimeIncomingMessage
+                else {
+                    return
+                }
+
+                let title =
+                    conversations.first {
+                        $0.jid == message.chat_jid
+                    }?.displayName ?? "WhatsApp"
+
+                let body: String
+
+                if !message.text.isEmpty {
+                    body = message.text
+                } else {
+                    switch message.message_type {
+                    case "image":
+                        body = "📷 תמונה"
+
+                    case "video":
+                        body = "🎥 וידאו"
+
+                    case "audio":
+                        body = "🎤 הודעה קולית"
+
+                    case "document":
+                        body = "📎 קובץ"
+
+                    case "sticker":
+                        body = "🖼️ מדבקה"
+
+                    default:
+                        body = "הודעה חדשה"
+                    }
+                }
+
+                Task {
+                    await NotificationManager.shared
+                        .showIncoming(
+                            title: title,
+                            body: body
+                        )
+
+                    await loadConversations()
                 }
             }
         }
