@@ -54,4 +54,9 @@ struct Conversation: Identifiable, Codable {
 
         return value.isEmpty ? "?" : value.uppercased()
     }
+
+
+    var preview: String {
+        lastMessage
+    }
 }
