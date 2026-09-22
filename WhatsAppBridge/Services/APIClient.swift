@@ -342,4 +342,106 @@ final class APIClient {
             )
     }
 
+
+    func sendReply(
+        chatJID: String,
+        text: String,
+        replyTo: Message
+    ) async throws {
+
+        let url =
+            baseURL.appendingPathComponent(
+                "send-reply"
+            )
+
+        var request =
+            URLRequest(url: url)
+
+        request.httpMethod = "POST"
+
+        request.setValue(
+            "application/json",
+            forHTTPHeaderField:
+                "Content-Type"
+        )
+
+        request.httpBody =
+            try JSONSerialization.data(
+                withJSONObject: [
+                    "chat_jid": chatJID,
+                    "text": text,
+                    "reply_message_id":
+                        replyTo.messageID,
+                    "reply_sender_jid":
+                        replyTo.senderJID,
+                    "reply_text":
+                        replyTo.text.isEmpty
+                        ? replyTo.type
+                        : replyTo.text
+                ]
+            )
+
+        let (_, response) =
+            try await URLSession.shared.data(
+                for: request
+            )
+
+        guard let http =
+                response as? HTTPURLResponse,
+              (200...299).contains(
+                http.statusCode
+              )
+        else {
+            throw URLError(
+                .badServerResponse
+            )
+        }
+    }
+
+    func deleteForEveryone(
+        chatJID: String,
+        messageID: String
+    ) async throws {
+
+        let url =
+            baseURL.appendingPathComponent(
+                "delete-everyone"
+            )
+
+        var request =
+            URLRequest(url: url)
+
+        request.httpMethod = "POST"
+
+        request.setValue(
+            "application/json",
+            forHTTPHeaderField:
+                "Content-Type"
+        )
+
+        request.httpBody =
+            try JSONSerialization.data(
+                withJSONObject: [
+                    "chat_jid": chatJID,
+                    "message_id": messageID
+                ]
+            )
+
+        let (_, response) =
+            try await URLSession.shared.data(
+                for: request
+            )
+
+        guard let http =
+                response as? HTTPURLResponse,
+              (200...299).contains(
+                http.statusCode
+              )
+        else {
+            throw URLError(
+                .badServerResponse
+            )
+        }
+    }
+
 }

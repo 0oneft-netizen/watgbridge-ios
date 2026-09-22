@@ -264,6 +264,30 @@ struct ChatView: View {
                                 }
                             }
 
+                            if message.fromMe {
+                                Button(
+                                    role: .destructive
+                                ) {
+                                    Task {
+                                        try? await APIClient.shared
+                                            .deleteForEveryone(
+                                                chatJID:
+                                                    conversation.jid,
+                                                messageID:
+                                                    message.messageID
+                                            )
+
+                                        await loadMessages()
+                                    }
+                                } label: {
+                                    Label(
+                                        "Delete for everyone",
+                                        systemImage:
+                                            "trash.slash"
+                                    )
+                                }
+                            }
+
                             Button(
                                 role: .destructive
                             ) {
@@ -544,12 +568,22 @@ struct ChatView: View {
         isSending = true
 
         do {
-            try await APIClient.shared
-                .sendMessage(
-                    chatJID:
-                        conversation.jid,
-                    text: text
-                )
+            if let reply = replyToMessage {
+                try await APIClient.shared
+                    .sendReply(
+                        chatJID:
+                            conversation.jid,
+                        text: text,
+                        replyTo: reply
+                    )
+            } else {
+                try await APIClient.shared
+                    .sendMessage(
+                        chatJID:
+                            conversation.jid,
+                        text: text
+                    )
+            }
 
             messageText = ""
             replyToMessage = nil
@@ -823,6 +857,44 @@ private struct MessageBubble: View {
                 alignment: .leading,
                 spacing: 4
             ) {
+                if let replyID = message.replyToID,
+                   !replyID.isEmpty {
+                    HStack(spacing: 5) {
+                        Rectangle()
+                            .frame(
+                                width: 3,
+                                height: 30
+                            )
+                            .foregroundStyle(.green)
+
+                        VStack(
+                            alignment: .leading,
+                            spacing: 1
+                        ) {
+                            Text("Reply")
+                                .font(
+                                    .caption
+                                        .weight(.semibold)
+                                )
+
+                            Text(replyID)
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
+                    }
+                    .padding(6)
+                    .background(
+                        Color.secondary
+                            .opacity(0.08)
+                    )
+                    .clipShape(
+                        RoundedRectangle(
+                            cornerRadius: 7
+                        )
+                    )
+                }
+
                 if message.type != "text" {
                     MessageMediaView(
                         message: message
