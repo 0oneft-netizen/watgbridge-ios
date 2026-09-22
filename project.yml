@@ -23,5 +23,9 @@ targets:
         INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
 
+        INFOPLIST_KEY_NSMicrophoneUsageDescription: "Microphone access is used to record voice messages."
+        INFOPLIST_KEY_NSCameraUsageDescription: "Camera access is used to take photos and videos."
+        INFOPLIST_KEY_NSPhotoLibraryUsageDescription: "Photo access is used to send photos and videos."
+
     scheme:
       testTargets: []

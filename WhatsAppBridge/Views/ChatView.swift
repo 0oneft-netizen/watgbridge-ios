@@ -56,11 +56,22 @@ struct ChatView: View {
             }
         }
         .task {
+            try? await APIClient.shared.markRead(
+                chatJID: conversation.jid
+            )
+
             await loadMessages()
 
             while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(2))
+                try? await Task.sleep(
+                    for: .seconds(1)
+                )
+
                 await loadMessages()
+
+                try? await APIClient.shared.markRead(
+                    chatJID: conversation.jid
+                )
             }
         }
     }

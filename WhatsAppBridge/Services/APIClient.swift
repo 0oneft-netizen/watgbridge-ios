@@ -82,4 +82,118 @@ final class APIClient {
         return components?.url
     }
 
+
+    func markRead(chatJID: String) async throws {
+        let url = baseURL.appendingPathComponent("mark-read")
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue(
+            "application/json",
+            forHTTPHeaderField: "Content-Type"
+        )
+
+        request.httpBody = try JSONSerialization.data(
+            withJSONObject: [
+                "chat_jid": chatJID
+            ]
+        )
+
+        let (_, response) = try await URLSession.shared.data(
+            for: request
+        )
+
+        guard let http = response as? HTTPURLResponse,
+              (200...299).contains(http.statusCode) else {
+            throw URLError(.badServerResponse)
+        }
+    }
+
+
+    func sendMedia(
+        chatJID: String,
+        type: String,
+        data: Data,
+        filename: String,
+        mimeType: String,
+        caption: String = ""
+    ) async throws {
+
+        let url = baseURL.appendingPathComponent("send-media")
+
+        let boundary =
+            "Boundary-\(UUID().uuidString)"
+
+        var request = URLRequest(url: url)
+
+        request.httpMethod = "POST"
+
+        request.setValue(
+            "multipart/form-data; boundary=\(boundary)",
+            forHTTPHeaderField: "Content-Type"
+        )
+
+        var body = Data()
+
+        func addField(
+            _ name: String,
+            _ value: String
+        ) {
+            body.append(
+                "--\(boundary)\r\n".data(
+                    using: .utf8
+                )!
+            )
+
+            body.append(
+                "Content-Disposition: form-data; name=\"\(name)\"\r\n\r\n"
+                    .data(using: .utf8)!
+            )
+
+            body.append(
+                "\(value)\r\n".data(
+                    using: .utf8
+                )!
+            )
+        }
+
+        addField("chat_jid", chatJID)
+        addField("type", type)
+        addField("caption", caption)
+        addField("mime_type", mimeType)
+
+        body.append(
+            "--\(boundary)\r\n".data(
+                using: .utf8
+            )!
+        )
+
+        body.append(
+            """
+            Content-Disposition: form-data; name="file"; filename="\(filename)"\r
+            Content-Type: \(mimeType)\r
+            \r
+            """.data(using: .utf8)!
+        )
+
+        body.append(data)
+
+        body.append(
+            "\r\n--\(boundary)--\r\n".data(
+                using: .utf8
+            )!
+        )
+
+        request.httpBody = body
+
+        let (_, response) = try await URLSession.shared.data(
+            for: request
+        )
+
+        guard let http = response as? HTTPURLResponse,
+              (200...299).contains(http.statusCode) else {
+            throw URLError(.badServerResponse)
+        }
+    }
+
 }
