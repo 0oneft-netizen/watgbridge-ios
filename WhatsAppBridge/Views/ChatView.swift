@@ -1,4 +1,7 @@
 import SwiftUI
+import PhotosUI
+import UniformTypeIdentifiers
+import UIKit
 
 struct ChatView: View {
     let conversation: Conversation
@@ -6,59 +9,78 @@ struct ChatView: View {
     @State private var messages: [Message] = []
     @State private var isLoading = true
     @State private var errorMessage: String?
+
     @State private var messageText = ""
     @State private var isSending = false
 
+    @State private var selectedPhotoItem:
+        PhotosPickerItem?
+
+    @State private var showPhotos = false
+    @State private var showCamera = false
+    @State private var showFiles = false
+
+    @StateObject
+    private var recorder = AudioRecorder()
+
     var body: some View {
         VStack(spacing: 0) {
-            Group {
-                if isLoading && messages.isEmpty {
-                    ProgressView()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-                } else if let errorMessage, messages.isEmpty {
-                    ContentUnavailableView(
-                        "Couldn't Load Messages",
-                        systemImage: "wifi.exclamationmark",
-                        description: Text(errorMessage)
-                    )
-
-                } else {
-                    messageList
-                }
-            }
-
+            content
             composer
         }
-        .navigationTitle(conversation.displayName)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .principal) {
+            ToolbarItem(
+                placement: .principal
+            ) {
                 HStack(spacing: 8) {
-                    ChatAvatar(conversation: conversation)
+                    ChatAvatar(
+                        conversation: conversation
+                    )
 
-                    Text(conversation.displayName)
+                    VStack(
+                        alignment: .leading,
+                        spacing: 1
+                    ) {
+                        Text(
+                            conversation.displayName
+                        )
                         .font(.headline)
                         .lineLimit(1)
+
+                        Text("WhatsApp")
+                            .font(.caption2)
+                            .foregroundStyle(
+                                .secondary
+                            )
+                    }
                 }
             }
 
-            ToolbarItemGroup(placement: .topBarTrailing) {
+            ToolbarItemGroup(
+                placement: .topBarTrailing
+            ) {
                 Button {
                 } label: {
-                    Image(systemName: "video")
+                    Image(
+                        systemName: "video"
+                    )
                 }
 
                 Button {
                 } label: {
-                    Image(systemName: "phone")
+                    Image(
+                        systemName: "phone"
+                    )
                 }
             }
         }
         .task {
-            try? await APIClient.shared.markRead(
-                chatJID: conversation.jid
-            )
+            try? await APIClient.shared
+                .markRead(
+                    chatJID:
+                        conversation.jid
+                )
 
             await loadMessages()
 
@@ -69,10 +91,81 @@ struct ChatView: View {
 
                 await loadMessages()
 
-                try? await APIClient.shared.markRead(
-                    chatJID: conversation.jid
+                try? await APIClient.shared
+                    .markRead(
+                        chatJID:
+                            conversation.jid
+                    )
+            }
+        }
+        .photosPicker(
+            isPresented: $showPhotos,
+            selection: $selectedPhotoItem,
+            matching: .any(
+                of: [
+                    .images,
+                    .videos
+                ]
+            )
+        )
+        .onChange(
+            of: selectedPhotoItem
+        ) {
+            Task {
+                await sendSelectedMedia()
+            }
+        }
+        .sheet(
+            isPresented: $showCamera
+        ) {
+            CameraPicker { image in
+                Task {
+                    await sendCameraImage(
+                        image
+                    )
+                }
+            }
+            .ignoresSafeArea()
+        }
+        .fileImporter(
+            isPresented: $showFiles,
+            allowedContentTypes: [
+                .item
+            ],
+            allowsMultipleSelection: false
+        ) { result in
+            Task {
+                await handleFileResult(
+                    result
                 )
             }
+        }
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        if isLoading &&
+            messages.isEmpty {
+
+            ProgressView()
+                .frame(
+                    maxWidth: .infinity,
+                    maxHeight: .infinity
+                )
+
+        } else if let errorMessage,
+                  messages.isEmpty {
+
+            ContentUnavailableView(
+                "Couldn't Load Messages",
+                systemImage:
+                    "wifi.exclamationmark",
+                description:
+                    Text(errorMessage)
+            )
+
+        } else {
+            messageList
         }
     }
 
@@ -80,22 +173,29 @@ struct ChatView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(spacing: 6) {
-                    ForEach(messages) { message in
-                        MessageBubble(message: message)
-                            .id(message.id)
+                    ForEach(messages) {
+                        message in
+
+                        MessageBubble(
+                            message: message
+                        )
+                        .id(message.id)
                     }
                 }
                 .padding(.horizontal, 8)
                 .padding(.vertical, 12)
             }
             .background(
-                Color.secondary.opacity(0.06)
+                Color.secondary
+                    .opacity(0.06)
                     .ignoresSafeArea()
             )
             .refreshable {
                 await loadMessages()
             }
-            .onChange(of: messages.count) {
+            .onChange(
+                of: messages.count
+            ) {
                 scrollToBottom(proxy)
             }
             .onAppear {
@@ -105,116 +205,475 @@ struct ChatView: View {
     }
 
     private var composer: some View {
-        HStack(alignment: .bottom, spacing: 8) {
-            Button {
-            } label: {
-                Image(systemName: "plus")
-                    .font(.title3)
+        VStack(spacing: 0) {
+            if recorder.isRecording {
+                recordingBar
             }
 
-            HStack(alignment: .bottom, spacing: 8) {
-                TextField("Message", text: $messageText, axis: .vertical)
-                    .lineLimit(1...5)
-                    .textFieldStyle(.plain)
+            HStack(
+                alignment: .bottom,
+                spacing: 8
+            ) {
 
-                Button {
-                } label: {
-                    Image(systemName: "camera")
-                        .font(.title3)
-                }
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 9)
-            .background(
-                Color.secondary.opacity(0.10)
-            )
-            .clipShape(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-            )
-
-            if messageText.trimmingCharacters(
-                in: .whitespacesAndNewlines
-            ).isEmpty {
-                Button {
-                } label: {
-                    Image(systemName: "mic.fill")
-                        .font(.title3)
-                }
-            } else {
-                Button {
-                    Task {
-                        await sendMessage()
+                Menu {
+                    Button {
+                        showPhotos = true
+                    } label: {
+                        Label(
+                            "Photos & Videos",
+                            systemImage: "photo"
+                        )
                     }
+
+                    Button {
+                        showCamera = true
+                    } label: {
+                        Label(
+                            "Camera",
+                            systemImage: "camera"
+                        )
+                    }
+
+                    Button {
+                        showFiles = true
+                    } label: {
+                        Label(
+                            "Document",
+                            systemImage: "doc"
+                        )
+                    }
+
                 } label: {
-                    Image(systemName: "paperplane.fill")
-                        .font(.title3)
+                    Image(
+                        systemName:
+                            "plus.circle.fill"
+                    )
+                    .font(.title2)
                 }
-                .disabled(isSending)
+
+                HStack(
+                    alignment: .bottom,
+                    spacing: 8
+                ) {
+                    TextField(
+                        "Message",
+                        text: $messageText,
+                        axis: .vertical
+                    )
+                    .lineLimit(1...6)
+
+                    Button {
+                        showCamera = true
+                    } label: {
+                        Image(
+                            systemName: "camera"
+                        )
+                        .font(.title3)
+                    }
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 9)
+                .background(
+                    Color.secondary
+                        .opacity(0.10)
+                )
+                .clipShape(
+                    RoundedRectangle(
+                        cornerRadius: 20,
+                        style: .continuous
+                    )
+                )
+
+                if messageText
+                    .trimmingCharacters(
+                        in:
+                            .whitespacesAndNewlines
+                    )
+                    .isEmpty {
+
+                    micButton
+
+                } else {
+
+                    Button {
+                        Task {
+                            await sendText()
+                        }
+                    } label: {
+                        Image(
+                            systemName:
+                                "paperplane.fill"
+                        )
+                        .font(.title3)
+                    }
+                    .disabled(isSending)
+                }
             }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
         .background(.bar)
     }
 
-    @MainActor
-    private func sendMessage() async {
-        let text = messageText.trimmingCharacters(
-            in: .whitespacesAndNewlines
-        )
+    private var recordingBar: some View {
+        HStack {
+            Circle()
+                .fill(.red)
+                .frame(
+                    width: 9,
+                    height: 9
+                )
 
-        guard !text.isEmpty, !isSending else {
+            Text(
+                recorder.elapsed,
+                format:
+                    .number.precision(
+                        .fractionLength(1)
+                    )
+            )
+
+            Text("Recording…")
+                .foregroundStyle(
+                    .secondary
+                )
+
+            Spacer()
+
+            Button("Cancel") {
+                recorder.cancel()
+            }
+            .foregroundStyle(.red)
+        }
+        .padding(.horizontal)
+        .padding(.top, 8)
+    }
+
+    private var micButton: some View {
+        Image(
+            systemName:
+                recorder.isRecording
+                ? "stop.circle.fill"
+                : "mic.fill"
+        )
+        .font(.title2)
+        .foregroundStyle(
+            recorder.isRecording
+            ? .red
+            : .primary
+        )
+        .frame(
+            width: 36,
+            height: 36
+        )
+        .contentShape(
+            Circle()
+        )
+        .gesture(
+            DragGesture(
+                minimumDistance: 0
+            )
+            .onChanged { _ in
+                if !recorder.isRecording {
+                    Task {
+                        try? await recorder
+                            .start()
+                    }
+                }
+            }
+            .onEnded { _ in
+                guard recorder.isRecording,
+                      let url =
+                        recorder.stop()
+                else {
+                    return
+                }
+
+                Task {
+                    await sendVoice(
+                        url: url
+                    )
+                }
+            }
+        )
+    }
+
+    @MainActor
+    private func sendText() async {
+        let text =
+            messageText
+                .trimmingCharacters(
+                    in:
+                        .whitespacesAndNewlines
+                )
+
+        guard !text.isEmpty,
+              !isSending
+        else {
             return
         }
 
         isSending = true
 
         do {
-            try await APIClient.shared.sendMessage(
-                chatJID: conversation.jid,
-                text: text
-            )
+            try await APIClient.shared
+                .sendMessage(
+                    chatJID:
+                        conversation.jid,
+                    text: text
+                )
 
             messageText = ""
-            errorMessage = nil
 
-            try? await Task.sleep(for: .milliseconds(500))
             await loadMessages()
+
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage =
+                error.localizedDescription
         }
 
         isSending = false
     }
 
     @MainActor
-    private func loadMessages() async {
+    private func sendSelectedMedia()
+        async {
+
+        guard let item =
+                selectedPhotoItem
+        else {
+            return
+        }
+
+        defer {
+            selectedPhotoItem = nil
+        }
+
+        do {
+            guard let data =
+                    try await item
+                        .loadTransferable(
+                            type: Data.self
+                        )
+            else {
+                return
+            }
+
+            let type =
+                item.supportedContentTypes
+                    .first
+
+            let mime =
+                type?.preferredMIMEType
+                ?? "application/octet-stream"
+
+            let isVideo =
+                item.supportedContentTypes
+                    .contains {
+                        $0.conforms(
+                            to: .movie
+                        )
+                    }
+
+            let ext =
+                type?.preferredFilenameExtension
+                ?? (isVideo
+                    ? "mov"
+                    : "jpg")
+
+            try await APIClient.shared
+                .sendMedia(
+                    chatJID:
+                        conversation.jid,
+                    type:
+                        isVideo
+                        ? "video"
+                        : "image",
+                    data: data,
+                    filename:
+                        "media.\(ext)",
+                    mimeType: mime
+                )
+
+            await loadMessages()
+
+        } catch {
+            errorMessage =
+                error.localizedDescription
+        }
+    }
+
+    @MainActor
+    private func sendCameraImage(
+        _ image: UIImage
+    ) async {
+
+        guard let data =
+                image.jpegData(
+                    compressionQuality: 0.88
+                )
+        else {
+            return
+        }
+
+        do {
+            try await APIClient.shared
+                .sendMedia(
+                    chatJID:
+                        conversation.jid,
+                    type: "image",
+                    data: data,
+                    filename: "camera.jpg",
+                    mimeType: "image/jpeg"
+                )
+
+            await loadMessages()
+
+        } catch {
+            errorMessage =
+                error.localizedDescription
+        }
+    }
+
+    @MainActor
+    private func handleFileResult(
+        _ result:
+            Result<[URL], Error>
+    ) async {
+
+        do {
+            let urls = try result.get()
+
+            guard let url = urls.first
+            else {
+                return
+            }
+
+            let accessed =
+                url.startAccessingSecurityScopedResource()
+
+            defer {
+                if accessed {
+                    url.stopAccessingSecurityScopedResource()
+                }
+            }
+
+            let data =
+                try Data(
+                    contentsOf: url
+                )
+
+            let values =
+                try? url.resourceValues(
+                    forKeys: [
+                        .contentTypeKey
+                    ]
+                )
+
+            let mime =
+                values?.contentType?
+                    .preferredMIMEType
+                ?? "application/octet-stream"
+
+            try await APIClient.shared
+                .sendMedia(
+                    chatJID:
+                        conversation.jid,
+                    type: "document",
+                    data: data,
+                    filename:
+                        url.lastPathComponent,
+                    mimeType: mime
+                )
+
+            await loadMessages()
+
+        } catch {
+            errorMessage =
+                error.localizedDescription
+        }
+    }
+
+    @MainActor
+    private func sendVoice(
+        url: URL
+    ) async {
+
+        defer {
+            try? FileManager.default
+                .removeItem(at: url)
+        }
+
+        do {
+            let data =
+                try Data(
+                    contentsOf: url
+                )
+
+            try await APIClient.shared
+                .sendMedia(
+                    chatJID:
+                        conversation.jid,
+                    type: "voice",
+                    data: data,
+                    filename:
+                        "voice.m4a",
+                    mimeType:
+                        "audio/mp4"
+                )
+
+            await loadMessages()
+
+        } catch {
+            errorMessage =
+                error.localizedDescription
+        }
+    }
+
+    @MainActor
+    private func loadMessages()
+        async {
+
         if messages.isEmpty {
             isLoading = true
         }
 
         do {
-            messages = try await APIClient.shared.fetchMessages(
-                chatJID: conversation.jid
-            )
+            messages =
+                try await APIClient.shared
+                    .fetchMessages(
+                        chatJID:
+                            conversation.jid
+                    )
+
             errorMessage = nil
+
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage =
+                error.localizedDescription
         }
 
         isLoading = false
     }
 
-    private func scrollToBottom(_ proxy: ScrollViewProxy) {
-        guard let last = messages.last else {
+    private func scrollToBottom(
+        _ proxy: ScrollViewProxy
+    ) {
+        guard let last =
+                messages.last
+        else {
             return
         }
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            withAnimation {
-                proxy.scrollTo(last.id, anchor: .bottom)
+        DispatchQueue.main
+            .asyncAfter(
+                deadline:
+                    .now() + 0.05
+            ) {
+                proxy.scrollTo(
+                    last.id,
+                    anchor: .bottom
+                )
             }
-        }
     }
 }
 
@@ -225,34 +684,64 @@ private struct MessageBubble: View {
     var body: some View {
         HStack {
             if message.fromMe {
-                Spacer(minLength: 50)
+                Spacer(
+                    minLength: 50
+                )
             }
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text(message.text.isEmpty ? " " : message.text)
-                    .font(.body)
-                    .foregroundStyle(.primary)
+            VStack(
+                alignment: .leading,
+                spacing: 4
+            ) {
+                mediaLabel
+
+                if !message.text.isEmpty {
+                    Text(message.text)
+                }
 
                 HStack(spacing: 4) {
-                    Spacer(minLength: 0)
+                    Spacer(
+                        minLength: 0
+                    )
 
                     Text(timeText)
                         .font(.caption2)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(
+                            .secondary
+                        )
 
                     if message.fromMe {
-                        Image(systemName: "checkmark.2")
-                            .font(.caption2.weight(.semibold))
-                            .foregroundStyle(.blue)
+                        Image(
+                            systemName:
+                                "checkmark.2"
+                        )
+                        .font(
+                            .caption2
+                                .weight(
+                                    .semibold
+                                )
+                        )
+                        .foregroundStyle(
+                            .blue
+                        )
                     }
                 }
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 7)
+            .padding(
+                .horizontal,
+                10
+            )
+            .padding(
+                .vertical,
+                7
+            )
             .background(
                 message.fromMe
-                    ? Color.green.opacity(0.22)
-                    : Color(.secondarySystemBackground)
+                ? Color.green
+                    .opacity(0.22)
+                : Color(
+                    .secondarySystemBackground
+                )
             )
             .clipShape(
                 RoundedRectangle(
@@ -261,22 +750,69 @@ private struct MessageBubble: View {
                 )
             )
             .frame(
-                maxWidth: 300,
-                alignment: message.fromMe ? .trailing : .leading
+                maxWidth: 310,
+                alignment:
+                    message.fromMe
+                    ? .trailing
+                    : .leading
             )
 
             if !message.fromMe {
-                Spacer(minLength: 50)
+                Spacer(
+                    minLength: 50
+                )
             }
         }
     }
 
-    private var timeText: String {
-        let date = Date(
-            timeIntervalSince1970: TimeInterval(message.createdAt)
-        )
+    @ViewBuilder
+    private var mediaLabel: some View {
+        switch message.type {
+        case "image":
+            Label(
+                "Photo",
+                systemImage: "photo"
+            )
 
-        return date.formatted(
+        case "video":
+            Label(
+                "Video",
+                systemImage: "video"
+            )
+
+        case "voice":
+            Label(
+                "Voice message",
+                systemImage:
+                    "waveform"
+            )
+
+        case "audio":
+            Label(
+                "Audio",
+                systemImage:
+                    "music.note"
+            )
+
+        case "document":
+            Label(
+                "Document",
+                systemImage: "doc"
+            )
+
+        default:
+            EmptyView()
+        }
+    }
+
+    private var timeText: String {
+        Date(
+            timeIntervalSince1970:
+                TimeInterval(
+                    message.createdAt
+                )
+        )
+        .formatted(
             date: .omitted,
             time: .shortened
         )
@@ -289,10 +825,20 @@ private struct ChatAvatar: View {
 
     var body: some View {
         Group {
-            if let url = APIClient.shared.avatarURL(for: conversation.jid) {
-                AsyncImage(url: url) { phase in
+            if let url =
+                APIClient.shared
+                    .avatarURL(
+                        for:
+                            conversation.jid
+                    ) {
+
+                AsyncImage(
+                    url: url
+                ) { phase in
                     switch phase {
-                    case .success(let image):
+                    case .success(
+                        let image
+                    ):
                         image
                             .resizable()
                             .scaledToFill()
@@ -301,22 +847,37 @@ private struct ChatAvatar: View {
                         fallback
                     }
                 }
+
             } else {
                 fallback
             }
         }
-        .frame(width: 32, height: 32)
-        .clipShape(Circle())
+        .frame(
+            width: 32,
+            height: 32
+        )
+        .clipShape(
+            Circle()
+        )
     }
 
     private var fallback: some View {
         ZStack {
             Circle()
-                .fill(Color.secondary.opacity(0.18))
+                .fill(
+                    Color.secondary
+                        .opacity(0.18)
+                )
 
-            Text(conversation.initials)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
+            Text(
+                conversation.initials
+            )
+            .font(
+                .caption
+                    .weight(
+                        .semibold
+                    )
+            )
         }
     }
 }
