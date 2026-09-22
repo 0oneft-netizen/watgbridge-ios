@@ -13,16 +13,39 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Find project
+        run: |
+          echo "=== Repository contents ==="
+          find . -maxdepth 3 -type f | sort
+
       - name: Install XcodeGen
         run: brew install xcodegen
 
       - name: Generate Xcode project
-        run: xcodegen generate
+        run: |
+          if [ -f "project.yml" ]; then
+            xcodegen generate
+          elif [ -f "watgbridge-ios-app/project.yml" ]; then
+            cd watgbridge-ios-app
+            xcodegen generate
+          else
+            echo "ERROR: project.yml not found"
+            exit 1
+          fi
 
       - name: Build iPhone Simulator
         run: |
+          if [ -f "WhatsAppBridge.xcodeproj/project.pbxproj" ]; then
+            PROJECT="WhatsAppBridge.xcodeproj"
+          elif [ -f "watgbridge-ios-app/WhatsAppBridge.xcodeproj/project.pbxproj" ]; then
+            PROJECT="watgbridge-ios-app/WhatsAppBridge.xcodeproj"
+          else
+            echo "ERROR: Xcode project not found"
+            exit 1
+          fi
+
           xcodebuild \
-            -project WhatsAppBridge.xcodeproj \
+            -project "$PROJECT" \
             -scheme WhatsAppBridge \
             -sdk iphonesimulator \
             -configuration Debug \
