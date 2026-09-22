@@ -1,0 +1,10 @@
+.DS_Store
+.build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.tar.gz
+*.sqlite
+*.sqlite.db
+*.db
+.env

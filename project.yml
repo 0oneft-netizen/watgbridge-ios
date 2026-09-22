@@ -1,0 +1,27 @@
+name: WhatsAppBridge
+
+options:
+  bundleIdPrefix: com.watgbridge
+  deploymentTarget:
+    iOS: "17.0"
+
+targets:
+  WhatsAppBridge:
+    type: application
+    platform: iOS
+    sources:
+      - WhatsAppBridge
+
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.watgbridge.ios
+        PRODUCT_NAME: WhatsAppBridge
+        SWIFT_VERSION: "5.0"
+        TARGETED_DEVICE_FAMILY: "1"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: WhatsAppBridge
+        INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+
+    scheme:
+      testTargets: []
