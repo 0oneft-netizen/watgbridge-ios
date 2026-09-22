@@ -24,6 +24,54 @@ struct ConversationsView: View {
                             } label: {
                                 ConversationRow(conversation: conversation)
                             }
+                            .swipeActions(
+                                edge: .leading,
+                                allowsFullSwipe: false
+                            ) {
+                                Button {
+                                    Task {
+                                        try? await APIClient.shared
+                                            .conversationAction(
+                                                chatJID: conversation.jid,
+                                                action: "pin",
+                                                value: !(conversation.pinned ?? false)
+                                            )
+                                        await loadConversations()
+                                    }
+                                } label: {
+                                    Label(
+                                        conversation.pinned == true
+                                        ? "Unpin"
+                                        : "Pin",
+                                        systemImage: "pin.fill"
+                                    )
+                                }
+                            }
+
+                            .swipeActions(
+                                edge: .trailing,
+                                allowsFullSwipe: false
+                            ) {
+                                Button {
+                                    Task {
+                                        try? await APIClient.shared
+                                            .conversationAction(
+                                                chatJID: conversation.jid,
+                                                action: "archive",
+                                                value: !(conversation.archived ?? false)
+                                            )
+                                        await loadConversations()
+                                    }
+                                } label: {
+                                    Label(
+                                        conversation.archived == true
+                                        ? "Unarchive"
+                                        : "Archive",
+                                        systemImage: "archivebox"
+                                    )
+                                }
+                            }
+
                             .listRowSeparator(.visible)
                             .listRowInsets(
                                 EdgeInsets(

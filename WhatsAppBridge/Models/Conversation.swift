@@ -8,6 +8,9 @@ struct Conversation: Identifiable, Codable {
     let lastMessage: String
     let lastMessageAt: Int64
     let unread: Int
+    let pinned: Bool?
+    let archived: Bool?
+    let muted: Bool?
 
     enum CodingKeys: String, CodingKey {
         case jid
@@ -15,6 +18,9 @@ struct Conversation: Identifiable, Codable {
         case lastMessage = "last_message"
         case lastMessageAt = "last_message_at"
         case unread
+        case pinned
+        case archived
+        case muted
     }
 
     var displayName: String {

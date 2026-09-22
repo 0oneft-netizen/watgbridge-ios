@@ -905,6 +905,15 @@ private struct MessageBubble: View {
                     Text(message.text)
                 }
 
+                if message.deletedRemote == true {
+                    Label(
+                        "Deleted on WhatsApp",
+                        systemImage: "trash.slash"
+                    )
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                }
+
                 if let reaction = message.reaction,
                    !reaction.isEmpty {
                     Text(reaction)

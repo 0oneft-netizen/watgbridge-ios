@@ -19,6 +19,7 @@ struct Message: Identifiable, Codable, Equatable {
 
     let replyToID: String?
     let reaction: String?
+
     let deletedRemote: Bool?
     let deletedLocal: Bool?
 
@@ -27,15 +28,20 @@ struct Message: Identifiable, Codable, Equatable {
         case messageID = "message_id"
         case chatJID = "chat_jid"
         case senderJID = "sender_jid"
+
         case text
         case type
+
         case fromMe = "from_me"
         case createdAt = "created_at"
+
         case mediaPath = "media_path"
         case mimeType = "mime_type"
         case fileName = "file_name"
+
         case replyToID = "reply_to_id"
         case reaction
+
         case deletedRemote = "deleted_remote"
         case deletedLocal = "deleted_local"
     }
