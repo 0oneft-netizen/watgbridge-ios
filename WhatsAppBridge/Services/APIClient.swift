@@ -23,7 +23,7 @@ final class APIClient {
 
     func fetchMessages(chatJID: String) async throws -> [Message] {
         var components = URLComponents(
-            url: baseURL.appendingPathComponent("messages"),
+            url: baseURL.appendingPathComponent("messages-v2"),
             resolvingAgainstBaseURL: false
         )!
 
@@ -119,7 +119,7 @@ final class APIClient {
         caption: String = ""
     ) async throws {
 
-        let url = baseURL.appendingPathComponent("send-media")
+        let url = baseURL.appendingPathComponent("send-media-v2")
 
         let boundary =
             "Boundary-\(UUID().uuidString)"

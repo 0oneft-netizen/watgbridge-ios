@@ -693,7 +693,11 @@ private struct MessageBubble: View {
                 alignment: .leading,
                 spacing: 4
             ) {
-                mediaLabel
+                if message.type != "text" {
+                    MessageMediaView(
+                        message: message
+                    )
+                }
 
                 if !message.text.isEmpty {
                     Text(message.text)
@@ -762,46 +766,6 @@ private struct MessageBubble: View {
                     minLength: 50
                 )
             }
-        }
-    }
-
-    @ViewBuilder
-    private var mediaLabel: some View {
-        switch message.type {
-        case "image":
-            Label(
-                "Photo",
-                systemImage: "photo"
-            )
-
-        case "video":
-            Label(
-                "Video",
-                systemImage: "video"
-            )
-
-        case "voice":
-            Label(
-                "Voice message",
-                systemImage:
-                    "waveform"
-            )
-
-        case "audio":
-            Label(
-                "Audio",
-                systemImage:
-                    "music.note"
-            )
-
-        case "document":
-            Label(
-                "Document",
-                systemImage: "doc"
-            )
-
-        default:
-            EmptyView()
         }
     }
 
