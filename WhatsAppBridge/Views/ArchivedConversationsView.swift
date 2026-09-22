@@ -9,7 +9,8 @@ struct ArchivedConversationsView: View {
             ForEach(
                 conversations.filter {
                     $0.archived == true
-                }
+                },
+                id: \.jid
             ) { conversation in
 
                 NavigationLink {
@@ -27,7 +28,7 @@ struct ArchivedConversationsView: View {
                         .font(.headline)
 
                         Text(
-                            conversation.preview
+                            conversation.lastMessage
                         )
                         .font(.subheadline)
                         .foregroundStyle(

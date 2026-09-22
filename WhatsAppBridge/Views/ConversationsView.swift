@@ -36,7 +36,10 @@ struct ConversationsView: View {
                     )
                 }
 
-                ForEach(sortedConversations) { conversation in
+                ForEach(
+                    sortedConversations,
+                    id: \.jid
+                ) { conversation in
                     NavigationLink {
                         ChatView(
                             conversation: conversation
@@ -310,7 +313,7 @@ private struct ConversationRow: View {
 
                 HStack {
                     Text(
-                        conversation.preview
+                        conversation.lastMessage
                     )
                     .font(
                         .subheadline
