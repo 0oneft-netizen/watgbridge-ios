@@ -2,131 +2,16 @@ import SwiftUI
 
 struct ConversationsView: View {
     @State private var conversations: [Conversation] = []
-    @State private var isLoading = true
-    @State private var errorMessage: String?
-
-    var body: some View {
-        NavigationStack {
-            Group {
-                if isLoading && conversations.isEmpty {
-                    ProgressView()
-                } else if let errorMessage, conversations.isEmpty {
-                    ContentUnavailableView(
-                        "Couldn't Load Chats",
-                        systemImage: "wifi.exclamationmark",
-                        description: Text(errorMessage)
-                    )
-                } else {
-                    List {
-                    NavigationLink {
-                        ArchivedConversationsView()
-                    } label: {
-                        Label(
-                            "Archived",
-                            systemImage:
-                                "archivebox"
-                        )
-                    }
-
-                        ForEach(sortedConversations) { conversation in
-                            NavigationLink {
-                                ChatView(conversation: conversation)
-                            } label: {
-                                ConversationRow(conversation: conversation)
-                            }
-                            .swipeActions(
-                                edge: .leading,
-                                allowsFullSwipe: false
-                            ) {
-                                Button {
-                                    Task {
-                                        try? await APIClient.shared
-                                            .conversationAction(
-                                                chatJID: conversation.jid,
-                                                action: "pin",
-                                                value: !(conversation.pinned ?? false)
-                                            )
-                                        await loadConversations()
-                                    }
-                                } label: {
-                                    Label(
-                                        conversation.pinned == true
-                                        ? "Unpin"
-                                        : "Pin",
-                                        systemImage: "pin.fill"
-                                    )
-                                }
-                            }
-
-                            .swipeActions(
-                                edge: .trailing,
-                                allowsFullSwipe: false
-                            ) {
-                                Button {
-                                    Task {
-                                        try? await APIClient.shared
-                                            .conversationAction(
-                                                chatJID: conversation.jid,
-                                                action: "archive",
-                                                value: !(conversation.archived ?? false)
-                                            )
-                                        await loadConversations()
-                                    }
-                                } label: {
-                                    Label(
-                                        conversation.archived == true
-                                        ? "Unarchive"
-                                        : "Archive",
-                                        systemImage: "archivebox"
-                                    )
-                                }
-                            }
-
-                            .listRowSeparator(.visible)
-                            .listRowInsets(
-                                EdgeInsets(
-                                    top: 8,
-                                    leading: 16,
-                                    bottom: 8,
-                                    trailing: 12
-                                )
-                            )
-                        }
-                    }
-                    .listStyle(.plain)
-                    .refreshable {
-                        await loadConversations()
-                    }
-                }
-            }
-            .navigationTitle("Chats")
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Edit") {
-                    }
-                }
-
-                ToolbarItemGroup(placement: .topBarTrailing) {
-                    Button {
-                    } label: {
-                        Image(systemName: "camera")
-                    }
-
-                    Button {
-                    } label: {
-                        Image(systemName: "plus")
-                    }
-                }
-            }
-            .task {
-                await loadConversations()
-            }
-        }
-    }
+    @State private var searchText = ""
 
     private var sortedConversations: [Conversation] {
         conversations
             .filter { $0.archived != true }
+            .filter {
+                searchText.isEmpty ||
+                $0.displayName.localizedCaseInsensitiveContains(searchText) ||
+                $0.preview.localizedCaseInsensitiveContains(searchText)
+            }
             .sorted {
                 let leftPinned = $0.pinned == true
                 let rightPinned = $1.pinned == true
@@ -139,18 +24,136 @@ struct ConversationsView: View {
             }
     }
 
-            return $0.lastMessageAt > $1.lastMessageAt
+    var body: some View {
+        NavigationStack {
+            List {
+                NavigationLink {
+                    ArchivedConversationsView()
+                } label: {
+                    Label(
+                        "Archived",
+                        systemImage: "archivebox"
+                    )
+                }
+
+                ForEach(sortedConversations) { conversation in
+                    NavigationLink {
+                        ChatView(
+                            conversation: conversation
+                        )
+                    } label: {
+                        ConversationRow(
+                            conversation: conversation
+                        )
+                    }
+                    .swipeActions(
+                        edge: .leading,
+                        allowsFullSwipe: false
+                    ) {
+                        Button {
+                            Task {
+                                try? await APIClient.shared
+                                    .conversationAction(
+                                        chatJID: conversation.jid,
+                                        action: "pin",
+                                        value: !(conversation.pinned ?? false)
+                                    )
+
+                                await loadConversations()
+                            }
+                        } label: {
+                            Label(
+                                conversation.pinned == true
+                                ? "Unpin"
+                                : "Pin",
+                                systemImage: "pin.fill"
+                            )
+                        }
+
+                        Button {
+                            Task {
+                                try? await APIClient.shared
+                                    .conversationAction(
+                                        chatJID: conversation.jid,
+                                        action: "unread",
+                                        value: true
+                                    )
+
+                                await loadConversations()
+                            }
+                        } label: {
+                            Label(
+                                "Unread",
+                                systemImage: "envelope.badge"
+                            )
+                        }
+                    }
+                    .swipeActions(
+                        edge: .trailing,
+                        allowsFullSwipe: false
+                    ) {
+                        Button {
+                            Task {
+                                try? await APIClient.shared
+                                    .conversationAction(
+                                        chatJID: conversation.jid,
+                                        action: "archive",
+                                        value: !(conversation.archived ?? false)
+                                    )
+
+                                await loadConversations()
+                            }
+                        } label: {
+                            Label(
+                                conversation.archived == true
+                                ? "Unarchive"
+                                : "Archive",
+                                systemImage: "archivebox"
+                            )
+                        }
+
+                        Button {
+                            Task {
+                                try? await APIClient.shared
+                                    .conversationAction(
+                                        chatJID: conversation.jid,
+                                        action: "mute",
+                                        value: !(conversation.muted ?? false)
+                                    )
+
+                                await loadConversations()
+                            }
+                        } label: {
+                            Label(
+                                conversation.muted == true
+                                ? "Unmute"
+                                : "Mute",
+                                systemImage: "speaker.slash"
+                            )
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Chats")
+            .searchable(
+                text: $searchText,
+                prompt: "Search"
+            )
+            .refreshable {
+                await loadConversations()
+            }
+            .task {
+                await loadConversations()
+            }
         }
     }
 
     @MainActor
     private func loadConversations() async {
-        if conversations.isEmpty {
-            isLoading = true
-        }
-
         do {
-            conversations = try await APIClient.shared.fetchConversations()
+            conversations =
+                try await APIClient.shared
+                    .fetchConversations()
 
             let unreadTotal =
                 conversations.reduce(0) {
@@ -161,74 +164,23 @@ struct ConversationsView: View {
                 .setBadgeCount(
                     unreadTotal
                 )
-            errorMessage = nil
-        } catch {
-            errorMessage = error.localizedDescription
-        }
 
-        isLoading = false
+        } catch {
+        }
     }
 }
-
 
 private struct ConversationRow: View {
     let conversation: Conversation
 
     var body: some View {
         HStack(spacing: 12) {
-            avatar
-
-            VStack(spacing: 4) {
-                HStack {
-                    Text(conversation.displayName)
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(.primary)
-                        .lineLimit(1)
-
-                    Spacer()
-
-                    if conversation.lastMessageAt > 0 {
-                        Text(timeText)
-                            .font(.caption)
-                            .foregroundStyle(
-                                conversation.unread > 0
-                                ? Color.green
-                                : Color.secondary
-                            )
-                    }
-                }
-
-                HStack(spacing: 6) {
-                    Text(conversation.previewText)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-
-                    Spacer(minLength: 8)
-
-                    if conversation.unread > 0 {
-                        Text(
-                            conversation.unread > 99
-                            ? "99+"
-                            : "\(conversation.unread)"
-                        )
-                        .font(.caption2.weight(.bold))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 7)
-                        .frame(minWidth: 22, minHeight: 22)
-                        .background(Color.green)
-                        .clipShape(Capsule())
-                    }
-                }
-            }
-        }
-        .contentShape(Rectangle())
-    }
-
-    @ViewBuilder
-    private var avatar: some View {
-        if let url = APIClient.shared.avatarURL(for: conversation.jid) {
-            AsyncImage(url: url) { phase in
+            AsyncImage(
+                url: APIClient.shared
+                    .avatarURL(
+                        for: conversation.jid
+                    )
+            ) { phase in
                 switch phase {
                 case .success(let image):
                     image
@@ -236,63 +188,117 @@ private struct ConversationRow: View {
                         .scaledToFill()
 
                 default:
-                    avatarFallback
+                    ZStack {
+                        Circle()
+                            .fill(
+                                Color.secondary
+                                    .opacity(0.15)
+                            )
+
+                        Text(
+                            conversation.initials
+                        )
+                        .font(
+                            .headline
+                        )
+                    }
                 }
             }
-            .frame(width: 52, height: 52)
-            .clipShape(Circle())
-        } else {
-            avatarFallback
-        }
-    }
-
-    private var avatarFallback: some View {
-        ZStack {
-            Circle()
-                .fill(Color.secondary.opacity(0.18))
-
-            Text(conversation.initials)
-                .font(.headline)
-                .foregroundStyle(.secondary)
-        }
-        .frame(width: 52, height: 52)
-    }
-
-    private var timeText: String {
-        guard conversation.lastMessageAt > 0 else {
-            return ""
-        }
-
-        let date = Date(
-            timeIntervalSince1970: TimeInterval(conversation.lastMessageAt)
-        )
-
-        let calendar = Calendar.current
-
-        if calendar.isDateInToday(date) {
-            return date.formatted(
-                date: .omitted,
-                time: .shortened
+            .frame(
+                width: 52,
+                height: 52
             )
-        }
+            .clipShape(
+                Circle()
+            )
 
-        if calendar.isDateInYesterday(date) {
-            return "Yesterday"
-        }
+            VStack(
+                alignment: .leading,
+                spacing: 4
+            ) {
+                HStack(spacing: 5) {
+                    Text(
+                        conversation.displayName
+                    )
+                    .font(
+                        .headline
+                    )
+                    .lineLimit(1)
 
-        if let days = calendar.dateComponents(
-            [.day],
-            from: calendar.startOfDay(for: date),
-            to: calendar.startOfDay(for: Date())
-        ).day,
-           days < 7 {
-            return date.formatted(.dateTime.weekday(.abbreviated))
-        }
+                    if conversation.pinned == true {
+                        Image(
+                            systemName: "pin.fill"
+                        )
+                        .font(
+                            .caption2
+                        )
+                        .foregroundStyle(
+                            .secondary
+                        )
+                    }
 
-        return date.formatted(
-            .dateTime
-                .day()
-                .month(.twoDigits)
+                    if conversation.muted == true {
+                        Image(
+                            systemName:
+                                "speaker.slash.fill"
+                        )
+                        .font(
+                            .caption2
+                        )
+                        .foregroundStyle(
+                            .secondary
+                        )
+                    }
+
+                    Spacer()
+                }
+
+                HStack {
+                    Text(
+                        conversation.preview
+                    )
+                    .font(
+                        .subheadline
+                    )
+                    .foregroundStyle(
+                        .secondary
+                    )
+                    .lineLimit(1)
+
+                    Spacer()
+
+                    if conversation.unread > 0 {
+                        Text(
+                            "\(conversation.unread)"
+                        )
+                        .font(
+                            .caption2
+                                .bold()
+                        )
+                        .foregroundStyle(
+                            .white
+                        )
+                        .padding(
+                            .horizontal,
+                            7
+                        )
+                        .padding(
+                            .vertical,
+                            3
+                        )
+                        .background(
+                            Color.green
+                        )
+                        .clipShape(
+                            Capsule()
+                        )
+                    }
+                }
+            }
+        }
+        .padding(
+            .vertical,
+            3
         )
     }
 }
