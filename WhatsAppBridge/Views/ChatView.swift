@@ -12,6 +12,7 @@ struct ChatView: View {
 
     @State private var messageText = ""
     @State private var replyToMessage: Message?
+    @State private var forwardMessage: Message?
     @State private var isSending = false
 
     @State private var selectedPhotoItem:
@@ -107,6 +108,13 @@ struct ChatView: View {
                     }
                 }
             }
+        }
+        .sheet(
+            item: $forwardMessage
+        ) { message in
+            ForwardMessageView(
+                message: message
+            )
         }
         .task {
             try? await APIClient.shared
@@ -223,6 +231,16 @@ struct ChatView: View {
                                 Label(
                                     "Reply",
                                     systemImage: "arrowshape.turn.up.left"
+                                )
+                            }
+
+                            Button {
+                                forwardMessage = message
+                            } label: {
+                                Label(
+                                    "Forward",
+                                    systemImage:
+                                        "arrowshape.turn.up.right"
                                 )
                             }
                         }

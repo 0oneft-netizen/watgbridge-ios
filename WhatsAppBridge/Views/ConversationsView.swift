@@ -18,6 +18,16 @@ struct ConversationsView: View {
                     )
                 } else {
                     List {
+                    NavigationLink {
+                        ArchivedConversationsView()
+                    } label: {
+                        Label(
+                            "Archived",
+                            systemImage:
+                                "archivebox"
+                        )
+                    }
+
                         ForEach(sortedConversations) { conversation in
                             NavigationLink {
                                 ChatView(conversation: conversation)
@@ -115,12 +125,19 @@ struct ConversationsView: View {
     }
 
     private var sortedConversations: [Conversation] {
-        conversations.sorted {
-            if $0.lastMessageAt == $1.lastMessageAt {
-                return $0.displayName.localizedCaseInsensitiveCompare(
-                    $1.displayName
-                ) == .orderedAscending
+        conversations
+            .filter { $0.archived != true }
+            .sorted {
+                let leftPinned = $0.pinned == true
+                let rightPinned = $1.pinned == true
+
+                if leftPinned != rightPinned {
+                    return leftPinned && !rightPinned
+                }
+
+                return $0.lastMessageAt > $1.lastMessageAt
             }
+    }
 
             return $0.lastMessageAt > $1.lastMessageAt
         }
@@ -134,6 +151,16 @@ struct ConversationsView: View {
 
         do {
             conversations = try await APIClient.shared.fetchConversations()
+
+            let unreadTotal =
+                conversations.reduce(0) {
+                    $0 + $1.unread
+                }
+
+            await NotificationManager.shared
+                .setBadgeCount(
+                    unreadTotal
+                )
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription

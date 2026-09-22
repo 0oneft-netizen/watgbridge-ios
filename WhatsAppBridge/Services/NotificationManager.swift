@@ -3,32 +3,67 @@ import UserNotifications
 import UIKit
 
 @MainActor
-final class NotificationManager {
-    static let shared = NotificationManager()
+final class NotificationManager:
+    NSObject,
+    UNUserNotificationCenterDelegate {
 
-    private init() {}
+    static let shared =
+        NotificationManager()
+
+    private override init() {
+        super.init()
+
+        UNUserNotificationCenter
+            .current()
+            .delegate = self
+    }
 
     func requestPermission() async {
         do {
-            let granted = try await UNUserNotificationCenter.current()
-                .requestAuthorization(
-                    options: [
-                        .alert,
-                        .badge,
-                        .sound
-                    ]
-                )
+            let granted =
+                try await UNUserNotificationCenter
+                    .current()
+                    .requestAuthorization(
+                        options: [
+                            .alert,
+                            .badge,
+                            .sound
+                        ]
+                    )
 
             if granted {
-                UIApplication.shared.registerForRemoteNotifications()
+                UIApplication.shared
+                    .registerForRemoteNotifications()
             }
         } catch {
-            print("Notification permission error: \(error)")
         }
     }
 
-    func updateBadge(_ count: Int) {
-        UNUserNotificationCenter.current()
-            .setBadgeCount(count)
+    func setBadgeCount(
+        _ count: Int
+    ) async {
+        do {
+            try await UNUserNotificationCenter
+                .current()
+                .setBadgeCount(
+                    max(0, count)
+                )
+        } catch {
+        }
+    }
+
+    nonisolated func userNotificationCenter(
+        _ center:
+            UNUserNotificationCenter,
+        willPresent notification:
+            UNNotification
+    ) async
+        -> UNNotificationPresentationOptions {
+
+        [
+            .banner,
+            .sound,
+            .badge
+        ]
     }
 }
