@@ -13,39 +13,48 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Find project
+      - name: Show uploaded files
         run: |
-          echo "=== Repository contents ==="
-          find . -maxdepth 3 -type f | sort
+          echo "=== FILES ==="
+          find . -maxdepth 4 -type f | sort
 
       - name: Install XcodeGen
         run: brew install xcodegen
 
       - name: Generate Xcode project
         run: |
-          if [ -f "project.yml" ]; then
-            xcodegen generate
-          elif [ -f "watgbridge-ios-app/project.yml" ]; then
-            cd watgbridge-ios-app
-            xcodegen generate
-          else
-            echo "ERROR: project.yml not found"
+          PROJECT_DIR="$(find . -type d -name WhatsAppBridge -print -quit | xargs dirname)"
+
+          echo "Project directory: $PROJECT_DIR"
+
+          test -d "$PROJECT_DIR/WhatsAppBridge" || {
+            echo "ERROR: WhatsAppBridge folder not found"
             exit 1
-          fi
+          }
+
+          test -f "$PROJECT_DIR/project.yml" || {
+            echo "ERROR: project.yml not found beside WhatsAppBridge"
+            exit 1
+          }
+
+          cd "$PROJECT_DIR"
+          xcodegen generate
 
       - name: Build iPhone Simulator
         run: |
-          if [ -f "WhatsAppBridge.xcodeproj/project.pbxproj" ]; then
-            PROJECT="WhatsAppBridge.xcodeproj"
-          elif [ -f "watgbridge-ios-app/WhatsAppBridge.xcodeproj/project.pbxproj" ]; then
-            PROJECT="watgbridge-ios-app/WhatsAppBridge.xcodeproj"
-          else
-            echo "ERROR: Xcode project not found"
+          PBX="$(find . -path '*/WhatsAppBridge.xcodeproj/project.pbxproj' -print -quit)"
+
+          test -n "$PBX" || {
+            echo "ERROR: generated Xcode project not found"
             exit 1
-          fi
+          }
+
+          PROJECT_DIR="$(dirname "$(dirname "$PBX")")"
+
+          echo "Building: $PROJECT_DIR/WhatsAppBridge.xcodeproj"
 
           xcodebuild \
-            -project "$PROJECT" \
+            -project "$PROJECT_DIR/WhatsAppBridge.xcodeproj" \
             -scheme WhatsAppBridge \
             -sdk iphonesimulator \
             -configuration Debug \
