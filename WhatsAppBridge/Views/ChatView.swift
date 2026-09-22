@@ -116,6 +116,21 @@ struct ChatView: View {
                 message: message
             )
         }
+        .onReceive(
+            NotificationCenter.default.publisher(
+                for: .bridgeRealtimeUpdate
+            )
+        ) { _ in
+            Task {
+                await loadMessages()
+
+                try? await APIClient.shared
+                    .markRead(
+                        chatJID:
+                            conversation.jid
+                    )
+            }
+        }
         .task {
             try? await APIClient.shared
                 .markRead(

@@ -6,6 +6,8 @@ struct WhatsAppBridgeApp: App {
         WindowGroup {
             ConversationsView()
                 .task {
+            RealtimeClient.shared.start()
+
                     await NotificationManager.shared
                         .requestPermission()
                 }

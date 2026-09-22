@@ -143,17 +143,72 @@ struct ConversationsView: View {
                 await loadConversations()
             }
             .task {
+                RealtimeClient.shared.start()
+
+                await NotificationManager.shared
+                    .requestPermission()
+
                 await loadConversations()
+            }
+            .onReceive(
+                NotificationCenter.default.publisher(
+                    for: .bridgeRealtimeUpdate
+                )
+            ) { _ in
+                Task {
+                    await loadConversations(
+                        notifyForNewMessages: true
+                    )
+                }
             }
         }
     }
 
     @MainActor
-    private func loadConversations() async {
+    private func loadConversations(
+        notifyForNewMessages: Bool = false
+    ) async {
         do {
-            conversations =
+            let old =
+                Dictionary(
+                    uniqueKeysWithValues:
+                        conversations.map {
+                            (
+                                $0.jid,
+                                $0.unread
+                            )
+                        }
+                )
+
+            let updated =
                 try await APIClient.shared
                     .fetchConversations()
+
+            if notifyForNewMessages {
+                for conversation in updated {
+                    let previous =
+                        old[
+                            conversation.jid
+                        ] ?? 0
+
+                    if conversation.unread >
+                        previous {
+
+                        await NotificationManager
+                            .shared
+                            .showIncoming(
+                                title:
+                                    conversation
+                                    .displayName,
+                                body:
+                                    conversation
+                                    .preview
+                            )
+                    }
+                }
+            }
+
+            conversations = updated
 
             let unreadTotal =
                 conversations.reduce(0) {
