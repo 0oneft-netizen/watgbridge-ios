@@ -57,6 +57,11 @@ struct ChatView: View {
         }
         .task {
             await loadMessages()
+
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(2))
+                await loadMessages()
+            }
         }
     }
 
