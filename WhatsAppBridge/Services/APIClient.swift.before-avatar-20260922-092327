@@ -68,18 +68,4 @@ final class APIClient {
         }
     }
 
-
-    func avatarURL(for jid: String) -> URL? {
-        var components = URLComponents(
-            url: baseURL.appendingPathComponent("avatar"),
-            resolvingAgainstBaseURL: false
-        )
-
-        components?.queryItems = [
-            URLQueryItem(name: "jid", value: jid)
-        ]
-
-        return components?.url
-    }
-
 }

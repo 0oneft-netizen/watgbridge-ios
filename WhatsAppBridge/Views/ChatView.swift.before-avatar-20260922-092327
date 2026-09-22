@@ -33,16 +33,6 @@ struct ChatView: View {
         .navigationTitle(conversation.displayName)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .principal) {
-                HStack(spacing: 8) {
-                    ChatAvatar(conversation: conversation)
-
-                    Text(conversation.displayName)
-                        .font(.headline)
-                        .lineLimit(1)
-                }
-            }
-
             ToolbarItemGroup(placement: .topBarTrailing) {
                 Button {
                 } label: {
@@ -264,43 +254,5 @@ private struct MessageBubble: View {
             date: .omitted,
             time: .shortened
         )
-    }
-}
-
-
-private struct ChatAvatar: View {
-    let conversation: Conversation
-
-    var body: some View {
-        Group {
-            if let url = APIClient.shared.avatarURL(for: conversation.jid) {
-                AsyncImage(url: url) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .scaledToFill()
-
-                    default:
-                        fallback
-                    }
-                }
-            } else {
-                fallback
-            }
-        }
-        .frame(width: 32, height: 32)
-        .clipShape(Circle())
-    }
-
-    private var fallback: some View {
-        ZStack {
-            Circle()
-                .fill(Color.secondary.opacity(0.18))
-
-            Text(conversation.initials)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-        }
     }
 }
