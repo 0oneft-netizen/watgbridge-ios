@@ -196,4 +196,21 @@ final class APIClient {
         }
     }
 
+
+    func mediaURL(for messageID: String) -> URL? {
+        var components = URLComponents(
+            url: baseURL.appendingPathComponent("media"),
+            resolvingAgainstBaseURL: false
+        )
+
+        components?.queryItems = [
+            URLQueryItem(
+                name: "id",
+                value: messageID
+            )
+        ]
+
+        return components?.url
+    }
+
 }
