@@ -11,6 +11,7 @@ struct ChatView: View {
     @State private var errorMessage: String?
 
     @State private var messageText = ""
+    @State private var replyToMessage: Message?
     @State private var isSending = false
 
     @State private var selectedPhotoItem:
@@ -19,6 +20,9 @@ struct ChatView: View {
     @State private var showPhotos = false
     @State private var showCamera = false
     @State private var showFiles = false
+    @State private var searchText = ""
+    @State private var isSearching = false
+
 
     @StateObject
     private var recorder = AudioRecorder()
@@ -61,6 +65,12 @@ struct ChatView: View {
                 placement: .topBarTrailing
             ) {
                 Button {
+                    isSearching.toggle()
+                } label: {
+                    Image(systemName: "magnifyingglass")
+                }
+
+                Button {
                 } label: {
                     Image(
                         systemName: "video"
@@ -72,6 +82,29 @@ struct ChatView: View {
                     Image(
                         systemName: "phone"
                     )
+                }
+            }
+        }
+        .searchable(
+            text: $searchText,
+            isPresented: $isSearching,
+            prompt: "Search messages"
+        )
+        .onChange(of: searchText) {
+            Task {
+                if searchText.trimmingCharacters(
+                    in: .whitespacesAndNewlines
+                ).isEmpty {
+                    await loadMessages()
+                } else {
+                    do {
+                        messages = try await APIClient.shared
+                            .searchMessages(
+                                chatJID: conversation.jid,
+                                query: searchText
+                            )
+                    } catch {
+                    }
                 }
             }
         }
@@ -180,6 +213,73 @@ struct ChatView: View {
                             message: message
                         )
                         .id(message.id)
+                        .swipeActions(
+                            edge: .leading,
+                            allowsFullSwipe: true
+                        ) {
+                            Button {
+                                replyToMessage = message
+                            } label: {
+                                Label(
+                                    "Reply",
+                                    systemImage: "arrowshape.turn.up.left"
+                                )
+                            }
+                        }
+                        .contextMenu {
+                            Button {
+                                UIPasteboard.general.string =
+                                    message.text
+                            } label: {
+                                Label(
+                                    "Copy",
+                                    systemImage: "doc.on.doc"
+                                )
+                            }
+
+                            Button {
+                                replyToMessage = message
+                            } label: {
+                                Label(
+                                    "Reply",
+                                    systemImage: "arrowshape.turn.up.left"
+                                )
+                            }
+
+                            Menu("React") {
+                                ForEach(
+                                    ["❤️","👍","😂","😮","😢","🙏"],
+                                    id: \.self
+                                ) { emoji in
+                                    Button(emoji) {
+                                        Task {
+                                            try? await APIClient.shared.react(
+                                                messageID: message.messageID,
+                                                chatJID: conversation.jid,
+                                                emoji: emoji
+                                            )
+                                            await loadMessages()
+                                        }
+                                    }
+                                }
+                            }
+
+                            Button(
+                                role: .destructive
+                            ) {
+                                Task {
+                                    try? await APIClient.shared.deleteLocal(
+                                        messageID: message.messageID
+                                    )
+                                    await loadMessages()
+                                }
+                            } label: {
+                                Label(
+                                    "Delete for me",
+                                    systemImage: "trash"
+                                )
+                            }
+                        }
                     }
                 }
                 .padding(.horizontal, 8)
@@ -206,6 +306,35 @@ struct ChatView: View {
 
     private var composer: some View {
         VStack(spacing: 0) {
+            if let reply = replyToMessage {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Replying")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+
+                        Text(
+                            reply.text.isEmpty
+                            ? reply.type.capitalized
+                            : reply.text
+                        )
+                        .font(.subheadline)
+                        .lineLimit(1)
+                    }
+
+                    Spacer()
+
+                    Button {
+                        replyToMessage = nil
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                    }
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 7)
+                .background(.thinMaterial)
+            }
+
             if recorder.isRecording {
                 recordingBar
             }
@@ -423,6 +552,7 @@ struct ChatView: View {
                 )
 
             messageText = ""
+            replyToMessage = nil
 
             await loadMessages()
 
@@ -701,6 +831,21 @@ private struct MessageBubble: View {
 
                 if !message.text.isEmpty {
                     Text(message.text)
+                }
+
+                if let reaction = message.reaction,
+                   !reaction.isEmpty {
+                    Text(reaction)
+                        .font(.title3)
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 2)
+                        .background(
+                            Capsule()
+                                .fill(
+                                    Color.secondary
+                                        .opacity(0.12)
+                                )
+                        )
                 }
 
                 HStack(spacing: 4) {

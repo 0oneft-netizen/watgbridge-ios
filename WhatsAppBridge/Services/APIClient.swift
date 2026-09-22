@@ -213,4 +213,133 @@ final class APIClient {
         return components?.url
     }
 
+
+    func react(
+        messageID: String,
+        chatJID: String,
+        emoji: String
+    ) async throws {
+
+        let url =
+            baseURL.appendingPathComponent("reaction")
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue(
+            "application/json",
+            forHTTPHeaderField: "Content-Type"
+        )
+
+        request.httpBody = try JSONSerialization.data(
+            withJSONObject: [
+                "message_id": messageID,
+                "chat_jid": chatJID,
+                "emoji": emoji
+            ]
+        )
+
+        let (_, response) =
+            try await URLSession.shared.data(
+                for: request
+            )
+
+        guard let http =
+                response as? HTTPURLResponse,
+              (200...299).contains(
+                http.statusCode
+              )
+        else {
+            throw URLError(
+                .badServerResponse
+            )
+        }
+    }
+
+    func deleteLocal(
+        messageID: String
+    ) async throws {
+
+        let url =
+            baseURL.appendingPathComponent(
+                "delete-local"
+            )
+
+        var request =
+            URLRequest(url: url)
+
+        request.httpMethod = "POST"
+
+        request.setValue(
+            "application/json",
+            forHTTPHeaderField:
+                "Content-Type"
+        )
+
+        request.httpBody =
+            try JSONSerialization.data(
+                withJSONObject: [
+                    "message_id": messageID
+                ]
+            )
+
+        let (_, response) =
+            try await URLSession.shared.data(
+                for: request
+            )
+
+        guard let http =
+                response as? HTTPURLResponse,
+              (200...299).contains(
+                http.statusCode
+              )
+        else {
+            throw URLError(
+                .badServerResponse
+            )
+        }
+    }
+
+    func searchMessages(
+        chatJID: String,
+        query: String
+    ) async throws -> [Message] {
+
+        var components = URLComponents(
+            url:
+                baseURL.appendingPathComponent(
+                    "search-messages"
+                ),
+            resolvingAgainstBaseURL:
+                false
+        )
+
+        components?.queryItems = [
+            URLQueryItem(
+                name: "chat_jid",
+                value: chatJID
+            ),
+            URLQueryItem(
+                name: "q",
+                value: query
+            )
+        ]
+
+        guard let url =
+                components?.url
+        else {
+            return []
+        }
+
+        let (data, _) =
+            try await URLSession.shared.data(
+                from: url
+            )
+
+        return try JSONDecoder()
+            .decode(
+                [Message].self,
+                from: data
+            )
+    }
+
 }
