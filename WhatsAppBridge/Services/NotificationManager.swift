@@ -1,77 +1,107 @@
 import Foundation
-import UserNotifications
 import UIKit
+import UserNotifications
 
 @MainActor
 final class NotificationManager:
     NSObject,
-    UNUserNotificationCenterDelegate {
-
-    static let shared =
-        NotificationManager()
+    UNUserNotificationCenterDelegate
+{
+    static let shared = NotificationManager()
 
     private override init() {
         super.init()
 
-        UNUserNotificationCenter
-            .current()
-            .delegate = self
+        AppSettings.registerDefaults()
+
+        UNUserNotificationCenter.current().delegate = self
+
+        configureCategories()
+    }
+
+    private func configureCategories() {
+        let openAction = UNNotificationAction(
+            identifier: "OPEN_CHAT",
+            title: "Open",
+            options: [.foreground]
+        )
+
+        let category = UNNotificationCategory(
+            identifier: "WHATSAPP_MESSAGE",
+            actions: [openAction],
+            intentIdentifiers: [],
+            options: []
+        )
+
+        UNUserNotificationCenter.current()
+            .setNotificationCategories([category])
     }
 
     func requestPermission() async {
         do {
-            let granted =
-                try await UNUserNotificationCenter
-                    .current()
-                    .requestAuthorization(
-                        options: [
-                            .alert,
-                            .badge,
-                            .sound
-                        ]
-                    )
-
-            if granted {
-                UIApplication.shared
-                    .registerForRemoteNotifications()
-            }
+            _ = try await
+                UNUserNotificationCenter.current()
+                .requestAuthorization(
+                    options: [
+                        .alert,
+                        .sound,
+                        .badge
+                    ]
+                )
         } catch {
             print(
-                "notification permission:",
+                "Notification permission error:",
                 error
             )
         }
     }
 
+    func registerForPushNotifications() {
+        UIApplication.shared
+            .registerForRemoteNotifications()
+    }
+
     func setBadgeCount(
         _ count: Int
     ) async {
-        do {
-            try await UNUserNotificationCenter
-                .current()
-                .setBadgeCount(
-                    max(0, count)
-                )
-        } catch {
+        guard AppSettings.badge else {
+            try? await
+                UNUserNotificationCenter.current()
+                .setBadgeCount(0)
+
+            return
         }
+
+        try? await
+            UNUserNotificationCenter.current()
+            .setBadgeCount(count)
     }
 
     func showIncoming(
         title: String,
         body: String
     ) async {
+        guard AppSettings.notifications else {
+            return
+        }
 
         let content =
             UNMutableNotificationContent()
 
         content.title = title
 
-        content.body =
-            body.isEmpty
-            ? "New WhatsApp message"
-            : body
+        if AppSettings.previews {
+            content.body = body
+        } else {
+            content.body = "New message"
+        }
 
-        content.sound = .default
+        if AppSettings.sound {
+            content.sound = .default
+        }
+
+        content.categoryIdentifier =
+            "WHATSAPP_MESSAGE"
 
         let request =
             UNNotificationRequest(
@@ -82,26 +112,33 @@ final class NotificationManager:
             )
 
         do {
-            try await UNUserNotificationCenter
-                .current()
+            try await
+                UNUserNotificationCenter.current()
                 .add(request)
         } catch {
+            print(
+                "Notification error:",
+                error
+            )
         }
     }
 
     nonisolated func userNotificationCenter(
-        _ center:
-            UNUserNotificationCenter,
-        willPresent notification:
-            UNNotification
-    ) async
-        -> UNNotificationPresentationOptions {
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification
+    ) async -> UNNotificationPresentationOptions {
+        var options:
+            UNNotificationPresentationOptions =
+                [.banner, .list]
 
-        [
-            .banner,
-            .sound,
-            .badge,
-            .list
-        ]
+        if AppSettings.sound {
+            options.insert(.sound)
+        }
+
+        if AppSettings.badge {
+            options.insert(.badge)
+        }
+
+        return options
     }
 }

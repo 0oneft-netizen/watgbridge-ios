@@ -3,6 +3,7 @@ import SwiftUI
 struct ConversationsView: View {
     @State private var conversations: [Conversation] = []
     @State private var searchText = ""
+    @State private var showSettings = false
 
     private var sortedConversations: [Conversation] {
         conversations
@@ -138,6 +139,25 @@ struct ConversationsView: View {
                 }
             }
             .navigationTitle("Chats")
+            .toolbar {
+                ToolbarItem(
+                    placement: .topBarTrailing
+                ) {
+                    Button {
+                        Haptics.selection()
+                        showSettings = true
+                    } label: {
+                        Image(
+                            systemName: "gearshape"
+                        )
+                    }
+                }
+            }
+            .sheet(
+                isPresented: $showSettings
+            ) {
+                SettingsView()
+            }
             .searchable(
                 text: $searchText,
                 prompt: "Search"
@@ -209,14 +229,27 @@ struct ConversationsView: View {
                     }
                 }
 
-                Task {
-                    await NotificationManager.shared
-                        .showIncoming(
-                            title: title,
-                            body: body
-                        )
+                let muted =
+                    conversations.first {
+                        $0.jid == message.chat_jid
+                    }?.muted == true
 
-                    await loadConversations()
+                if !muted {
+                    Haptics.incomingMessage()
+
+                    Task {
+                        await NotificationManager.shared
+                            .showIncoming(
+                                title: title,
+                                body: body
+                            )
+
+                        await loadConversations()
+                    }
+                } else {
+                    Task {
+                        await loadConversations()
+                    }
                 }
             }
         }

@@ -2,6 +2,9 @@ import SwiftUI
 
 @main
 struct WhatsAppBridgeApp: App {
+    init() {
+        AppSettings.registerDefaults()
+    }
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     var body: some Scene {
         WindowGroup {
