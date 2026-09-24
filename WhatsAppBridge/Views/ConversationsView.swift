@@ -151,6 +151,11 @@ struct ConversationsView: View {
                 await NotificationManager.shared
                     .requestPermission()
 
+                await MainActor.run {
+                    NotificationManager.shared
+                        .registerForPushNotifications()
+                }
+
                 await loadConversations()
             }
             .onReceive(
