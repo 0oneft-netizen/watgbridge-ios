@@ -57,6 +57,18 @@ struct SettingsView: View {
                     }
                 }
 
+                Section("Notification Diagnostics") {
+                    NavigationLink {
+                        PushDiagnosticsView()
+                    } label: {
+                        Label(
+                            "Push Diagnostics",
+                            systemImage:
+                                "bell.badge.fill"
+                        )
+                    }
+                }
+
                 Section("Experience") {
                     Toggle(
                         "Haptic feedback",

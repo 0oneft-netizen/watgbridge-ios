@@ -9,3 +9,10 @@ xcuserdata/
 *.db
 .env
 *\.before-*
+
+# Local patch backups
+*.bak-*
+backups/
+build/
+DerivedData/
+.DS_Store

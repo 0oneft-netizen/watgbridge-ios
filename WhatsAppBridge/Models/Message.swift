@@ -4,6 +4,7 @@ struct Message: Identifiable, Codable, Equatable {
     let id: Int64
 
     let messageID: String
+    let accountID: String?
     let chatJID: String
     let senderJID: String
 
@@ -26,6 +27,7 @@ struct Message: Identifiable, Codable, Equatable {
     enum CodingKeys: String, CodingKey {
         case id
         case messageID = "message_id"
+        case accountID = "account_id"
         case chatJID = "chat_jid"
         case senderJID = "sender_jid"
 

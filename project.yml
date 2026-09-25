@@ -17,6 +17,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.watgbridge.ios
         PRODUCT_NAME: WhatsAppBridge
         SWIFT_VERSION: "5.0"
+        CODE_SIGN_ENTITLEMENTS: WhatsAppBridge/WhatsAppBridge.entitlements
         TARGETED_DEVICE_FAMILY: "1"
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: WhatsAppBridge

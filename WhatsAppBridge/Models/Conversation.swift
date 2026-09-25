@@ -3,6 +3,7 @@ import Foundation
 struct Conversation: Identifiable, Codable {
     var id: String { jid }
 
+    let accountID: String?
     let jid: String
     let name: String
     let lastMessage: String
@@ -13,6 +14,7 @@ struct Conversation: Identifiable, Codable {
     let muted: Bool?
 
     enum CodingKeys: String, CodingKey {
+        case accountID = "account_id"
         case jid
         case name
         case lastMessage = "last_message"
