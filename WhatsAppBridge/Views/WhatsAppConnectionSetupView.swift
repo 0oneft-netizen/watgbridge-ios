@@ -6,72 +6,107 @@ struct WhatsAppConnectionSetupView: View {
 
     let type: WhatsAppConnectionType
 
+    @State private var accountID:
+        String?
+
+    @State private var loading = true
+
+    @State private var errorText:
+        String?
+
     var body: some View {
         NavigationStack {
-            VStack(spacing: 24) {
-                Spacer()
-
-                Image(
-                    systemName: type.icon
-                )
-                .font(
-                    .system(size: 64)
-                )
-                .foregroundStyle(
-                    Color.accentColor
-                )
-
-                Text(type.title)
-                    .font(.title.bold())
-
-                if type == .business {
-                    Text(
-                        "The QR code will be scanned from WhatsApp Business → Settings → Linked Devices → Link a Device."
-                    )
-                    .multilineTextAlignment(
-                        .center
-                    )
-                    .foregroundStyle(
-                        .secondary
+            Group {
+                if let accountID {
+                    WhatsAppPairingView(
+                        accountID: accountID,
+                        type: type
                     )
                 } else {
-                    Text(
-                        "The QR code will be scanned from WhatsApp → Settings → Linked Devices → Link a Device."
-                    )
-                    .multilineTextAlignment(
-                        .center
-                    )
-                    .foregroundStyle(
-                        .secondary
-                    )
+                    VStack(spacing: 22) {
+                        Spacer()
+
+                        Image(
+                            systemName:
+                                type == .business
+                                ? "briefcase.fill"
+                                : "message.fill"
+                        )
+                        .font(
+                            .system(size: 62)
+                        )
+                        .foregroundStyle(
+                            Color.accentColor
+                        )
+
+                        Text(
+                            type.title
+                        )
+                        .font(.title.bold())
+
+                        if loading {
+                            ProgressView(
+                                "Creating connection…"
+                            )
+                        }
+
+                        if let errorText {
+                            Text(errorText)
+                                .multilineTextAlignment(
+                                    .center
+                                )
+                                .foregroundStyle(
+                                    .red
+                                )
+
+                            Button(
+                                "Try Again"
+                            ) {
+                                Task {
+                                    await create()
+                                }
+                            }
+                            .buttonStyle(
+                                .borderedProminent
+                            )
+                        }
+
+                        Spacer()
+                    }
+                    .padding()
                 }
-
-                Label(
-                    "Server pairing will be created for \(type.title)",
-                    systemImage:
-                        "server.rack"
-                )
-                .font(.subheadline)
-
-                Spacer()
             }
-            .padding(30)
             .navigationTitle(
                 "Link Account"
             )
             .navigationBarTitleDisplayMode(
                 .inline
             )
-            .toolbar {
-                ToolbarItem(
-                    placement:
-                        .cancellationAction
-                ) {
-                    Button("Close") {
-                        dismiss()
-                    }
+            .task {
+                if accountID == nil {
+                    await create()
                 }
             }
+        }
+    }
+
+    @MainActor
+    private func create() async {
+        loading = true
+        errorText = nil
+
+        do {
+            let id =
+                try await AccountAPI.shared
+                    .createAccount()
+
+            accountID = id
+            loading = false
+
+        } catch {
+            loading = false
+            errorText =
+                "Could not create WhatsApp connection."
         }
     }
 }

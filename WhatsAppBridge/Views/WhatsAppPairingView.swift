@@ -5,58 +5,130 @@ struct WhatsAppPairingView: View {
     private var dismiss
 
     let accountID: String
+    let type: WhatsAppConnectionType
 
     @State private var status =
         "Preparing QR…"
 
     @State private var qrText = ""
 
+    @State private var errorText:
+        String?
+
+    init(
+        accountID: String,
+        type: WhatsAppConnectionType =
+            .personal
+    ) {
+        self.accountID = accountID
+        self.type = type
+    }
+
+    private var appName: String {
+        type == .business
+        ? "WhatsApp Business"
+        : "WhatsApp"
+    }
+
     var body: some View {
         NavigationStack {
-            VStack(spacing: 24) {
+            ScrollView {
+                VStack(spacing: 22) {
+                    Image(
+                        systemName:
+                            type == .business
+                            ? "briefcase.fill"
+                            : "message.fill"
+                    )
+                    .font(.system(size: 42))
+                    .foregroundStyle(
+                        Color.accentColor
+                    )
 
-                Image(
-                    systemName:
-                        "qrcode.viewfinder"
-                )
-                .font(
-                    .system(size: 90)
-                )
+                    Text(
+                        "Link \(appName)"
+                    )
+                    .font(.title2.bold())
 
-                Text(
-                    "Link WhatsApp"
-                )
-                .font(.title.bold())
+                    if !qrText.isEmpty {
+                        QRCodeView(
+                            value: qrText
+                        )
 
-                Text(status)
+                        Text(
+                            "Scan this QR code now"
+                        )
+                        .font(.headline)
+                    } else {
+                        ZStack {
+                            RoundedRectangle(
+                                cornerRadius: 18
+                            )
+                            .fill(
+                                Color.secondary
+                                    .opacity(0.08)
+                            )
+
+                            VStack(spacing: 14) {
+                                ProgressView()
+
+                                Text(
+                                    "Generating QR…"
+                                )
+                                .foregroundStyle(
+                                    .secondary
+                                )
+                            }
+                        }
+                        .frame(
+                            width: 270,
+                            height: 270
+                        )
+                    }
+
+                    VStack(spacing: 8) {
+                        Text(status)
+                            .font(.subheadline.bold())
+
+                        if type == .business {
+                            Text(
+                                "Open WhatsApp Business → Settings → Linked Devices → Link a Device"
+                            )
+                            .multilineTextAlignment(
+                                .center
+                            )
+                        } else {
+                            Text(
+                                "Open WhatsApp → Settings → Linked Devices → Link a Device"
+                            )
+                            .multilineTextAlignment(
+                                .center
+                            )
+                        }
+                    }
                     .foregroundStyle(
                         .secondary
                     )
 
-                if !qrText.isEmpty {
-                    Text(qrText)
-                        .font(
-                            .caption.monospaced()
-                        )
-                        .textSelection(
-                            .enabled
-                        )
+                    if let errorText {
+                        Text(errorText)
+                            .font(.caption)
+                            .foregroundStyle(
+                                .red
+                            )
+                    }
+
+                    Text(
+                        "Account ID: \(accountID)"
+                    )
+                    .font(.caption2.monospaced())
+                    .foregroundStyle(
+                        .tertiary
+                    )
+                    .textSelection(.enabled)
                 }
-
-                Text(
-                    "Open WhatsApp → Linked Devices → Link a Device and scan the QR shown here."
-                )
-                .multilineTextAlignment(
-                    .center
-                )
-                .font(.callout)
-                .foregroundStyle(
-                    .secondary
-                )
-
-                Spacer()
+                .padding(24)
             }
-            .padding()
             .navigationTitle(
                 "Connect Account"
             )
@@ -90,18 +162,28 @@ struct WhatsAppPairingView: View {
                         )
 
                 let currentStatus =
-                    response.status ?? "waiting"
+                    response.status ??
+                    "waiting"
 
                 let currentQR =
-                    response.qrValue ?? ""
+                    response.qrValue ??
+                    ""
 
                 status = currentStatus
-                qrText = currentQR
 
-                if currentStatus ==
+                if !currentQR.isEmpty {
+                    qrText = currentQR
+                    errorText = nil
+                }
+
+                if currentStatus
+                    .lowercased() ==
                     "connected"
                 {
                     Haptics.success()
+
+                    status =
+                        "Connected successfully"
 
                     try? await Task.sleep(
                         for: .seconds(1)
@@ -112,8 +194,8 @@ struct WhatsAppPairingView: View {
                 }
 
             } catch {
-                status =
-                    "Waiting for server…"
+                errorText =
+                    "Waiting for QR from server…"
             }
 
             try? await Task.sleep(
