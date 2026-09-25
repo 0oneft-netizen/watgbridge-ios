@@ -282,34 +282,40 @@ struct ConversationsView: View {
                 }
 
                 Task {
-                    if let existing =
-                        conversations.first(
-                            where: {
-                                ($0.accountID
-                                    ?? "default")
-                                    == accountID &&
-                                $0.jid == chatJID
-                            }
-                        ) {
-                        notificationConversation =
-                            existing
+                    if let existing = findConversation(
+                        accountID: accountID,
+                        chatJID: chatJID
+                    ) {
+                        notificationConversation = existing
                         return
                     }
 
                     await loadConversations()
 
-                    notificationConversation =
-                        conversations.first(
-                            where: {
-                                ($0.accountID
-                                    ?? "default")
-                                    == accountID &&
-                                $0.jid == chatJID
-                            }
-                        )
+                    notificationConversation = findConversation(
+                        accountID: accountID,
+                        chatJID: chatJID
+                    )
                 }
             }
         }
+    }
+
+    private func findConversation(
+        accountID: String,
+        chatJID: String
+    ) -> Conversation? {
+        for conversation in conversations {
+            let conversationAccountID =
+                conversation.accountID ?? "default"
+
+            if conversationAccountID == accountID &&
+                conversation.jid == chatJID {
+                return conversation
+            }
+        }
+
+        return nil
     }
 
     @MainActor
@@ -323,17 +329,6 @@ struct ConversationsView: View {
         notifyForNewMessages: Bool = false
     ) async {
         do {
-            let old =
-                Dictionary(
-                    uniqueKeysWithValues:
-                        conversations.map {
-                            (
-                                $0.jid,
-                                $0.unread
-                            )
-                        }
-                )
-
             let updated =
                 try await APIClient.shared
                     .fetchConversations()
