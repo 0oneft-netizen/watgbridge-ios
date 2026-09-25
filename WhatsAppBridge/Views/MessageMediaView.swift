@@ -452,9 +452,12 @@ private struct MediaViewer: View {
             )
         }
 
-        var ext =
-            (message.fileName as NSString?)
-                ?.pathExtension ?? ""
+        var ext = ""
+
+        if let fileName = message.fileName,
+           !fileName.isEmpty {
+            ext = (fileName as NSString).pathExtension
+        }
 
         if ext.isEmpty {
             switch kind {
