@@ -1,13 +1,12 @@
 import SwiftUI
 
 struct WhatsAppConnectionSetupView: View {
-    @Environment(\.dismiss)
-    private var dismiss
-
     let type: WhatsAppConnectionType
 
     @State private var accountID:
         String?
+
+    @State private var initialQR = ""
 
     @State private var loading = true
 
@@ -20,10 +19,11 @@ struct WhatsAppConnectionSetupView: View {
                 if let accountID {
                     WhatsAppPairingView(
                         accountID: accountID,
-                        type: type
+                        type: type,
+                        initialQR: initialQR
                     )
                 } else {
-                    VStack(spacing: 22) {
+                    VStack(spacing: 24) {
                         Spacer()
 
                         Image(
@@ -33,20 +33,18 @@ struct WhatsAppConnectionSetupView: View {
                                 : "message.fill"
                         )
                         .font(
-                            .system(size: 62)
+                            .system(size: 64)
                         )
                         .foregroundStyle(
                             Color.accentColor
                         )
 
-                        Text(
-                            type.title
-                        )
-                        .font(.title.bold())
+                        Text(type.title)
+                            .font(.title.bold())
 
                         if loading {
                             ProgressView(
-                                "Creating connection…"
+                                "Contacting WhatsApp…"
                             )
                         }
 
@@ -59,9 +57,7 @@ struct WhatsAppConnectionSetupView: View {
                                     .red
                                 )
 
-                            Button(
-                                "Try Again"
-                            ) {
+                            Button("Try Again") {
                                 Task {
                                     await create()
                                 }
@@ -76,12 +72,6 @@ struct WhatsAppConnectionSetupView: View {
                     .padding()
                 }
             }
-            .navigationTitle(
-                "Link Account"
-            )
-            .navigationBarTitleDisplayMode(
-                .inline
-            )
             .task {
                 if accountID == nil {
                     await create()
@@ -96,19 +86,24 @@ struct WhatsAppConnectionSetupView: View {
         errorText = nil
 
         do {
-            let id =
+            let response =
                 try await AccountAPI.shared
                     .createAccount(
                         type: type
                     )
 
-            accountID = id
+            initialQR =
+                response.qr ?? ""
+
+            accountID =
+                response.id
+
             loading = false
 
         } catch {
             loading = false
             errorText =
-                "Could not create WhatsApp connection."
+                "Could not generate WhatsApp QR."
         }
     }
 }

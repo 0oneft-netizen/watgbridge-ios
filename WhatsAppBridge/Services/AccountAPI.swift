@@ -29,7 +29,9 @@ final class AccountAPI {
 
     func createAccount(
         type: WhatsAppConnectionType
-    ) async throws -> String {
+    ) async throws
+        -> CreateWhatsAppAccountResponse
+    {
         var components = URLComponents(
             string: "\(base)/accounts"
         )!
@@ -51,32 +53,23 @@ final class AccountAPI {
             try await URLSession.shared
                 .data(for: request)
 
-        if let http =
-            response as? HTTPURLResponse,
-           !(200...299).contains(
+        guard
+            let http =
+                response as? HTTPURLResponse,
+            (200...299).contains(
                 http.statusCode
-           )
-        {
+            )
+        else {
             throw URLError(
                 .badServerResponse
             )
         }
 
-        let object =
-            try JSONSerialization
-                .jsonObject(
-                    with: data
-                ) as? [String: Any]
-
-        guard let id =
-            object?["id"] as? String
-        else {
-            throw URLError(
-                .cannotParseResponse
+        return try JSONDecoder()
+            .decode(
+                CreateWhatsAppAccountResponse.self,
+                from: data
             )
-        }
-
-        return id
     }
 
     func status(

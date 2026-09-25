@@ -18,10 +18,14 @@ struct WhatsAppPairingView: View {
     init(
         accountID: String,
         type: WhatsAppConnectionType =
-            .personal
+            .personal,
+        initialQR: String = ""
     ) {
         self.accountID = accountID
         self.type = type
+        self._qrText = State(
+            initialValue: initialQR
+        )
     }
 
     private var appName: String {
