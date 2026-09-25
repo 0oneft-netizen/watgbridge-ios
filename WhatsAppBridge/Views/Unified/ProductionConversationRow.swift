@@ -7,31 +7,47 @@ struct ProductionConversationRow: View {
     private var sessions =
         SessionDirectory.shared
 
-    private var customerName: String {
-        ChatIdentity.customerName(
-            conversation: conversation
-        )
+    private var title: String {
+        let value =
+            conversation.name
+                .trimmingCharacters(
+                    in: .whitespacesAndNewlines
+                )
+
+        if !value.isEmpty {
+            return value
+        }
+
+        return customerPhone
     }
 
     private var customerPhone: String {
-        ChatIdentity.customerPhone(
-            from: conversation.jid
-        )
+        let jid = conversation.jid
+
+        if let at =
+            jid.firstIndex(of: "@") {
+            return String(
+                jid[..<at]
+            )
+        }
+
+        return jid
     }
 
-    private var sessionName: String {
-        sessions.name(
-            for:
-                conversation.accountID
-                ?? "default"
-        )
+    private var preview: String {
+        let value =
+            conversation.lastMessage
+                .trimmingCharacters(
+                    in: .whitespacesAndNewlines
+                )
+
+        return value.isEmpty
+            ? " "
+            : value
     }
 
     var body: some View {
-        HStack(
-            alignment: .top,
-            spacing: 12
-        ) {
+        HStack(spacing: 12) {
             ZStack {
                 Circle()
                     .fill(
@@ -43,7 +59,7 @@ struct ProductionConversationRow: View {
                     systemName:
                         "person.fill"
                 )
-                .font(.title3)
+                .font(.title2)
                 .foregroundStyle(
                     .secondary
                 )
@@ -57,60 +73,63 @@ struct ProductionConversationRow: View {
                 alignment: .leading,
                 spacing: 4
             ) {
-                HStack {
-                    Text(customerName)
+                HStack(spacing: 8) {
+                    Text(title)
                         .font(
-                            .body
-                                .weight(
-                                    .semibold
-                                )
+                            .body.weight(
+                                .semibold
+                            )
                         )
                         .lineLimit(1)
 
                     Spacer()
 
                     if conversation.unread > 0 {
-                        UnreadBadge(
-                            count:
-                                conversation.unread
+                        Text(
+                            "\(conversation.unread)"
+                        )
+                        .font(
+                            .caption2.bold()
+                        )
+                        .foregroundStyle(
+                            .white
+                        )
+                        .padding(
+                            .horizontal,
+                            7
+                        )
+                        .padding(
+                            .vertical,
+                            3
+                        )
+                        .background(
+                            Color.green,
+                            in: Capsule()
                         )
                     }
                 }
 
-                HStack(spacing: 4) {
-                    Text(customerPhone)
-
-                    Text("•")
-
-                    Text(sessionName)
-                        .fontWeight(
-                            .medium
-                        )
-                }
-                .font(.caption)
-                .foregroundStyle(
-                    .secondary
+                CustomerSessionLine(
+                    customerPhone:
+                        customerPhone,
+                    accountID:
+                        conversation.accountID
                 )
-                .lineLimit(1)
 
-                Text(
-                    conversation.lastMessage
-                )
-                .font(.subheadline)
-                .foregroundStyle(
-                    .secondary
-                )
-                .lineLimit(1)
+                Text(preview)
+                    .font(.subheadline)
+                    .foregroundStyle(
+                        .secondary
+                    )
+                    .lineLimit(1)
             }
         }
         .padding(
             .vertical,
             5
         )
-        .task {
-            if sessions.sessions.isEmpty {
-                await sessions.refresh()
-            }
-        }
+        .contentShape(
+            Rectangle()
+        )
     }
 }
