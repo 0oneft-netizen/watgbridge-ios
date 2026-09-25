@@ -66,29 +66,16 @@ struct ProductionMessageBubble: View {
     }
 
     var body: some View {
-        VStack(
-            alignment:
-                message.fromMe
-                ? .trailing
-                : .leading,
-            spacing: 3
-        ) {
-            LiveSessionRouteBadge(
-                accountID: message.accountID
-            )
-
-            UnifiedMessageBubble(
-                message: message,
-                senderName: sender,
-                accountName:
-                    SessionDirectory.shared.name(
-                        for: message.accountID
-                    ),
-                quotedText: quotedText,
-                onReply: onReply,
-                onReact: onReact,
-                onDeleteLocal: onDelete
-            )
-        }
+        UnifiedMessageBubble(
+            message: message,
+            senderName: sender,
+            accountName:
+                message.accountID
+                ?? "default",
+            quotedText: quotedText,
+            onReply: onReply,
+            onReact: onReact,
+            onDeleteLocal: onDelete
+        )
     }
 }
