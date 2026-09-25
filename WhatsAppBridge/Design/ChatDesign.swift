@@ -1,7 +1,7 @@
 import SwiftUI
 
 enum ChatDesign {
-    static let bubbleRadius: CGFloat = 16
+    static let bubbleRadius: CGFloat = 12
     static let bubbleMaxWidth: CGFloat = 310
 
     static let incomingBubble =
