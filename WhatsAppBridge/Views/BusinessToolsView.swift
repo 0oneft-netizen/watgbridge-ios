@@ -5,6 +5,18 @@ struct BusinessToolsView: View {
         NavigationStack {
             List {
 
+                Section("WhatsApp") {
+                    NavigationLink {
+                        WhatsAppAccountsView()
+                    } label: {
+                        Label(
+                            "WhatsApp Accounts",
+                            systemImage:
+                                "qrcode"
+                        )
+                    }
+                }
+
                 Section("Messaging") {
                     NavigationLink {
                         QuickRepliesView()
