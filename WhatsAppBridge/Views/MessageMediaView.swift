@@ -439,8 +439,13 @@ private struct MediaViewer: View {
     @MainActor
     private func prepareShare() async {
         do {
-            localFileURL =
-                try await downloadToTemporaryFile()
+            if url.isFileURL {
+                localFileURL = url
+            } else {
+                localFileURL =
+                    try await downloadToTemporaryFile()
+            }
+
             statusText = "Ready to share"
         } catch {
             statusText =
@@ -460,8 +465,15 @@ private struct MediaViewer: View {
         }
 
         do {
-            let file =
-                try await downloadToTemporaryFile()
+            // The viewer now receives a local cached file.
+            // Reuse it instead of downloading /media again.
+            let file: URL
+
+            if url.isFileURL {
+                file = url
+            } else {
+                file = try await downloadToTemporaryFile()
+            }
 
             localFileURL = file
 
