@@ -7,10 +7,48 @@ extension Notification.Name {
 
 struct RealtimeIncomingMessage: Codable {
     let id: Int64
+    let account_id: String
     let chat_jid: String
     let sender_jid: String
     let text: String
     let message_type: String
+
+    var notificationIdentifier: String {
+        "\(account_id):\(id)"
+    }
+
+    var notificationBody: String {
+        if !text.isEmpty {
+            return text
+        }
+
+        switch message_type {
+        case "image":
+            return "📷 Photo"
+        case "video":
+            return "🎥 Video"
+        case "video_note":
+            return "⭕ Video message"
+        case "gif":
+            return "GIF"
+        case "voice":
+            return "🎤 Voice message"
+        case "audio":
+            return "🎵 Audio"
+        case "document":
+            return "📎 Document"
+        case "sticker":
+            return "🖼️ Sticker"
+        case "view_once_image":
+            return "① Photo"
+        case "view_once_video":
+            return "① Video"
+        case "view_once_audio":
+            return "① Voice message"
+        default:
+            return "New message"
+        }
+    }
 }
 
 final class RealtimeClient {

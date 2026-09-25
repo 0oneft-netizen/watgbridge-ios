@@ -5,6 +5,9 @@ struct ConversationsView: View {
     @State private var searchText = ""
     @State private var showSettings = false
 
+    @State private var notificationConversation:
+        Conversation?
+
     private var sortedConversations: [Conversation] {
         conversations
             .filter { $0.archived != true }
@@ -60,7 +63,8 @@ struct ConversationsView: View {
                                     .conversationAction(
                                         chatJID: conversation.jid,
                                         action: "pin",
-                                        value: !(conversation.pinned ?? false)
+                                        value: !(conversation.pinned ?? false),
+                                accountID: conversation.accountID ?? "default"
                                     )
 
                                 await loadConversations()
@@ -80,7 +84,8 @@ struct ConversationsView: View {
                                     .conversationAction(
                                         chatJID: conversation.jid,
                                         action: "unread",
-                                        value: true
+                                        value: true,
+                                accountID: conversation.accountID ?? "default"
                                     )
 
                                 await loadConversations()
@@ -102,7 +107,8 @@ struct ConversationsView: View {
                                     .conversationAction(
                                         chatJID: conversation.jid,
                                         action: "archive",
-                                        value: !(conversation.archived ?? false)
+                                        value: !(conversation.archived ?? false),
+                                accountID: conversation.accountID ?? "default"
                                     )
 
                                 await loadConversations()
@@ -122,7 +128,8 @@ struct ConversationsView: View {
                                     .conversationAction(
                                         chatJID: conversation.jid,
                                         action: "mute",
-                                        value: !(conversation.muted ?? false)
+                                        value: !(conversation.muted ?? false),
+                                accountID: conversation.accountID ?? "default"
                                     )
 
                                 await loadConversations()
@@ -157,6 +164,13 @@ struct ConversationsView: View {
                 isPresented: $showSettings
             ) {
                 SettingsView()
+            }
+            .navigationDestination(
+                item: $notificationConversation
+            ) { conversation in
+                ChatView(
+                    conversation: conversation
+                )
             }
             .searchable(
                 text: $searchText,
@@ -193,63 +207,93 @@ struct ConversationsView: View {
                 )
             ) { notification in
                 guard let message =
-                    notification.object as? RealtimeIncomingMessage
+                    notification.object
+                        as? RealtimeIncomingMessage
                 else {
                     return
                 }
 
-                let title =
+                let conversation =
                     conversations.first {
+                        ($0.accountID ?? "default")
+                            == message.account_id &&
                         $0.jid == message.chat_jid
-                    }?.displayName ?? "WhatsApp"
-
-                let body: String
-
-                if !message.text.isEmpty {
-                    body = message.text
-                } else {
-                    switch message.message_type {
-                    case "image":
-                        body = "📷 תמונה"
-
-                    case "video":
-                        body = "🎥 וידאו"
-
-                    case "audio":
-                        body = "🎤 הודעה קולית"
-
-                    case "document":
-                        body = "📎 קובץ"
-
-                    case "sticker":
-                        body = "🖼️ מדבקה"
-
-                    default:
-                        body = "הודעה חדשה"
                     }
-                }
 
                 let muted =
-                    conversations.first {
-                        $0.jid == message.chat_jid
-                    }?.muted == true
+                    conversation?.muted == true
 
-                if !muted {
-                    Haptics.incomingMessage()
+                Task {
+                    if !muted {
+                        Haptics.incomingMessage()
 
-                    Task {
+                        let badge =
+                            conversations.reduce(0) {
+                                $0 + max(
+                                    0,
+                                    $1.unread
+                                )
+                            }
+
                         await NotificationManager.shared
                             .showIncoming(
-                                title: title,
-                                body: body
+                                message: message,
+                                title:
+                                    conversation?
+                                        .displayName
+                                    ?? "WhatsApp",
+                                badge: badge
                             )
+                    }
 
-                        await loadConversations()
+                    await loadConversations()
+                }
+            }
+            .onReceive(
+                NotificationCenter.default.publisher(
+                    for:
+                        .openNotificationConversation
+                )
+            ) { notification in
+                guard
+                    let info =
+                        notification.userInfo,
+                    let accountID =
+                        info["account_id"]
+                            as? String,
+                    let chatJID =
+                        info["chat_jid"]
+                            as? String
+                else {
+                    return
+                }
+
+                Task {
+                    if let existing =
+                        conversations.first(
+                            where: {
+                                ($0.accountID
+                                    ?? "default")
+                                    == accountID &&
+                                $0.jid == chatJID
+                            }
+                        ) {
+                        notificationConversation =
+                            existing
+                        return
                     }
-                } else {
-                    Task {
-                        await loadConversations()
-                    }
+
+                    await loadConversations()
+
+                    notificationConversation =
+                        conversations.first(
+                            where: {
+                                ($0.accountID
+                                    ?? "default")
+                                    == accountID &&
+                                $0.jid == chatJID
+                            }
+                        )
                 }
             }
         }
@@ -275,29 +319,9 @@ struct ConversationsView: View {
                 try await APIClient.shared
                     .fetchConversations()
 
-            if notifyForNewMessages {
-                for conversation in updated {
-                    let previous =
-                        old[
-                            conversation.jid
-                        ] ?? 0
-
-                    if conversation.unread >
-                        previous {
-
-                        await NotificationManager
-                            .shared
-                            .showIncoming(
-                                title:
-                                    conversation
-                                    .displayName,
-                                body:
-                                    conversation
-                                    .preview
-                            )
-                    }
-                }
-            }
+            // Incoming-message notifications are emitted
+            // by the realtime message stream. Do not duplicate
+            // them here when the conversation list refreshes.
 
             conversations = updated
 

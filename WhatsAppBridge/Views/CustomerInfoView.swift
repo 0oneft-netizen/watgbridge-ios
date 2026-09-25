@@ -114,7 +114,8 @@ struct CustomerInfoView: View {
                             .conversationAction(
                                 chatJID: conversation.jid,
                                 action: "unread",
-                                value: true
+                                value: true,
+                                accountID: conversation.accountID ?? "default"
                             )
 
                         Haptics.success()
@@ -134,7 +135,8 @@ struct CustomerInfoView: View {
                                 chatJID: conversation.jid,
                                 action: "mute",
                                 value:
-                                    !(conversation.muted ?? false)
+                                    !(conversation.muted ?? false),
+                                accountID: conversation.accountID ?? "default"
                             )
 
                         Haptics.success()
@@ -156,7 +158,8 @@ struct CustomerInfoView: View {
                                 chatJID: conversation.jid,
                                 action: "archive",
                                 value:
-                                    !(conversation.archived ?? false)
+                                    !(conversation.archived ?? false),
+                                accountID: conversation.accountID ?? "default"
                             )
 
                         Haptics.success()

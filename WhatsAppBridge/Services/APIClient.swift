@@ -85,7 +85,10 @@ final class APIClient {
     }
 
 
-    func markRead(chatJID: String) async throws {
+    func markRead(
+        chatJID: String,
+        accountID: String = "default"
+    ) async throws {
         let url = baseURL.appendingPathComponent("mark-read")
 
         var request = URLRequest(url: url)
@@ -97,6 +100,7 @@ final class APIClient {
 
         request.httpBody = try JSONSerialization.data(
             withJSONObject: [
+                "account_id": accountID,
                 "chat_jid": chatJID
             ]
         )
@@ -457,7 +461,8 @@ final class APIClient {
     func conversationAction(
         chatJID: String,
         action: String,
-        value: Bool
+        value: Bool,
+        accountID: String = "default"
     ) async throws {
 
         let url =
@@ -479,6 +484,7 @@ final class APIClient {
         request.httpBody =
             try JSONSerialization.data(
                 withJSONObject: [
+                    "account_id": accountID,
                     "chat_jid": chatJID,
                     "action": action,
                     "value": value
