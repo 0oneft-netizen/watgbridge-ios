@@ -109,5 +109,11 @@ struct SessionsManagementView: View {
             }
         }
         .navigationTitle("Sessions")
+        .task {
+            await directory.refresh()
+        }
+        .refreshable {
+            await directory.refresh()
+        }
     }
 }

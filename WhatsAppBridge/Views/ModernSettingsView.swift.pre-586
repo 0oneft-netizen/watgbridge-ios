@@ -14,7 +14,7 @@ struct ModernSettingsView: View {
         NavigationStack {
             List {
                 Section {
-
+                    
             NavigationLink {
                 SessionsManagementView()
             } label: {

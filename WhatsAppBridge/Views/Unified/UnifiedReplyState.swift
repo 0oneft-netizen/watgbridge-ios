@@ -13,7 +13,7 @@ struct UnifiedReplyTarget: Identifiable, Equatable {
         sender: String
     ) {
         id =
-            "\(message.accountID)|\(message.messageID)"
+            "\(message.accountID ?? "default")|\(message.messageID)"
 
         accountID = message.accountID ?? "default"
         chatJID = message.chatJID

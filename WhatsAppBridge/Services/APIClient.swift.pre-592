@@ -232,8 +232,7 @@ final class APIClient {
         messageID: String,
         chatJID: String,
         emoji: String
-    ,
-        accountID: String = "default") async throws {
+    ) async throws {
 
         let url =
             baseURL.appendingPathComponent("reaction")

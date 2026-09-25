@@ -232,49 +232,112 @@ struct ChatView: View {
                     ForEach(messages) {
                         message in
 
-                        ProductionMessageBubble(
-                            message: message,
-                            messages: messages,
-                            onReply: {
+                        MessageBubble(
+                            message: message
+                        )
+                        .id(message.id)
+                        .swipeActions(
+                            edge: .leading,
+                            allowsFullSwipe: true
+                        ) {
+                            Button {
                                 replyToMessage = message
-                            },
-                            onReact: { emoji in
-                                Task {
-                                    try? await APIClient.shared
-                                        .react(
-                                            messageID:
-                                                message.messageID,
-                                            reaction: emoji,
-                                            accountID:
-                                                message.accountID
-                                                ?? "default"
-                                        )
-                                }
-                            },
-                            onDelete: {
-                                Task {
-                                    try? await APIClient.shared
-                                        .deleteLocal(
-                                            messageID:
-                                                message.messageID,
-                                            accountID:
-                                                message.accountID
-                                                ?? "default"
-                                        )
+                            } label: {
+                                Label(
+                                    "Reply",
+                                    systemImage: "arrowshape.turn.up.left"
+                                )
+                            }
 
-                                    await MainActor.run {
-                                        messages.removeAll {
-                                            $0.messageID
-                                                == message.messageID
+                            Button {
+                                forwardMessage = message
+                            } label: {
+                                Label(
+                                    "Forward",
+                                    systemImage:
+                                        "arrowshape.turn.up.right"
+                                )
+                            }
+                        }
+                        .contextMenu {
+                            Button {
+                                UIPasteboard.general.string =
+                                    message.text
+                            } label: {
+                                Label(
+                                    "Copy",
+                                    systemImage: "doc.on.doc"
+                                )
+                            }
+
+                            Button {
+                                replyToMessage = message
+                            } label: {
+                                Label(
+                                    "Reply",
+                                    systemImage: "arrowshape.turn.up.left"
+                                )
+                            }
+
+                            Menu("React") {
+                                ForEach(
+                                    ["❤️","👍","😂","😮","😢","🙏"],
+                                    id: \.self
+                                ) { emoji in
+                                    Button(emoji) {
+                                        Task {
+                                            try? await APIClient.shared.react(
+                                                messageID: message.messageID,
+                                                chatJID: conversation.jid,
+                                                emoji: emoji
+                                            )
+                                            await loadMessages()
                                         }
                                     }
                                 }
                             }
-                        )
-                        .id(message.id)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 1)
-}
+
+                            if message.fromMe {
+                                Button(
+                                    role: .destructive
+                                ) {
+                                    Task {
+                                        try? await APIClient.shared
+                                            .deleteForEveryone(
+                                                chatJID:
+                                                    conversation.jid,
+                                                messageID:
+                                                    message.messageID
+                                            )
+
+                                        await loadMessages()
+                                    }
+                                } label: {
+                                    Label(
+                                        "Delete for everyone",
+                                        systemImage:
+                                            "trash.slash"
+                                    )
+                                }
+                            }
+
+                            Button(
+                                role: .destructive
+                            ) {
+                                Task {
+                                    try? await APIClient.shared.deleteLocal(
+                                        messageID: message.messageID
+                                    )
+                                    await loadMessages()
+                                }
+                            } label: {
+                                Label(
+                                    "Delete for me",
+                                    systemImage: "trash"
+                                )
+                            }
+                        }
+                    }
                 }
                 .padding(.horizontal, 8)
                 .padding(.vertical, 12)
@@ -296,37 +359,10 @@ struct ChatView: View {
                 scrollToBottom(proxy)
             }
         }
-                    .background {
-                        ChatBackgroundView()
-                    }
     }
 
     private var composer: some View {
         VStack(spacing: 0) {
-
-            ProductionComposerView(
-                text: $messageText,
-                replyingTo: replyToMessage,
-                onCancelReply: {
-                    replyToMessage = nil
-                },
-                onAttachment: {
-                    showFiles = true
-                },
-                onCamera: {
-                    showCamera = true
-                },
-                onSend: {
-                    Task {
-                        await sendMessage()
-                    }
-                },
-                onVoice: {
-                    // Existing recorder UI remains available
-                    // until voice state is wired below.
-                }
-            )
-
             if let reply = replyToMessage {
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
@@ -548,53 +584,6 @@ struct ChatView: View {
     }
 
     @MainActor
-
-    private func unifiedSenderName(
-        for message: Message
-    ) -> String {
-        if message.fromMe {
-            return "You"
-        }
-
-        let jid = message.senderJID
-
-        if let at = jid.firstIndex(of: "@") {
-            return String(jid[..<at])
-        }
-
-        return jid
-    }
-
-    private func unifiedQuotedText(
-        for message: Message
-    ) -> String? {
-        guard let replyID = message.replyToID,
-              !replyID.isEmpty
-        else {
-            return nil
-        }
-
-        if let original = messages.first(
-            where: {
-                $0.messageID == replyID
-            }
-        ) {
-            if !original.text.isEmpty {
-                return original.text
-            }
-
-            return original.type
-                .replacingOccurrences(
-                    of: "_",
-                    with: " "
-                )
-                .capitalized
-        }
-
-        return "Reply"
-    }
-
-
     private func sendText() async {
         let text =
             messageText
@@ -701,8 +690,7 @@ struct ChatView: View {
                     data: data,
                     filename:
                         "media.\(ext)",
-                    mimeType: mime,
-                    accountID: conversation.accountID ?? "default"
+                    mimeType: mime
                 )
 
             await loadMessages()
@@ -734,8 +722,7 @@ struct ChatView: View {
                     type: "image",
                     data: data,
                     filename: "camera.jpg",
-                    mimeType: "image/jpeg",
-                    accountID: conversation.accountID ?? "default"
+                    mimeType: "image/jpeg"
                 )
 
             await loadMessages()
@@ -794,8 +781,7 @@ struct ChatView: View {
                     data: data,
                     filename:
                         url.lastPathComponent,
-                    mimeType: mime,
-                    accountID: conversation.accountID ?? "default"
+                    mimeType: mime
                 )
 
             await loadMessages()
@@ -831,8 +817,7 @@ struct ChatView: View {
                     filename:
                         "voice.m4a",
                     mimeType:
-                        "audio/mp4",
-                    accountID: conversation.accountID ?? "default"
+                        "audio/mp4"
                 )
 
             await loadMessages()

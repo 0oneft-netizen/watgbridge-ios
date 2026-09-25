@@ -8,23 +8,10 @@ final class SessionDirectory: ObservableObject {
     @Published
     private(set) var sessions: [String: SessionIdentity] = [:]
 
+    @Published
+    private(set) var isLoading = false
+
     private init() {}
-
-    func replace(with accounts: [WhatsAppAccount]) {
-        var result: [String: SessionIdentity] = [:]
-
-        for account in accounts {
-            result[account.id] = SessionIdentity(
-                id: account.id,
-                name: account.displayName,
-                phone: account.phone ?? "",
-                jid: account.jid ?? "",
-                status: account.status
-            )
-        }
-
-        sessions = result
-    }
 
     func session(
         for accountID: String?
@@ -35,17 +22,61 @@ final class SessionDirectory: ObservableObject {
     func name(
         for accountID: String?
     ) -> String {
-        session(for: accountID)?
-            .effectiveName
-        ?? accountID
-        ?? "default"
+        let key = accountID ?? "default"
+
+        if let session = sessions[key] {
+            return session.effectiveName
+        }
+
+        return key == "default"
+            ? "Primary"
+            : key
     }
 
-    func phone(
-        for accountID: String?
-    ) -> String {
-        session(for: accountID)?
-            .formattedPhone
-        ?? ""
+    func refresh() async {
+        guard !isLoading else {
+            return
+        }
+
+        isLoading = true
+
+        defer {
+            isLoading = false
+        }
+
+        do {
+            let accounts =
+                try await APIClient.shared
+                    .fetchSessionAccounts()
+
+            var next:
+                [String: SessionIdentity] = [:]
+
+            for account in accounts {
+                next[account.id] =
+                    SessionIdentity(
+                        id: account.id,
+                        name:
+                            account.displayName
+                            ?? "",
+                        phone:
+                            account.phone
+                            ?? "",
+                        jid:
+                            account.jid
+                            ?? "",
+                        status:
+                            account.status
+                            ?? "unknown"
+                    )
+            }
+
+            sessions = next
+        } catch {
+            print(
+                "SessionDirectory refresh failed:",
+                error.localizedDescription
+            )
+        }
     }
 }

@@ -100,6 +100,9 @@ struct RenameSessionView: View {
                         displayName: value
                     )
 
+                await SessionDirectory.shared
+                    .refresh()
+
                 await MainActor.run {
                     isSaving = false
                     dismiss()

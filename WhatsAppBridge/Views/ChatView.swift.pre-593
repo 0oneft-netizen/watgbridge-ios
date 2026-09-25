@@ -303,30 +303,6 @@ struct ChatView: View {
 
     private var composer: some View {
         VStack(spacing: 0) {
-
-            ProductionComposerView(
-                text: $messageText,
-                replyingTo: replyToMessage,
-                onCancelReply: {
-                    replyToMessage = nil
-                },
-                onAttachment: {
-                    showFiles = true
-                },
-                onCamera: {
-                    showCamera = true
-                },
-                onSend: {
-                    Task {
-                        await sendMessage()
-                    }
-                },
-                onVoice: {
-                    // Existing recorder UI remains available
-                    // until voice state is wired below.
-                }
-            )
-
             if let reply = replyToMessage {
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
@@ -701,8 +677,7 @@ struct ChatView: View {
                     data: data,
                     filename:
                         "media.\(ext)",
-                    mimeType: mime,
-                    accountID: conversation.accountID ?? "default"
+                    mimeType: mime
                 )
 
             await loadMessages()
@@ -734,8 +709,7 @@ struct ChatView: View {
                     type: "image",
                     data: data,
                     filename: "camera.jpg",
-                    mimeType: "image/jpeg",
-                    accountID: conversation.accountID ?? "default"
+                    mimeType: "image/jpeg"
                 )
 
             await loadMessages()
@@ -794,8 +768,7 @@ struct ChatView: View {
                     data: data,
                     filename:
                         url.lastPathComponent,
-                    mimeType: mime,
-                    accountID: conversation.accountID ?? "default"
+                    mimeType: mime
                 )
 
             await loadMessages()
@@ -831,8 +804,7 @@ struct ChatView: View {
                     filename:
                         "voice.m4a",
                     mimeType:
-                        "audio/mp4",
-                    accountID: conversation.accountID ?? "default"
+                        "audio/mp4"
                 )
 
             await loadMessages()

@@ -76,6 +76,9 @@ struct ProductionChatHeader: View {
                 )
             }
         }
+        .task {
+            await sessions.refresh()
+        }
     }
 
     private var avatar: some View {

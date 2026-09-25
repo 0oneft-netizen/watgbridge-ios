@@ -701,8 +701,7 @@ struct ChatView: View {
                     data: data,
                     filename:
                         "media.\(ext)",
-                    mimeType: mime,
-                    accountID: conversation.accountID ?? "default"
+                    mimeType: mime
                 )
 
             await loadMessages()
@@ -734,8 +733,7 @@ struct ChatView: View {
                     type: "image",
                     data: data,
                     filename: "camera.jpg",
-                    mimeType: "image/jpeg",
-                    accountID: conversation.accountID ?? "default"
+                    mimeType: "image/jpeg"
                 )
 
             await loadMessages()
@@ -794,8 +792,7 @@ struct ChatView: View {
                     data: data,
                     filename:
                         url.lastPathComponent,
-                    mimeType: mime,
-                    accountID: conversation.accountID ?? "default"
+                    mimeType: mime
                 )
 
             await loadMessages()
@@ -831,8 +828,7 @@ struct ChatView: View {
                     filename:
                         "voice.m4a",
                     mimeType:
-                        "audio/mp4",
-                    accountID: conversation.accountID ?? "default"
+                        "audio/mp4"
                 )
 
             await loadMessages()
