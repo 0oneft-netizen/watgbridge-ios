@@ -2,7 +2,6 @@ import SwiftUI
 
 struct SessionRouteBadge: View {
     let name: String
-    let phone: String
 
     var body: some View {
         HStack(spacing: 4) {
@@ -10,13 +9,6 @@ struct SessionRouteBadge: View {
 
             Text(name)
                 .lineLimit(1)
-
-            if !phone.isEmpty {
-                Text("•")
-
-                Text(phone)
-                    .lineLimit(1)
-            }
         }
         .font(.caption2.weight(.medium))
         .foregroundStyle(.secondary)

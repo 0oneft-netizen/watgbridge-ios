@@ -3,9 +3,7 @@ import SwiftUI
 struct CustomerSessionHeader: View {
     let customerName: String
     let customerPhone: String
-
     let sessionName: String
-    let sessionPhone: String
 
     var body: some View {
         VStack(spacing: 2) {
@@ -14,24 +12,22 @@ struct CustomerSessionHeader: View {
                 .lineLimit(1)
 
             HStack(spacing: 5) {
+                Image(systemName: "phone.fill")
+                    .font(.caption2)
+
                 Text(customerPhone)
 
-                Image(systemName: "arrow.right")
+                Text("•")
+
+                Image(systemName: "iphone")
                     .font(.caption2)
 
                 Text(sessionName)
-
-                if !sessionPhone.isEmpty {
-                    Text("•")
-                    Text(sessionPhone)
-                }
             }
             .font(.caption)
             .foregroundStyle(.secondary)
             .lineLimit(1)
         }
-        .accessibilityElement(
-            children: .combine
-        )
+        .accessibilityElement(children: .combine)
     }
 }
