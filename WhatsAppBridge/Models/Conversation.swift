@@ -1,9 +1,9 @@
 import Foundation
 
-struct Conversation: Identifiable, Codable {
+struct Conversation: Identifiable, Codable, Hashable {
 
     var compositeID: String {
-        "\(accountID)|\(jid)"
+        "\(accountID ?? "default")|\(jid)"
     }
 
     var id: String { jid }
