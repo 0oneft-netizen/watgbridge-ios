@@ -2,17 +2,24 @@ import SwiftUI
 
 @main
 struct WhatsAppBridgeApp: App {
+    @UIApplicationDelegateAdaptor(
+        AppDelegate.self
+    )
+    var appDelegate
+
     init() {
         AppSettings.registerDefaults()
     }
-    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+
     var body: some Scene {
         WindowGroup {
-            ConversationsView()
+            BusinessShellView()
                 .task {
-            RealtimeClient.shared.start()
+                    RealtimeClient.shared
+                        .start()
 
-                    await NotificationManager.shared
+                    await NotificationManager
+                        .shared
                         .requestPermission()
                 }
         }
