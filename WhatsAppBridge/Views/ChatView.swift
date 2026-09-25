@@ -239,36 +239,15 @@ struct ChatView: View {
                                 replyToMessage = message
                             },
                             onReact: { emoji in
-                                Task {
-                                    try? await APIClient.shared
-                                        .react(
-                                            messageID:
-                                                message.messageID,
-                                            reaction: emoji,
-                                            accountID:
-                                                message.accountID
-                                                ?? "default"
-                                        )
-                                }
+                                reactToProductionMessage(
+                                    message,
+                                    emoji: emoji
+                                )
                             },
                             onDelete: {
-                                Task {
-                                    try? await APIClient.shared
-                                        .deleteLocal(
-                                            messageID:
-                                                message.messageID,
-                                            accountID:
-                                                message.accountID
-                                                ?? "default"
-                                        )
-
-                                    await MainActor.run {
-                                        messages.removeAll {
-                                            $0.messageID
-                                                == message.messageID
-                                        }
-                                    }
-                                }
+                                deleteProductionMessage(
+                                    message
+                                )
                             }
                         )
                         .id(message.id)
@@ -317,9 +296,7 @@ struct ChatView: View {
                     showCamera = true
                 },
                 onSend: {
-                    Task {
-                        await sendMessage()
-                    }
+                    sendProductionMessage()
                 },
                 onVoice: {
                     // Existing recorder UI remains available
@@ -548,6 +525,151 @@ struct ChatView: View {
     }
 
     @MainActor
+
+
+
+
+    private func reactToProductionMessage(
+        _ message: Message,
+        emoji: String
+    ) {
+        let messageID =
+            message.messageID
+
+        let accountID =
+            message.accountID
+            ?? "default"
+
+        Task {
+            try? await APIClient.shared
+                .react(
+                    messageID:
+                        messageID,
+                    reaction:
+                        emoji,
+                    accountID:
+                        accountID
+                )
+        }
+    }
+
+
+    private func sendProductionMessage() {
+        let text = messageText
+            .trimmingCharacters(
+                in: .whitespacesAndNewlines
+            )
+
+        guard !text.isEmpty else {
+            return
+        }
+
+        guard !isSending else {
+            return
+        }
+
+        let accountID =
+            conversation.accountID
+            ?? "default"
+
+        let chatJID =
+            conversation.jid
+
+        let reply =
+            replyToMessage
+
+        isSending = true
+
+        Task {
+            do {
+                if let reply {
+                    try await APIClient.shared
+                        .sendReply(
+                            chatJID: chatJID,
+                            text: text,
+                            replyTo: reply,
+                            accountID: accountID
+                        )
+                } else {
+                    try await APIClient.shared
+                        .sendMessage(
+                            chatJID: chatJID,
+                            text: text,
+                            accountID: accountID
+                        )
+                }
+
+                await MainActor.run {
+                    messageText = ""
+                    replyToMessage = nil
+                    isSending = false
+                }
+
+                await loadProductionMessages()
+            } catch {
+                await MainActor.run {
+                    errorMessage =
+                        error.localizedDescription
+                    isSending = false
+                }
+            }
+        }
+    }
+
+    private func loadProductionMessages()
+        async {
+
+        let accountID =
+            conversation.accountID
+            ?? "default"
+
+        do {
+            let latest =
+                try await APIClient.shared
+                    .fetchMessages(
+                        chatJID:
+                            conversation.jid,
+                        accountID:
+                            accountID
+                    )
+
+            await MainActor.run {
+                messages = latest
+            }
+        } catch {
+            // Keep current timeline visible.
+        }
+    }
+
+
+    private func deleteProductionMessage(
+        _ message: Message
+    ) {
+        let messageID =
+            message.messageID
+
+        let accountID =
+            message.accountID
+            ?? "default"
+
+        Task {
+            try? await APIClient.shared
+                .deleteLocal(
+                    messageID: messageID,
+                    accountID: accountID
+                )
+
+            await MainActor.run {
+                messages.removeAll {
+                    item in
+
+                    item.messageID
+                        == messageID
+                }
+            }
+        }
+    }
+
 
     private func unifiedSenderName(
         for message: Message

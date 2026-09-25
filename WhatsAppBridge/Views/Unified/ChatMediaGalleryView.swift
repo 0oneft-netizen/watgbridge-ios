@@ -192,7 +192,7 @@ private struct MediaGridThumbnail: View {
                 MediaCache.shared.localURL(
                     remoteURL: remote,
                     messageID:
-                        "\(message.accountID)-\(message.messageID)",
+                        "\(message.accountID ?? "default")-\(message.messageID)",
                     fileName:
                         message.fileName,
                     mimeType:

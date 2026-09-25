@@ -6,7 +6,7 @@ final class APIClient {
     private init() {}
 
     // This will be replaced with our HTTPS address later.
-    private let baseURL = URL(string: "https://5jjltkwg.tail256e07.ts.net")!
+    let baseURL = URL(string: "https://5jjltkwg.tail256e07.ts.net")!
 
     func fetchConversations() async throws -> [Conversation] {
         let url = baseURL.appendingPathComponent("conversations")
