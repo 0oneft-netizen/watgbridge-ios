@@ -21,6 +21,7 @@ struct ChatView: View {
     @State private var showPhotos = false
     @State private var showCamera = false
     @State private var showFiles = false
+    @State private var showAttachmentMenu = false
     @State private var searchText = ""
     @State private var isSearching = false
 
@@ -258,11 +259,7 @@ struct ChatView: View {
                 .padding(.horizontal, 8)
                 .padding(.vertical, 12)
             }
-            .background(
-                Color.secondary
-                    .opacity(0.06)
-                    .ignoresSafeArea()
-            )
+
             .refreshable {
                 await loadMessages()
             }
@@ -282,6 +279,9 @@ struct ChatView: View {
 
     private var composer: some View {
         VStack(spacing: 0) {
+            if recorder.isRecording {
+                recordingBar
+            }
 
             ProductionComposerView(
                 text: $messageText,
@@ -290,7 +290,7 @@ struct ChatView: View {
                     replyToMessage = nil
                 },
                 onAttachment: {
-                    showFiles = true
+                    showAttachmentMenu = true
                 },
                 onCamera: {
                     showCamera = true
@@ -299,147 +299,33 @@ struct ChatView: View {
                     sendProductionMessage()
                 },
                 onVoice: {
-                    // Existing recorder UI remains available
-                    // until voice state is wired below.
+                    toggleProductionRecording()
                 }
             )
-
-            if let reply = replyToMessage {
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Replying")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-
-                        Text(
-                            reply.text.isEmpty
-                            ? reply.type.capitalized
-                            : reply.text
-                        )
-                        .font(.subheadline)
-                        .lineLimit(1)
-                    }
-
-                    Spacer()
-
-                    Button {
-                        replyToMessage = nil
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                    }
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 7)
-                .background(.thinMaterial)
-            }
-
-            if recorder.isRecording {
-                recordingBar
-            }
-
-            HStack(
-                alignment: .bottom,
-                spacing: 8
-            ) {
-
-                Menu {
-                    Button {
-                        showPhotos = true
-                    } label: {
-                        Label(
-                            "Photos & Videos",
-                            systemImage: "photo"
-                        )
-                    }
-
-                    Button {
-                        showCamera = true
-                    } label: {
-                        Label(
-                            "Camera",
-                            systemImage: "camera"
-                        )
-                    }
-
-                    Button {
-                        showFiles = true
-                    } label: {
-                        Label(
-                            "Document",
-                            systemImage: "doc"
-                        )
-                    }
-
-                } label: {
-                    Image(
-                        systemName:
-                            "plus.circle.fill"
-                    )
-                    .font(.title2)
-                }
-
-                HStack(
-                    alignment: .bottom,
-                    spacing: 8
-                ) {
-                    TextField(
-                        "Message",
-                        text: $messageText,
-                        axis: .vertical
-                    )
-                    .lineLimit(1...6)
-
-                    Button {
-                        showCamera = true
-                    } label: {
-                        Image(
-                            systemName: "camera"
-                        )
-                        .font(.title3)
-                    }
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 9)
-                .background(
-                    Color.secondary
-                        .opacity(0.10)
-                )
-                .clipShape(
-                    RoundedRectangle(
-                        cornerRadius: 20,
-                        style: .continuous
-                    )
-                )
-
-                if messageText
-                    .trimmingCharacters(
-                        in:
-                            .whitespacesAndNewlines
-                    )
-                    .isEmpty {
-
-                    micButton
-
-                } else {
-
-                    Button {
-                        Task {
-                            await sendText()
-                        }
-                    } label: {
-                        Image(
-                            systemName:
-                                "paperplane.fill"
-                        )
-                        .font(.title3)
-                    }
-                    .disabled(isSending)
-                }
-            }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 8)
         }
-        .background(.bar)
+        .confirmationDialog(
+            "Attach",
+            isPresented:
+                $showAttachmentMenu,
+            titleVisibility: .hidden
+        ) {
+            Button("Photos & Videos") {
+                showPhotos = true
+            }
+
+            Button("Camera") {
+                showCamera = true
+            }
+
+            Button("Document") {
+                showFiles = true
+            }
+
+            Button(
+                "Cancel",
+                role: .cancel
+            ) {}
+        }
     }
 
     private var recordingBar: some View {
