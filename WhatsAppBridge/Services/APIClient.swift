@@ -122,7 +122,8 @@ final class APIClient {
         data: Data,
         filename: String,
         mimeType: String,
-        caption: String = ""
+        caption: String = "",
+        accountID: String = "default"
     ) async throws {
 
         let url = baseURL.appendingPathComponent("send-media-v2")
@@ -269,7 +270,8 @@ final class APIClient {
     }
 
     func deleteLocal(
-        messageID: String
+        messageID: String,
+        accountID: String = "default"
     ) async throws {
 
         let url =
@@ -359,7 +361,8 @@ final class APIClient {
     func sendReply(
         chatJID: String,
         text: String,
-        replyTo: Message
+        replyTo: Message,
+        accountID: String = "default"
     ) async throws {
 
         let url =

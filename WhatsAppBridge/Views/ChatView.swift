@@ -326,7 +326,10 @@ struct ChatView: View {
                             ) {
                                 Task {
                                     try? await APIClient.shared.deleteLocal(
-                                        messageID: message.messageID
+                                        messageID: message.messageID,
+                                        accountID:
+                                            message.accountID
+                                            ?? "default"
                                     )
                                     await loadMessages()
                                 }
@@ -584,6 +587,53 @@ struct ChatView: View {
     }
 
     @MainActor
+
+    private func unifiedSenderName(
+        for message: Message
+    ) -> String {
+        if message.fromMe {
+            return "You"
+        }
+
+        let jid = message.senderJID
+
+        if let at = jid.firstIndex(of: "@") {
+            return String(jid[..<at])
+        }
+
+        return jid
+    }
+
+    private func unifiedQuotedText(
+        for message: Message
+    ) -> String? {
+        guard let replyID = message.replyToID,
+              !replyID.isEmpty
+        else {
+            return nil
+        }
+
+        if let original = messages.first(
+            where: {
+                $0.messageID == replyID
+            }
+        ) {
+            if !original.text.isEmpty {
+                return original.text
+            }
+
+            return original.type
+                .replacingOccurrences(
+                    of: "_",
+                    with: " "
+                )
+                .capitalized
+        }
+
+        return "Reply"
+    }
+
+
     private func sendText() async {
         let text =
             messageText

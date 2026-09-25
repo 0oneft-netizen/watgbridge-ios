@@ -1,0 +1,81 @@
+import SwiftUI
+
+struct ProductionMessageBubble: View {
+    let message: Message
+    let messages: [Message]
+
+    let onReply: () -> Void
+    let onReact: (String) -> Void
+    let onDelete: () -> Void
+
+    private var sender: String {
+        if message.fromMe {
+            return "You"
+        }
+
+        let value = message.senderJID
+
+        guard let at =
+            value.firstIndex(of: "@")
+        else {
+            return value
+        }
+
+        return String(value[..<at])
+    }
+
+    private var quotedText: String? {
+        guard
+            let replyID = message.replyToID,
+            !replyID.isEmpty
+        else {
+            return nil
+        }
+
+        guard let original =
+            messages.first(
+                where: {
+                    $0.messageID == replyID
+                }
+            )
+        else {
+            return "Reply"
+        }
+
+        if !original.text.isEmpty {
+            return original.text
+        }
+
+        switch original.type {
+        case "image":
+            return "Photo"
+        case "video":
+            return "Video"
+        case "video_note":
+            return "Video message"
+        case "voice":
+            return "Voice message"
+        case "audio":
+            return "Audio"
+        case "document":
+            return original.fileName
+                ?? "Document"
+        default:
+            return "Message"
+        }
+    }
+
+    var body: some View {
+        UnifiedMessageBubble(
+            message: message,
+            senderName: sender,
+            accountName:
+                message.accountID
+                ?? "default",
+            quotedText: quotedText,
+            onReply: onReply,
+            onReact: onReact,
+            onDeleteLocal: onDelete
+        )
+    }
+}
