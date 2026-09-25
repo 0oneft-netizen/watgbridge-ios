@@ -28,6 +28,14 @@ struct ConversationsView: View {
             }
     }
 
+    private var backgroundRefreshPublisher:
+        NotificationCenter.Publisher
+    {
+        NotificationCenter.default.publisher(
+            for: .backgroundRefreshRequested
+        )
+    }
+
     var body: some View {
         NavigationStack {
             List {
@@ -193,13 +201,9 @@ struct ConversationsView: View {
                 await loadConversations()
             }
             .onReceive(
-            NotificationCenter.default.publisher(
-                for: .backgroundRefreshRequested
-            )
+            backgroundRefreshPublisher
         ) { _ in
-            Task {
-                await loadConversations()
-            }
+            refreshAfterBackgroundWake()
         }
         .onReceive(
                 NotificationCenter.default.publisher(
@@ -309,6 +313,12 @@ struct ConversationsView: View {
     }
 
     @MainActor
+    private func refreshAfterBackgroundWake() {
+        Task {
+            await loadConversations()
+        }
+    }
+
     private func loadConversations(
         notifyForNewMessages: Bool = false
     ) async {
