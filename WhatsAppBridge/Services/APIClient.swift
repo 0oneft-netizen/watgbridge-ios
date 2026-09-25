@@ -199,7 +199,10 @@ final class APIClient {
     }
 
 
-    func mediaURL(for messageID: String) -> URL? {
+    func mediaURL(
+        for messageID: String,
+        accountID: String? = nil
+    ) -> URL? {
         var components = URLComponents(
             url: baseURL.appendingPathComponent("media"),
             resolvingAgainstBaseURL: false
@@ -209,6 +212,10 @@ final class APIClient {
             URLQueryItem(
                 name: "id",
                 value: messageID
+            ),
+            URLQueryItem(
+                name: "account_id",
+                value: accountID ?? "default"
             )
         ]
 
