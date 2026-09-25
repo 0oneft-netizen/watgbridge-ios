@@ -13,16 +13,27 @@ struct UnifiedMessageBubble: View {
     private var timestamp: String {
         let raw = message.createdAt
 
-        if let date = ISO8601DateFormatter().date(
-            from: raw
-        ) {
-            return date.formatted(
-                date: .omitted,
-                time: .shortened
-            )
+        // Server timestamps may be seconds or milliseconds.
+        let seconds: TimeInterval
+
+        if raw > 10_000_000_000 {
+            seconds = TimeInterval(raw) / 1000.0
+        } else {
+            seconds = TimeInterval(raw)
         }
 
-        return ""
+        guard seconds > 0 else {
+            return ""
+        }
+
+        let date = Date(
+            timeIntervalSince1970: seconds
+        )
+
+        return date.formatted(
+            date: .omitted,
+            time: .shortened
+        )
     }
 
     var body: some View {
@@ -47,7 +58,7 @@ struct UnifiedMessageBubble: View {
                     quotedMessage(quotedText)
                 }
 
-                if message.deletedRemote {
+                if message.deletedRemote == true {
                     deletedMessage
                 } else {
                     content
