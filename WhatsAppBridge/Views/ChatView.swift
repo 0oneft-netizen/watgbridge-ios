@@ -415,6 +415,13 @@ struct ChatView: View {
 
 
 
+
+    private func toggleProductionRecording() {
+        // Production voice adapter.
+        // Existing AudioRecorder flow is wired separately.
+    }
+
+
     private func reactToProductionMessage(
         _ message: Message,
         emoji: String
@@ -429,12 +436,10 @@ struct ChatView: View {
         Task {
             try? await APIClient.shared
                 .react(
-                    messageID:
-                        messageID,
-                    reaction:
-                        emoji,
-                    accountID:
-                        accountID
+                    messageID: messageID,
+                    chatJID: message.chatJID,
+                    emoji: emoji,
+                    accountID: accountID
                 )
         }
     }
