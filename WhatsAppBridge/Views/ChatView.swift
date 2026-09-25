@@ -616,7 +616,7 @@ struct ChatView: View {
                             conversation.jid,
                         text: text,
                         accountID:
-                            conversation.accountID
+                            conversation.accountID ?? "default"
                     )
             }
 
