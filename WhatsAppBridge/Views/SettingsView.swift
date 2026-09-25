@@ -45,6 +45,18 @@ struct SettingsView: View {
                     )
                 }
 
+                Section("Business Tools") {
+                    NavigationLink {
+                        QuickRepliesView()
+                    } label: {
+                        Label(
+                            "Quick Replies",
+                            systemImage:
+                                "text.bubble"
+                        )
+                    }
+                }
+
                 Section("Experience") {
                     Toggle(
                         "Haptic feedback",
