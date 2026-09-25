@@ -19,9 +19,21 @@ final class PushRegistration {
             forHTTPHeaderField: "Content-Type"
         )
 
+        #if DEBUG
+        let environment = "development"
+        #else
+        let environment = "production"
+        #endif
+
+        let bundleID =
+            Bundle.main.bundleIdentifier
+            ?? "com.watgbridge.ios"
+
         request.httpBody = try? JSONSerialization.data(
             withJSONObject: [
-                "token": token
+                "token": token,
+                "environment": environment,
+                "bundle_id": bundleID
             ]
         )
 
