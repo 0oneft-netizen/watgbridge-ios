@@ -76,8 +76,8 @@ struct WhatsAppAccountsView: View {
                                 .font(.caption2)
                                 .foregroundStyle(
                                     account.connected
-                                    ? .green
-                                    : .secondary
+                                    ? Color.green
+                                    : Color.secondary
                                 )
                         }
 

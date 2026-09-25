@@ -89,10 +89,16 @@ struct WhatsAppPairingView: View {
                             id: accountID
                         )
 
-                status = response.status
-                qrText = response.qr
+                let currentStatus =
+                    response.status ?? "waiting"
 
-                if response.status ==
+                let currentQR =
+                    response.qrValue ?? ""
+
+                status = currentStatus
+                qrText = currentQR
+
+                if currentStatus ==
                     "connected"
                 {
                     Haptics.success()
