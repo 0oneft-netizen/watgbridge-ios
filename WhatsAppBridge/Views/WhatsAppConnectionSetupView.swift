@@ -98,7 +98,9 @@ struct WhatsAppConnectionSetupView: View {
         do {
             let id =
                 try await AccountAPI.shared
-                    .createAccount()
+                    .createAccount(
+                        type: type
+                    )
 
             accountID = id
             loading = false

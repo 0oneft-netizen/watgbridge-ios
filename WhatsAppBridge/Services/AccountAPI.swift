@@ -27,22 +27,40 @@ final class AccountAPI {
             )
     }
 
-    func createAccount()
-        async throws
-        -> String
-    {
-        let url = URL(
+    func createAccount(
+        type: WhatsAppConnectionType
+    ) async throws -> String {
+        var components = URLComponents(
             string: "\(base)/accounts"
         )!
 
-        var request =
-            URLRequest(url: url)
+        components.queryItems = [
+            URLQueryItem(
+                name: "type",
+                value: type.rawValue
+            )
+        ]
+
+        var request = URLRequest(
+            url: components.url!
+        )
 
         request.httpMethod = "POST"
 
-        let (data, _) =
+        let (data, response) =
             try await URLSession.shared
                 .data(for: request)
+
+        if let http =
+            response as? HTTPURLResponse,
+           !(200...299).contains(
+                http.statusCode
+           )
+        {
+            throw URLError(
+                .badServerResponse
+            )
+        }
 
         let object =
             try JSONSerialization
