@@ -7,198 +7,26 @@ struct MessageMediaView: View {
     let message: Message
 
     @State private var showViewer = false
+    @State private var localURL: URL?
+    @State private var loadError = false
+    @State private var isLoading = false
 
-    private var mediaURL: URL? {
+    private var remoteURL: URL? {
         APIClient.shared.mediaURL(
             for: message.messageID,
             accountID: message.accountID
         )
     }
 
+    private var isViewOnce: Bool {
+        message.type == "view_once_image" ||
+        message.type == "view_once_video" ||
+        message.type == "view_once_audio"
+    }
+
     var body: some View {
-        if let url = mediaURL {
-            switch message.type {
-
-            case "image":
-                AsyncImage(url: url) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .scaledToFill()
-                            .frame(
-                                width: 250,
-                                height: 250
-                            )
-                            .clipped()
-                            .clipShape(
-                                RoundedRectangle(
-                                    cornerRadius: 10
-                                )
-                            )
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                showViewer = true
-                            }
-                            .fullScreenCover(
-                                isPresented: $showViewer
-                            ) {
-                                MediaViewer(
-                                    message: message,
-                                    url: url,
-                                    kind: .image
-                                )
-                            }
-
-                    case .failure:
-                        placeholder(
-                            "Photo",
-                            icon: "photo"
-                        )
-
-                    default:
-                        ProgressView()
-                            .frame(
-                                width: 250,
-                                height: 180
-                            )
-                    }
-                }
-
-            case "video", "gif":
-                ZStack {
-                    VideoPlayer(
-                        player: AVPlayer(url: url)
-                    )
-                    .allowsHitTesting(false)
-
-                    Image(
-                        systemName:
-                            "arrow.up.left.and.arrow.down.right"
-                    )
-                    .font(.title2)
-                    .foregroundStyle(.white)
-                    .padding(9)
-                    .background(.black.opacity(0.45))
-                    .clipShape(Circle())
-                }
-                .frame(
-                    width: 250,
-                    height: 190
-                )
-                .clipShape(
-                    RoundedRectangle(
-                        cornerRadius: 10
-                    )
-                )
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    showViewer = true
-                }
-                .fullScreenCover(
-                    isPresented: $showViewer
-                ) {
-                    MediaViewer(
-                        message: message,
-                        url: url,
-                        kind: .video
-                    )
-                }
-
-            case "video_note":
-                ZStack {
-                    VideoPlayer(
-                        player: AVPlayer(url: url)
-                    )
-                    .allowsHitTesting(false)
-
-                    Image(systemName: "play.fill")
-                        .font(.title2)
-                        .foregroundStyle(.white)
-                        .shadow(radius: 4)
-                }
-                .frame(
-                    width: 210,
-                    height: 210
-                )
-                .clipShape(Circle())
-                .contentShape(Circle())
-                .onTapGesture {
-                    showViewer = true
-                }
-                .fullScreenCover(
-                    isPresented: $showViewer
-                ) {
-                    MediaViewer(
-                        message: message,
-                        url: url,
-                        kind: .video
-                    )
-                }
-
-            case "voice":
-                AudioMessageView(
-                    url: url,
-                    isVoice: true
-                )
-
-            case "audio":
-                AudioMessageView(
-                    url: url,
-                    isVoice: false
-                )
-
-            case "document":
-                Link(destination: url) {
-                    HStack(spacing: 10) {
-                        Image(systemName: "doc.fill")
-                            .font(.title2)
-
-                        VStack(alignment: .leading) {
-                            Text(
-                                message.fileName?
-                                    .isEmpty == false
-                                ? message.fileName!
-                                : "Document"
-                            )
-                            .font(
-                                .subheadline
-                                    .weight(.semibold)
-                            )
-                            .lineLimit(2)
-
-                            if let mime = message.mimeType,
-                               !mime.isEmpty {
-                                Text(mime)
-                                    .font(.caption2)
-                                    .foregroundStyle(
-                                        .secondary
-                                    )
-                            }
-                        }
-
-                        Spacer()
-
-                        Image(
-                            systemName:
-                                "arrow.down.circle"
-                        )
-                    }
-                    .padding(10)
-                    .background(
-                        Color.secondary
-                            .opacity(0.08)
-                    )
-                    .clipShape(
-                        RoundedRectangle(
-                            cornerRadius: 10
-                        )
-                    )
-                }
-
-            case "view_once_image",
-                 "view_once_video",
-                 "view_once_audio":
+        Group {
+            if isViewOnce {
                 Label(
                     "View once",
                     systemImage: "1.circle"
@@ -206,22 +34,219 @@ struct MessageMediaView: View {
                 .font(.subheadline.weight(.semibold))
                 .padding(10)
 
-            default:
-                placeholder(
-                    message.type.capitalized,
-                    icon: "paperclip"
+            } else if let url = localURL {
+                loadedMedia(url: url)
+
+            } else if loadError {
+                Button {
+                    Task {
+                        await loadMedia(force: true)
+                    }
+                } label: {
+                    Label(
+                        "Tap to retry media",
+                        systemImage: "arrow.clockwise"
+                    )
+                    .frame(
+                        minWidth: 160,
+                        minHeight: 54
+                    )
+                }
+                .buttonStyle(.plain)
+
+            } else {
+                ProgressView()
+                    .frame(
+                        minWidth: 160,
+                        minHeight: 80
+                    )
+            }
+        }
+        .task(id: message.messageID) {
+            await loadMedia()
+        }
+    }
+
+    @ViewBuilder
+    private func loadedMedia(
+        url: URL
+    ) -> some View {
+        switch message.type {
+        case "image":
+            if let data = try? Data(contentsOf: url),
+               let uiImage = UIImage(data: data) {
+                Image(uiImage: uiImage)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(
+                        width: 250,
+                        height: 250
+                    )
+                    .clipped()
+                    .clipShape(
+                        RoundedRectangle(
+                            cornerRadius: 10
+                        )
+                    )
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        showViewer = true
+                    }
+                    .fullScreenCover(
+                        isPresented: $showViewer
+                    ) {
+                        MediaViewer(
+                            message: message,
+                            url: url,
+                            kind: .image
+                        )
+                    }
+            } else {
+                mediaPlaceholder(
+                    "Unable to load photo",
+                    icon: "photo"
                 )
             }
 
-        } else if message.type != "text" {
-            placeholder(
+        case "video", "gif":
+            ZStack {
+                VideoPlayer(
+                    player: AVPlayer(url: url)
+                )
+                .allowsHitTesting(false)
+
+                Image(systemName: "play.fill")
+                    .font(.title2)
+                    .foregroundStyle(.white)
+                    .padding(10)
+                    .background(
+                        .black.opacity(0.45)
+                    )
+                    .clipShape(Circle())
+            }
+            .frame(
+                width: 250,
+                height: 190
+            )
+            .clipShape(
+                RoundedRectangle(
+                    cornerRadius: 10
+                )
+            )
+            .contentShape(Rectangle())
+            .onTapGesture {
+                showViewer = true
+            }
+            .fullScreenCover(
+                isPresented: $showViewer
+            ) {
+                MediaViewer(
+                    message: message,
+                    url: url,
+                    kind: .video
+                )
+            }
+
+        case "video_note":
+            ZStack {
+                VideoPlayer(
+                    player: AVPlayer(url: url)
+                )
+                .allowsHitTesting(false)
+
+                Image(systemName: "play.fill")
+                    .font(.title2)
+                    .foregroundStyle(.white)
+                    .shadow(radius: 4)
+            }
+            .frame(
+                width: 210,
+                height: 210
+            )
+            .clipShape(Circle())
+            .contentShape(Circle())
+            .onTapGesture {
+                showViewer = true
+            }
+            .fullScreenCover(
+                isPresented: $showViewer
+            ) {
+                MediaViewer(
+                    message: message,
+                    url: url,
+                    kind: .video
+                )
+            }
+
+        case "voice":
+            AudioMessageView(
+                url: url,
+                isVoice: true
+            )
+
+        case "audio":
+            AudioMessageView(
+                url: url,
+                isVoice: false
+            )
+
+        case "document":
+            ShareLink(item: url) {
+                HStack(spacing: 10) {
+                    Image(systemName: "doc.fill")
+                        .font(.title2)
+
+                    VStack(alignment: .leading) {
+                        Text(
+                            message.fileName?
+                                .isEmpty == false
+                            ? message.fileName!
+                            : "Document"
+                        )
+                        .font(
+                            .subheadline
+                                .weight(.semibold)
+                        )
+                        .lineLimit(2)
+
+                        if let mime =
+                            message.mimeType,
+                           !mime.isEmpty {
+                            Text(mime)
+                                .font(.caption2)
+                                .foregroundStyle(
+                                    .secondary
+                                )
+                        }
+                    }
+
+                    Spacer()
+
+                    Image(
+                        systemName:
+                            "square.and.arrow.up"
+                    )
+                }
+                .padding(10)
+                .background(
+                    Color.secondary.opacity(0.08)
+                )
+                .clipShape(
+                    RoundedRectangle(
+                        cornerRadius: 10
+                    )
+                )
+            }
+
+        default:
+            mediaPlaceholder(
                 message.type.capitalized,
                 icon: "paperclip"
             )
         }
     }
 
-    private func placeholder(
+    private func mediaPlaceholder(
         _ title: String,
         icon: String
     ) -> some View {
@@ -233,6 +258,54 @@ struct MessageMediaView: View {
             minWidth: 160,
             minHeight: 44
         )
+    }
+
+    @MainActor
+    private func loadMedia(
+        force: Bool = false
+    ) async {
+        guard !isViewOnce else {
+            return
+        }
+
+        if localURL != nil && !force {
+            return
+        }
+
+        guard !isLoading,
+              let remoteURL
+        else {
+            loadError = true
+            return
+        }
+
+        isLoading = true
+        loadError = false
+
+        defer {
+            isLoading = false
+        }
+
+        do {
+            let result =
+                try await MediaCache.shared.localURL(
+                    remoteURL: remoteURL,
+                    messageID:
+                        "\(message.accountID ?? "default")_\(message.messageID)",
+                    fileName: message.fileName,
+                    mimeType: message.mimeType
+                )
+
+            localURL = result
+        } catch {
+            print(
+                "[MEDIA] load failed",
+                message.messageID,
+                error.localizedDescription
+            )
+
+            loadError = true
+        }
     }
 }
 
