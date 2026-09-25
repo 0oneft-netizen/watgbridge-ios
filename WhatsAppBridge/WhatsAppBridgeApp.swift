@@ -21,6 +21,10 @@ struct WhatsAppBridgeApp: App {
                     await NotificationManager
                         .shared
                         .requestPermission()
+
+                    NotificationManager
+                        .shared
+                        .registerForPushNotifications()
                 }
         }
     }
