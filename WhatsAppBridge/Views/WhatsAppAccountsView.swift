@@ -1,10 +1,8 @@
 import SwiftUI
 
 struct WhatsAppAccountsView: View {
-    @State private var accounts:
-        [WhatsAppAccountStatus] = []
-
-    @State private var showingPairing = false
+    @State private var accounts: [WhatsAppAccount] = []
+    @State private var showingAddAccount = false
 
     var body: some View {
         NavigationStack {
@@ -12,17 +10,13 @@ struct WhatsAppAccountsView: View {
                 if accounts.isEmpty {
                     ContentUnavailableView(
                         "No WhatsApp Accounts",
-                        systemImage:
-                            "rectangle.stack.badge.plus",
+                        systemImage: "rectangle.stack.badge.plus",
                         description: Text(
-                            "Link a WhatsApp account to start."
+                            "Connect WhatsApp or WhatsApp Business."
                         )
                     )
                 } else {
-                    ForEach(
-                        Array(accounts.enumerated()),
-                        id: \.offset
-                    ) { _, account in
+                    ForEach(accounts) { account in
                         WhatsAppAccountRow(
                             account: account
                         )
@@ -31,35 +25,31 @@ struct WhatsAppAccountsView: View {
 
                 Section {
                     Button {
-                        showingPairing = true
+                        showingAddAccount = true
                     } label: {
                         Label(
-                            "Link WhatsApp Account",
+                            "Connect another WhatsApp",
                             systemImage: "qrcode"
                         )
                     }
                 }
             }
-            .navigationTitle(
-                "WhatsApp Accounts"
-            )
+            .navigationTitle("WhatsApp Accounts")
             .toolbar {
                 ToolbarItem(
                     placement: .topBarTrailing
                 ) {
                     Button {
-                        showingPairing = true
+                        showingAddAccount = true
                     } label: {
-                        Image(
-                            systemName: "plus"
-                        )
+                        Image(systemName: "plus")
                     }
                 }
             }
             .sheet(
-                isPresented: $showingPairing
+                isPresented: $showingAddAccount
             ) {
-                WhatsAppPairingView()
+                WhatsAppTypePickerView()
             }
             .task {
                 await load()
@@ -78,7 +68,7 @@ struct WhatsAppAccountsView: View {
                     .accounts()
         } catch {
             print(
-                "Accounts load error:",
+                "Account load error:",
                 error
             )
         }
@@ -86,37 +76,10 @@ struct WhatsAppAccountsView: View {
 }
 
 private struct WhatsAppAccountRow: View {
-    let account:
-        WhatsAppAccountStatus
+    let account: WhatsAppAccount
 
-    private var name: String {
-        if let displayName =
-            account.displayName,
-           !displayName.isEmpty
-        {
-            return displayName
-        }
-
-        return "WhatsApp Account"
-    }
-
-    private var phone: String {
-        account.phone ?? ""
-    }
-
-    private var statusText: String {
-        account.status
-    }
-
-    private var isConnected: Bool {
-        if let connected =
-            account.connected
-        {
-            return connected
-        }
-
-        return account.status ==
-            "connected"
+    private var connected: Bool {
+        account.status == "connected"
     }
 
     var body: some View {
@@ -129,11 +92,10 @@ private struct WhatsAppAccountRow: View {
                     )
 
                 Image(
-                    systemName:
-                        "phone.fill"
+                    systemName: "phone.fill"
                 )
                 .foregroundStyle(
-                    isConnected
+                    connected
                     ? Color.green
                     : Color.secondary
                 )
@@ -147,21 +109,25 @@ private struct WhatsAppAccountRow: View {
                 alignment: .leading,
                 spacing: 4
             ) {
-                Text(name)
-                    .font(.headline)
+                Text(
+                    account.displayName.isEmpty
+                    ? "WhatsApp Account"
+                    : account.displayName
+                )
+                .font(.headline)
 
-                if !phone.isEmpty {
-                    Text(phone)
+                if !account.phone.isEmpty {
+                    Text(account.phone)
                         .font(.caption)
                         .foregroundStyle(
                             Color.secondary
                         )
                 }
 
-                Text(statusText)
+                Text(account.status)
                     .font(.caption2)
                     .foregroundStyle(
-                        isConnected
+                        connected
                         ? Color.green
                         : Color.secondary
                     )
@@ -169,21 +135,26 @@ private struct WhatsAppAccountRow: View {
 
             Spacer()
 
+            if account.isPrimary {
+                Text("PRIMARY")
+                    .font(.caption2.bold())
+                    .foregroundStyle(
+                        Color.secondary
+                    )
+            }
+
             Image(
                 systemName:
-                    isConnected
+                    connected
                     ? "checkmark.circle.fill"
                     : "circle"
             )
             .foregroundStyle(
-                isConnected
+                connected
                 ? Color.green
                 : Color.secondary
             )
         }
-        .padding(
-            .vertical,
-            4
-        )
+        .padding(.vertical, 4)
     }
 }
