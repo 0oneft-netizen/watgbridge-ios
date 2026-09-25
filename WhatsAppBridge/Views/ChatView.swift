@@ -841,7 +841,9 @@ struct ChatView: View {
                 try await APIClient.shared
                     .fetchMessages(
                         chatJID:
-                            conversation.jid
+                            conversation.jid,
+                        accountID:
+                            conversation.accountID ?? "default"
                     )
 
             errorMessage = nil
