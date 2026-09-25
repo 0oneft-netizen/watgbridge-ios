@@ -7,7 +7,6 @@ struct QRCodeView: View {
     let value: String
 
     private let context = CIContext()
-    private let filter = CIFilter.qrCodeGenerator()
 
     var body: some View {
         Group {
@@ -17,58 +16,72 @@ struct QRCodeView: View {
                     .resizable()
                     .scaledToFit()
             } else {
-                Image(systemName: "qrcode")
-                    .resizable()
-                    .scaledToFit()
-                    .foregroundStyle(.secondary)
+                VStack(spacing: 12) {
+                    Image(systemName: "qrcode")
+                        .font(.system(size: 60))
+
+                    Text("Unable to render QR")
+                        .font(.caption)
+                }
+                .foregroundStyle(.secondary)
             }
         }
-        .frame(
-            width: 270,
-            height: 270
-        )
+        .frame(width: 270, height: 270)
         .padding(18)
         .background(Color.white)
         .clipShape(
             RoundedRectangle(
-                cornerRadius: 18
+                cornerRadius: 18,
+                style: .continuous
             )
+        )
+        .shadow(
+            color: .black.opacity(0.08),
+            radius: 12,
+            y: 4
         )
     }
 
     private func makeImage() -> UIImage? {
         guard
             !value.isEmpty,
-            let data = value.data(
-                using: .isoLatin1
+            let data = value.data(using: .utf8)
+        else {
+            return nil
+        }
+
+        let filter =
+            CIFilter.qrCodeGenerator()
+
+        filter.message = data
+
+        // L gives more room for the relatively
+        // large WhatsApp pairing payload.
+        filter.correctionLevel = "L"
+
+        guard let output =
+            filter.outputImage
+        else {
+            return nil
+        }
+
+        let transformed =
+            output.transformed(
+                by: CGAffineTransform(
+                    scaleX: 10,
+                    y: 10
+                )
+            )
+
+        guard let cgImage =
+            context.createCGImage(
+                transformed,
+                from: transformed.extent
             )
         else {
             return nil
         }
 
-        filter.message = data
-        filter.correctionLevel = "M"
-
-        guard
-            let output =
-                filter.outputImage?
-                    .transformed(
-                        by: CGAffineTransform(
-                            scaleX: 12,
-                            y: 12
-                        )
-                    ),
-            let cgImage =
-                context.createCGImage(
-                    output,
-                    from: output.extent
-                )
-        else {
-            return nil
-        }
-
-        return UIImage(
-            cgImage: cgImage
-        )
+        return UIImage(cgImage: cgImage)
     }
 }
