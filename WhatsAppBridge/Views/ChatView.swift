@@ -362,6 +362,9 @@ struct ChatView: View {
                 scrollToBottom(proxy)
             }
         }
+                    .background {
+                        ChatBackgroundView()
+                    }
     }
 
     private var composer: some View {
