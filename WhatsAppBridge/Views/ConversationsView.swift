@@ -193,6 +193,15 @@ struct ConversationsView: View {
                 await loadConversations()
             }
             .onReceive(
+            NotificationCenter.default.publisher(
+                for: .backgroundRefreshRequested
+            )
+        ) { _ in
+            Task {
+                await loadConversations()
+            }
+        }
+        .onReceive(
                 NotificationCenter.default.publisher(
                     for: .bridgeRealtimeUpdate
                 )

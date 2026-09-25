@@ -27,6 +27,10 @@ targets:
         INFOPLIST_KEY_NSMicrophoneUsageDescription: "Microphone access is used to record voice messages."
         INFOPLIST_KEY_NSCameraUsageDescription: "Camera access is used to take photos and videos."
         INFOPLIST_KEY_NSPhotoLibraryUsageDescription: "Photo access is used to send photos and videos."
+        INFOPLIST_KEY_UIBackgroundModes:
+          - fetch
+        INFOPLIST_KEY_BGTaskSchedulerPermittedIdentifiers:
+          - com.watgbridge.ios.refresh
         INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription: "Photo access is used to save received photos and videos."
 
     scheme:
