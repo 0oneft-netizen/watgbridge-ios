@@ -21,14 +21,15 @@ final class APIClient {
         return try JSONDecoder().decode([Conversation].self, from: data)
     }
 
-    func fetchMessages(chatJID: String) async throws -> [Message] {
+    func fetchMessages(chatJID: String, accountID: String = "default") async throws -> [Message] {
         var components = URLComponents(
             url: baseURL.appendingPathComponent("messages-v2"),
             resolvingAgainstBaseURL: false
         )!
 
         components.queryItems = [
-            URLQueryItem(name: "chat_jid", value: chatJID)
+            URLQueryItem(name: "chat_jid", value: chatJID),
+            URLQueryItem(name: "account_id", value: accountID)
         ]
 
         guard let url = components.url else {
@@ -46,7 +47,7 @@ final class APIClient {
     }
 
 
-    func sendMessage(chatJID: String, text: String) async throws {
+    func sendMessage(chatJID: String, text: String, accountID: String = "default") async throws {
         let url = baseURL.appendingPathComponent("send")
 
         var request = URLRequest(url: url)
@@ -54,6 +55,7 @@ final class APIClient {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
         let payload = [
+            "account_id": accountID,
             "chat_jid": chatJID,
             "text": text
         ]

@@ -614,7 +614,9 @@ struct ChatView: View {
                     .sendMessage(
                         chatJID:
                             conversation.jid,
-                        text: text
+                        text: text,
+                        accountID:
+                            conversation.accountID
                     )
             }
 

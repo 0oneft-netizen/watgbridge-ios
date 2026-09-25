@@ -39,7 +39,7 @@ struct ConversationsView: View {
 
                 ForEach(
                     sortedConversations,
-                    id: \.jid
+                    id: \.compositeID
                 ) { conversation in
                     NavigationLink {
                         ChatView(

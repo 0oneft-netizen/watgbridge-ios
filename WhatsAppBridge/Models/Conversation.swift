@@ -1,6 +1,11 @@
 import Foundation
 
 struct Conversation: Identifiable, Codable {
+
+    var compositeID: String {
+        "\(accountID)|\(jid)"
+    }
+
     var id: String { jid }
 
     let accountID: String?
