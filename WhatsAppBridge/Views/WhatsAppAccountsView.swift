@@ -2,155 +2,188 @@ import SwiftUI
 
 struct WhatsAppAccountsView: View {
     @State private var accounts:
-        [WhatsAppAccount] = []
+        [WhatsAppAccountStatus] = []
 
-    @State private var pairingID:
-        String?
+    @State private var showingPairing = false
 
     var body: some View {
-        List {
-            Section {
-                Button {
-                    Task {
-                        await addAccount()
-                    }
-                } label: {
-                    Label(
-                        "Link WhatsApp Account",
-                        systemImage: "qrcode"
-                    )
-                }
-            }
-
-            Section("Connected Accounts") {
+        NavigationStack {
+            List {
                 if accounts.isEmpty {
                     ContentUnavailableView(
                         "No WhatsApp Accounts",
                         systemImage:
-                            "message.badge",
+                            "rectangle.stack.badge.plus",
                         description: Text(
-                            "Link a WhatsApp account using QR."
+                            "Link a WhatsApp account to start."
                         )
                     )
+                } else {
+                    ForEach(
+                        Array(accounts.enumerated()),
+                        id: \.offset
+                    ) { _, account in
+                        WhatsAppAccountRow(
+                            account: account
+                        )
+                    }
                 }
 
-                ForEach(accounts) {
-                    account in
-
-                    HStack(spacing: 12) {
-                        ZStack {
-                            Circle()
-                                .fill(
-                                    Color.secondary
-                                        .opacity(0.12)
-                                )
-
-                            Image(
-                                systemName:
-                                    "phone.fill"
-                            )
-                        }
-                        .frame(
-                            width: 46,
-                            height: 46
+                Section {
+                    Button {
+                        showingPairing = true
+                    } label: {
+                        Label(
+                            "Link WhatsApp Account",
+                            systemImage: "qrcode"
                         )
-
-                        VStack(
-                            alignment: .leading,
-                            spacing: 3
-                        ) {
-                            Text(
-                                account.displayName
-                            )
-                            .font(.headline)
-
-                            if !account.phone.isEmpty {
-                                Text(account.phone)
-                                    .font(.caption)
-                                    .foregroundStyle(
-                                        .secondary
-                                    )
-                            }
-
-                            Text(account.status)
-                                .font(.caption2)
-                                .foregroundStyle(
-                                    account.connected
-                                    ? Color.green
-                                    : Color.secondary
-                                )
-                        }
-
-                        Spacer()
-
-                        Circle()
-                            .fill(
-                                account.connected
-                                ? Color.green
-                                : Color.orange
-                            )
-                            .frame(
-                                width: 9,
-                                height: 9
-                            )
                     }
                 }
             }
-        }
-        .navigationTitle(
-            "WhatsApp Accounts"
-        )
-        .task {
-            await load()
-        }
-        .sheet(
-            item: Binding(
-                get: {
-                    pairingID.map {
-                        PairingIdentifier(
-                            id: $0
+            .navigationTitle(
+                "WhatsApp Accounts"
+            )
+            .toolbar {
+                ToolbarItem(
+                    placement: .topBarTrailing
+                ) {
+                    Button {
+                        showingPairing = true
+                    } label: {
+                        Image(
+                            systemName: "plus"
                         )
                     }
-                },
-                set: {
-                    pairingID =
-                        $0?.id
                 }
-            )
-        ) { item in
-            WhatsAppPairingView(
-                accountID: item.id
-            )
+            }
+            .sheet(
+                isPresented: $showingPairing
+            ) {
+                WhatsAppPairingView()
+            }
+            .task {
+                await load()
+            }
+            .refreshable {
+                await load()
+            }
         }
     }
 
     @MainActor
     private func load() async {
-        accounts =
-            (try? await
-                AccountAPI.shared.accounts()
-            ) ?? []
-    }
-
-    @MainActor
-    private func addAccount() async {
         do {
-            let id =
+            accounts =
                 try await AccountAPI.shared
-                    .createAccount()
-
-            pairingID = id
-
-            await load()
-
+                    .accounts()
         } catch {
-            Haptics.error()
+            print(
+                "Accounts load error:",
+                error
+            )
         }
     }
 }
 
-private struct PairingIdentifier:
-    Identifiable
-{
-    let id: String
+private struct WhatsAppAccountRow: View {
+    let account:
+        WhatsAppAccountStatus
+
+    private var name: String {
+        if let displayName =
+            account.displayName,
+           !displayName.isEmpty
+        {
+            return displayName
+        }
+
+        return "WhatsApp Account"
+    }
+
+    private var phone: String {
+        account.phone ?? ""
+    }
+
+    private var statusText: String {
+        account.status
+    }
+
+    private var isConnected: Bool {
+        if let connected =
+            account.connected
+        {
+            return connected
+        }
+
+        return account.status ==
+            "connected"
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(
+                        Color.secondary
+                            .opacity(0.12)
+                    )
+
+                Image(
+                    systemName:
+                        "phone.fill"
+                )
+                .foregroundStyle(
+                    isConnected
+                    ? Color.green
+                    : Color.secondary
+                )
+            }
+            .frame(
+                width: 46,
+                height: 46
+            )
+
+            VStack(
+                alignment: .leading,
+                spacing: 4
+            ) {
+                Text(name)
+                    .font(.headline)
+
+                if !phone.isEmpty {
+                    Text(phone)
+                        .font(.caption)
+                        .foregroundStyle(
+                            Color.secondary
+                        )
+                }
+
+                Text(statusText)
+                    .font(.caption2)
+                    .foregroundStyle(
+                        isConnected
+                        ? Color.green
+                        : Color.secondary
+                    )
+            }
+
+            Spacer()
+
+            Image(
+                systemName:
+                    isConnected
+                    ? "checkmark.circle.fill"
+                    : "circle"
+            )
+            .foregroundStyle(
+                isConnected
+                ? Color.green
+                : Color.secondary
+            )
+        }
+        .padding(
+            .vertical,
+            4
+        )
+    }
 }
