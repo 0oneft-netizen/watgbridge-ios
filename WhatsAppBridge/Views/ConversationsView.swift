@@ -154,7 +154,7 @@ struct ConversationsView: View {
                 }
             }
                     .searchable(
-            text: $inboxSearch,
+            text: $searchText,
             prompt: "Search chats"
         )
 .navigationTitle("Chats")
@@ -490,35 +490,6 @@ private struct ConversationRow: View {
         )
     }
 
-    private var visibleConversations: [Conversation] {
-        let query =
-            inboxSearch.trimmingCharacters(
-                in: .whitespacesAndNewlines
-            )
-
-        guard !query.isEmpty else {
-            return conversations
-        }
-
-        return conversations.filter { conversation in
-            let name =
-                ChatIdentity.customerName(
-                    conversation: conversation
-                )
-
-            let phone =
-                ChatIdentity.customerPhone(
-                    from: conversation.jid
-                )
-
-            return name.localizedCaseInsensitiveContains(
-                query
-            ) ||
-            phone.localizedCaseInsensitiveContains(
-                query
-            )
-        }
-    }
 
 }
 
