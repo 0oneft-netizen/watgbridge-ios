@@ -45,6 +45,17 @@ struct SettingsView: View {
                     )
                 }
 
+                Section("WhatsApp Accounts") {
+                    NavigationLink {
+                        SessionsManagementView()
+                    } label: {
+                        Label(
+                            "Sessions",
+                            systemImage: "iphone.gen3"
+                        )
+                    }
+                }
+
                 Section("Business Tools") {
                     NavigationLink {
                         QuickRepliesView()

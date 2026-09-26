@@ -57,7 +57,7 @@ struct ConversationsView: View {
                             conversation: conversation
                         )
                     } label: {
-                        ConversationRow(
+                        ProductionConversationRow(
                             conversation: conversation
                         )
                     }
