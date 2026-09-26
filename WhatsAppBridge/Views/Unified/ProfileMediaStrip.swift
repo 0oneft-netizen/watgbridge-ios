@@ -107,13 +107,23 @@ private struct ProfileMediaThumbnail:
                 return
             }
 
-            localURL =
-                await MediaCache
-                    .shared
-                    .localURL(
-                        for:
-                            message
+            guard
+                let remoteURL =
+                    APIClient.shared.mediaURL(
+                        for: message
                     )
+            else {
+                return
+            }
+
+            localURL =
+                try? await MediaCache.shared.localURL(
+                    remoteURL: remoteURL,
+                    messageID:
+                        "\(message.accountID ?? "default")_\(message.messageID)",
+                    fileName: message.fileName,
+                    mimeType: message.mimeType
+                )
         }
     }
 }
