@@ -53,11 +53,11 @@ struct ProductionSessionRow: View {
                     .secondary
                 )
 
-                if !account.phone.isEmpty {
+                if !(account.phone ?? "").isEmpty {
                     Text(
                         "+"
                         +
-                        account.phone
+                        account.phone ?? ""
                     )
                     .font(
                         .caption
