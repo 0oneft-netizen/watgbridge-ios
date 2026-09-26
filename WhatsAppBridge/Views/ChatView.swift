@@ -170,22 +170,6 @@ struct ChatView: View {
                 )
 
             await loadMessages()
-
-            while !Task.isCancelled {
-                try? await Task.sleep(
-                    for: .seconds(1)
-                )
-
-                await loadMessages()
-
-                try? await APIClient.shared
-                    .markRead(
-                        chatJID:
-                            conversation.jid,
-                        accountID:
-                            conversation.accountID ?? "default"
-                    )
-            }
         }
         .photosPicker(
             isPresented: $showPhotos,
@@ -1067,6 +1051,8 @@ struct ChatView: View {
                         accountID:
                             conversation.accountID ?? "default"
                     )
+
+            messages = fetched
 
             ChatPerformanceMonitor.loaded(
                 count: messages.count,
