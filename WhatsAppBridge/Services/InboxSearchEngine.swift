@@ -1,5 +1,6 @@
 import Foundation
 
+@MainActor
 enum InboxSearchEngine {
     static func filter(
         _ conversations:
