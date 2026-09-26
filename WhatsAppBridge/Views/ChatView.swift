@@ -7,6 +7,8 @@ struct ChatView: View {
     let conversation: Conversation
 
     @State private var messages: [Message] = []
+    @State private var showMediaPreview = false
+    @State private var mediaCaption = ""
     @State private var isLoading = true
     @State private var errorMessage: String?
 
