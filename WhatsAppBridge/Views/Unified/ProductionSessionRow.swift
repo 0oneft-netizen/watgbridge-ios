@@ -33,7 +33,7 @@ struct ProductionSessionRow: View {
                 spacing: 4
             ) {
                 Text(
-                    account.displayName
+                    (account.displayName ?? "WhatsApp Account")
                 )
                 .font(
                     .headline
@@ -84,8 +84,7 @@ struct ProductionSessionRow: View {
     private var health:
         SessionHealthLevel {
 
-        switch account.status
-            .lowercased() {
+        switch (account.status ?? "").lowercased() {
 
         case "connected":
             return .healthy
