@@ -7,12 +7,11 @@ enum CustomerIdentityPresentation {
     ) -> String {
 
         let name =
-            conversation.name?
+            conversation.name
                 .trimmingCharacters(
                     in:
                         .whitespacesAndNewlines
-                )
-            ?? ""
+                )""
 
         if !name.isEmpty {
             return name
