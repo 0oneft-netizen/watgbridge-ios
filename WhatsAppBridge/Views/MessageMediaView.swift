@@ -24,51 +24,48 @@ struct MessageMediaView: View {
         message.type == "view_once_audio"
     }
 
+    @ViewBuilder
     var body: some View {
         if MessageMediaPolicy.isViewOnce(
             message
         ) {
             ViewOnceMessageView()
         } else {
-        Group {
-            if isViewOnce {
-                Label(
-                    "View once",
-                    systemImage: "1.circle"
-                )
-                .font(.subheadline.weight(.semibold))
-                .padding(10)
+            Group {
+                if let url = localURL {
+                    loadedMedia(url: url)
 
-            } else if let url = localURL {
-                loadedMedia(url: url)
-
-            } else if loadError {
-                Button {
-                    Task {
-                        await loadMedia(force: true)
+                } else if loadError {
+                    Button {
+                        Task {
+                            await loadMedia(
+                                force: true
+                            )
+                        }
+                    } label: {
+                        Label(
+                            "Tap to retry media",
+                            systemImage:
+                                "arrow.clockwise"
+                        )
+                        .frame(
+                            minWidth: 160,
+                            minHeight: 54
+                        )
                     }
-                } label: {
-                    Label(
-                        "Tap to retry media",
-                        systemImage: "arrow.clockwise"
-                    )
-                    .frame(
-                        minWidth: 160,
-                        minHeight: 54
-                    )
-                }
-                .buttonStyle(.plain)
+                    .buttonStyle(.plain)
 
-            } else {
-                ProgressView()
-                    .frame(
-                        minWidth: 160,
-                        minHeight: 80
-                    )
+                } else {
+                    ProgressView()
+                        .frame(
+                            minWidth: 160,
+                            minHeight: 80
+                        )
+                }
             }
-        }
-        .task(id: message.messageID) {
-            await loadMedia()
+            .task(id: message.messageID) {
+                await loadMedia()
+            }
         }
     }
 
@@ -584,5 +581,5 @@ private struct MediaViewer: View {
 
         return destination
     }
-        }
+    }
 }
