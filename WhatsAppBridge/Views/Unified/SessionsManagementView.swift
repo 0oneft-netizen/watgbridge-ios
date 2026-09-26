@@ -8,7 +8,7 @@ struct SessionsManagementView: View {
     var body: some View {
         List {
             SessionsHeaderView(
-                sessions: directory.sessions
+                sessions: Array(directory.sessions.values)
             )
             .listRowBackground(
                 Color.clear

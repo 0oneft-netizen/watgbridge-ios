@@ -17,6 +17,10 @@ enum ChatDesign {
     static let chatBackground =
         Color(uiColor: .systemBackground)
 
+    static let subtleFill =
+        Color(uiColor: .secondarySystemBackground)
+
+
     static let separator =
         Color(uiColor: .separator)
             .opacity(0.35)

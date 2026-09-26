@@ -67,7 +67,10 @@ final class SessionDirectory: ObservableObject {
                             ?? "",
                         status:
                             account.status
-                            ?? "unknown"
+                            ?? "unknown",
+                        accountType:
+                            account.accountType
+                            ?? "regular"
                     )
             }
 
