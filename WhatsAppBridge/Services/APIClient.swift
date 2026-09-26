@@ -164,6 +164,10 @@ final class APIClient {
             )
         }
 
+        addField(
+            "account_id",
+            accountID
+        )
         addField("chat_jid", chatJID)
         addField("type", type)
         addField("caption", caption)
@@ -247,6 +251,7 @@ final class APIClient {
 
         request.httpBody = try JSONSerialization.data(
             withJSONObject: [
+                    "account_id": accountID,
                 "message_id": messageID,
                 "chat_jid": chatJID,
                 "emoji": emoji
@@ -294,6 +299,7 @@ final class APIClient {
         request.httpBody =
             try JSONSerialization.data(
                 withJSONObject: [
+                    "account_id": accountID,
                     "message_id": messageID
                 ]
             )
@@ -317,7 +323,8 @@ final class APIClient {
 
     func searchMessages(
         chatJID: String,
-        query: String
+        query: String,
+        accountID: String = "default"
     ) async throws -> [Message] {
 
         var components = URLComponents(
@@ -330,6 +337,10 @@ final class APIClient {
         )
 
         components?.queryItems = [
+            URLQueryItem(
+                name: "account_id",
+                value: accountID
+            ),
             URLQueryItem(
                 name: "chat_jid",
                 value: chatJID
@@ -385,6 +396,7 @@ final class APIClient {
         request.httpBody =
             try JSONSerialization.data(
                 withJSONObject: [
+                    "account_id": accountID,
                     "chat_jid": chatJID,
                     "text": text,
                     "reply_message_id":
@@ -417,7 +429,8 @@ final class APIClient {
 
     func deleteForEveryone(
         chatJID: String,
-        messageID: String
+        messageID: String,
+        accountID: String = "default"
     ) async throws {
 
         let url =
@@ -439,6 +452,7 @@ final class APIClient {
         request.httpBody =
             try JSONSerialization.data(
                 withJSONObject: [
+                    "account_id": accountID,
                     "chat_jid": chatJID,
                     "message_id": messageID
                 ]

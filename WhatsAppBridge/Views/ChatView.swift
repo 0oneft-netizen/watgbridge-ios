@@ -102,9 +102,11 @@ struct ChatView: View {
                     do {
                         messages = try await APIClient.shared
                             .searchMessages(
-                                chatJID: conversation.jid,
-                                query: searchText
-                            )
+                    chatJID: conversation.jid,
+                    query: searchText,
+                    accountID:
+                        conversation.accountID ?? "default"
+                )
                     } catch {
                     }
                 }
@@ -242,7 +244,11 @@ struct ChatView: View {
                             onReact: { emoji in
                                 reactToProductionMessage(
                                     message,
-                                    emoji: emoji
+                                    emoji: emoji,
+                                accountID:
+                                    message.accountID
+                                    ?? conversation.accountID
+                                    ?? "default"
                                 )
                             },
                             onDelete: {
@@ -631,7 +637,9 @@ struct ChatView: View {
                         chatJID:
                             conversation.jid,
                         text: text,
-                        replyTo: reply
+                        replyTo: reply,
+                    accountID:
+                        conversation.accountID ?? "default"
                     )
             } else {
                 try await APIClient.shared

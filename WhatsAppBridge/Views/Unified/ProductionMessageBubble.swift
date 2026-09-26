@@ -59,29 +59,11 @@ struct ProductionMessageBubble: View {
             return original.text
         }
 
-        switch original.type {
-        case "image":
-            return "Photo"
+        return MessagePresentation
+            .fallbackText(
+                for: original
+            )
 
-        case "video":
-            return "Video"
-
-        case "video_note":
-            return "Video message"
-
-        case "voice":
-            return "Voice message"
-
-        case "audio":
-            return "Audio"
-
-        case "document":
-            return original.fileName
-                ?? "Document"
-
-        default:
-            return "Message"
-        }
     }
 
     var body: some View {
@@ -97,12 +79,8 @@ struct ProductionMessageBubble: View {
                     message.fromMe
                     ? .trailing
                     : .leading,
-                spacing: 3
+                spacing: 2
             ) {
-                SessionRouteBadge(
-                    name: sessionName
-                )
-
                 UnifiedMessageBubble(
                     message: message,
                     senderName: sender,

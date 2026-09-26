@@ -30,9 +30,18 @@ struct ProductionComposerView: View {
                     )
                     .font(
                         .system(
-                            size: 20,
-                            weight: .medium
+                            size: 18,
+                            weight: .semibold
                         )
+                    )
+                    .frame(
+                        width: 34,
+                        height: 34
+                    )
+                    .background(
+                        Color.secondary
+                            .opacity(0.10),
+                        in: Circle()
                     )
                 }
 
@@ -77,7 +86,7 @@ struct ProductionComposerView: View {
                             .secondarySystemBackground
                     ),
                     in: RoundedRectangle(
-                        cornerRadius: 20,
+                        cornerRadius: 21,
                         style: .continuous
                     )
                 )
@@ -114,13 +123,18 @@ struct ProductionComposerView: View {
                         .foregroundStyle(.white)
                     }
                     .frame(
-                        width: 42,
-                        height: 42
+                        width: 40,
+                        height: 40
                     )
                 }
             }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 6)
+            .padding(.horizontal, 10)
+            .padding(.top, 6)
+            .padding(.bottom, 7)
+            .animation(
+                .easeInOut(duration: 0.16),
+                value: text.isEmpty
+            )
         }
         .background(.ultraThinMaterial)
     }

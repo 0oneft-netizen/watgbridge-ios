@@ -5,65 +5,54 @@ struct ChatBackgroundView: View {
         ZStack {
             Color(
                 uiColor:
-                    UIColor {
-                        traits in
-
-                        if traits.userInterfaceStyle
-                            == .dark {
-                            return UIColor(
-                                red: 0.04,
-                                green: 0.06,
-                                blue: 0.065,
-                                alpha: 1
-                            )
-                        }
-
-                        return UIColor(
-                            red: 0.93,
-                            green: 0.91,
-                            blue: 0.86,
-                            alpha: 1
-                        )
-                    }
+                    .systemBackground
             )
 
-            GeometryReader { proxy in
-                Canvas { context, size in
-                    let step: CGFloat = 48
+            LinearGradient(
+                colors: [
+                    ChatDesign.accent
+                        .opacity(0.035),
+                    Color.clear,
+                    Color.secondary
+                        .opacity(0.025)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
 
-                    var x: CGFloat = -20
+            Canvas { context, size in
+                let spacing: CGFloat = 42
+                let dotSize: CGFloat = 1.35
 
-                    while x < size.width + 20 {
-                        var y: CGFloat = -20
+                var y: CGFloat = 16
 
-                        while y < size.height + 20 {
-                            let rect = CGRect(
-                                x: x,
-                                y: y,
-                                width: 18,
-                                height: 18
+                while y < size.height {
+                    var x: CGFloat = 18
+
+                    while x < size.width {
+                        let rect = CGRect(
+                            x: x,
+                            y: y,
+                            width: dotSize,
+                            height: dotSize
+                        )
+
+                        context.fill(
+                            Path(
+                                ellipseIn: rect
+                            ),
+                            with: .color(
+                                Color.secondary
+                                    .opacity(0.055)
                             )
+                        )
 
-                            context.opacity = 0.035
-
-                            context.stroke(
-                                Path(
-                                    ellipseIn: rect
-                                ),
-                                with: .color(
-                                    .secondary
-                                ),
-                                lineWidth: 1
-                            )
-
-                            y += step
-                        }
-
-                        x += step
+                        x += spacing
                     }
+
+                    y += spacing
                 }
             }
-            .allowsHitTesting(false)
         }
         .ignoresSafeArea()
     }

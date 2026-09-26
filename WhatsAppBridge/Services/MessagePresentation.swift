@@ -1,74 +1,97 @@
 import Foundation
 
 enum MessagePresentation {
-    static func preview(
+    static func fallbackText(
         for message: Message
     ) -> String {
-        if message.deletedRemote == true {
-            return "Message deleted"
-        }
-
-        if !message.text.isEmpty {
+        if !message.text
+            .trimmingCharacters(
+                in: .whitespacesAndNewlines
+            )
+            .isEmpty {
             return message.text
         }
 
-        switch message.type {
+        switch message.type.lowercased() {
         case "image":
-            return "📷 Photo"
+            return "Photo"
 
         case "video":
-            return "🎥 Video"
-
-        case "video_note":
-            return "◉ Video message"
-
-        case "voice":
-            return "🎤 Voice message"
-
-        case "audio":
-            return "🎵 Audio"
-
-        case "document":
-            return "📄 \(message.fileName ?? "Document")"
+            return "Video"
 
         case "gif":
             return "GIF"
 
-        case "view_once_image":
-            return "① Photo"
+        case "voice":
+            return "Voice message"
 
-        case "view_once_video":
-            return "① Video"
+        case "audio":
+            return "Audio"
 
-        case "view_once_audio":
-            return "① Voice message"
+        case "video_note", "ptv":
+            return "Video message"
+
+        case "document":
+            return message.fileName
+                ?? "Document"
+
+        case "sticker":
+            return "Sticker"
+
+        case "contact":
+            return "Contact"
+
+        case "location":
+            return "Location"
+
+        case "view_once",
+             "view_once_image",
+             "view_once_video":
+            return "View once"
 
         default:
             return "Message"
         }
     }
 
-    static func timestamp(
-        _ value: Int64
-    ) -> String {
-        let seconds: TimeInterval
+    static func systemImage(
+        for message: Message
+    ) -> String? {
+        switch message.type.lowercased() {
+        case "image":
+            return "photo"
 
-        if value > 10_000_000_000 {
-            seconds =
-                TimeInterval(value)
-                / 1000
-        } else {
-            seconds =
-                TimeInterval(value)
+        case "video":
+            return "video"
+
+        case "gif":
+            return "photo.stack"
+
+        case "voice":
+            return "waveform"
+
+        case "audio":
+            return "music.note"
+
+        case "video_note", "ptv":
+            return "video.circle"
+
+        case "document":
+            return "doc"
+
+        case "contact":
+            return "person.crop.circle"
+
+        case "location":
+            return "location"
+
+        case "view_once",
+             "view_once_image",
+             "view_once_video":
+            return "viewfinder"
+
+        default:
+            return nil
         }
-
-        return Date(
-            timeIntervalSince1970:
-                seconds
-        )
-        .formatted(
-            date: .omitted,
-            time: .shortened
-        )
     }
 }

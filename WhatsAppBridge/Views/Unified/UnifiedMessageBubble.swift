@@ -46,13 +46,6 @@ struct UnifiedMessageBubble: View {
                 alignment: .leading,
                 spacing: 4
             ) {
-                if !message.fromMe {
-                    SenderIdentityPill(
-                        name: senderName,
-                        accountName: accountName
-                    )
-                }
-
                 if let quotedText,
                    !quotedText.isEmpty {
                     quotedMessage(quotedText)
@@ -82,10 +75,23 @@ struct UnifiedMessageBubble: View {
                     Text(reaction)
                         .font(.system(size: 16))
                         .padding(.horizontal, 7)
-                        .padding(.vertical, 2)
+                        .padding(.vertical, 3)
                         .background(.ultraThinMaterial)
                         .clipShape(Capsule())
-                        .offset(y: 9)
+                        .overlay {
+                            Capsule()
+                                .stroke(
+                                    Color.secondary
+                                        .opacity(0.12),
+                                    lineWidth: 0.5
+                                )
+                        }
+                        .shadow(
+                            color: .black.opacity(0.08),
+                            radius: 2,
+                            y: 1
+                        )
+                        .offset(y: 10)
                 }
             }
             .padding(.horizontal, 9)
@@ -234,7 +240,7 @@ struct UnifiedMessageBubble: View {
 
     private var deletedMessage: some View {
         Label(
-            "This message was deleted",
+            "Message deleted",
             systemImage: "nosign"
         )
         .font(.subheadline.italic())

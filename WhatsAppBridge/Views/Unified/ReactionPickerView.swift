@@ -13,31 +13,42 @@ struct ReactionPickerView: View {
     ]
 
     var body: some View {
-        HStack(spacing: 14) {
+        HStack(spacing: 5) {
             ForEach(
                 reactions,
                 id: \.self
             ) { reaction in
                 Button {
-                    onSelect(
-                        reaction
-                    )
+                    AppHaptics.light()
+
+                    onSelect(reaction)
                 } label: {
                     Text(reaction)
-                        .font(
-                            .system(
-                                size: 25
-                            )
+                        .font(.system(size: 25))
+                        .frame(
+                            width: 39,
+                            height: 39
                         )
+                        .contentShape(Circle())
                 }
                 .buttonStyle(.plain)
             }
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 9)
-        .background(
-            .regularMaterial,
-            in: Capsule()
+        .padding(.horizontal, 7)
+        .padding(.vertical, 5)
+        .background(.ultraThinMaterial)
+        .clipShape(Capsule())
+        .overlay {
+            Capsule()
+                .stroke(
+                    Color.secondary.opacity(0.12),
+                    lineWidth: 0.5
+                )
+        }
+        .shadow(
+            color: .black.opacity(0.12),
+            radius: 10,
+            y: 4
         )
     }
 }

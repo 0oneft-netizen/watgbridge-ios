@@ -7,6 +7,13 @@ struct SessionsManagementView: View {
 
     var body: some View {
         List {
+            SessionsHeaderView(
+                sessions: directory.sessions
+            )
+            .listRowBackground(
+                Color.clear
+            )
+
             if directory.sessions.isEmpty {
                 ContentUnavailableView(
                     "No Sessions",

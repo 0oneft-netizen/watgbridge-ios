@@ -25,6 +25,11 @@ struct MessageMediaView: View {
     }
 
     var body: some View {
+        if MessageMediaPolicy.isViewOnce(
+            message
+        ) {
+            ViewOnceMessageView()
+        } else {
         Group {
             if isViewOnce {
                 Label(
@@ -579,4 +584,5 @@ private struct MediaViewer: View {
 
         return destination
     }
+        }
 }

@@ -62,6 +62,10 @@ struct ProductionChatHeader: View {
             maxWidth: .infinity,
             alignment: .leading
         )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(
+            "\(customerName), \(sessionName)"
+        )
         .task {
             if sessions.sessions.isEmpty {
                 await sessions.refresh()
