@@ -16,6 +16,16 @@ struct ActiveSessionsContent: View {
                     .sorted(
                         sessions.accounts
                     )
+                    .map { session in
+                        SessionAccountDTO(
+                            id: session.id,
+                            displayName: session.name,
+                            phone: session.phone,
+                            jid: session.jid,
+                            status: session.status,
+                            accountType: session.accountType
+                        )
+                    }
             ) { account in
 
                 NavigationLink {
