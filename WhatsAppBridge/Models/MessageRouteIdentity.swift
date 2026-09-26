@@ -1,7 +1,6 @@
 import Foundation
 
-struct MessageRouteIdentity:
-    Hashable {
+struct MessageRouteIdentity: Hashable, Sendable {
 
     let route:
         ConversationRoute
@@ -31,6 +30,15 @@ struct MessageRouteIdentity:
 
         localID =
             message.id
+    }
+
+
+    var accountID: String {
+        route.accountID
+    }
+
+    var chatJID: String {
+        route.chatJID
     }
 
     var key: String {

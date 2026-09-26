@@ -5,7 +5,7 @@ struct ConversationSharedContentView: View {
 
     @State
     private var selection:
-        ConversationMediaFilter = .media
+        SharedContentFilter = .media
 
     private var filtered: [Message] {
         messages.filter {

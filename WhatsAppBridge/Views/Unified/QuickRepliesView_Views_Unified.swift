@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct QuickRepliesView: View {
+struct QuickReplyPickerView: View {
     let select: (String) -> Void
 
     @Environment(\.dismiss)

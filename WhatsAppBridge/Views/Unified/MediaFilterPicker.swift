@@ -3,7 +3,7 @@ import SwiftUI
 struct MediaFilterPicker: View {
     @Binding
     var selection:
-        ConversationMediaFilter
+        SharedContentFilter
 
     var body: some View {
         Picker(
@@ -11,7 +11,7 @@ struct MediaFilterPicker: View {
             selection: $selection
         ) {
             ForEach(
-                ConversationMediaFilter
+                SharedContentFilter
                     .allCases
             ) { filter in
                 Text(filter.title)
