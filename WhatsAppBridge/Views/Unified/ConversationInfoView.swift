@@ -14,10 +14,23 @@ struct ConversationInfoView: View {
     }
 
     private var customerPhone: String {
-        CustomerIdentityPresentation
-            .formattedPhone(
-                from: conversation.jid
-            )
+        let raw = conversation.jid
+            .split(separator: "@")
+            .first
+            .map(String.init) ?? conversation.jid
+
+        let number = raw
+            .split(separator: ":")
+            .first
+            .map(String.init) ?? raw
+
+        guard !number.isEmpty else {
+            return conversation.jid
+        }
+
+        return number.hasPrefix("+")
+            ? number
+            : "+" + number
     }
 
     private var sessionName: String {
