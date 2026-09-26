@@ -18,11 +18,7 @@ struct ActiveChatErrorStrip: View {
                 )
 
                 Text(
-                    UserFacingError
-                        .message(
-                            from:
-                                error
-                        )
+                    error
                 )
                 .font(.caption)
                 .lineLimit(2)
