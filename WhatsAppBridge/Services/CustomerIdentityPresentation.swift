@@ -11,7 +11,7 @@ enum CustomerIdentityPresentation {
                 .trimmingCharacters(
                     in:
                         .whitespacesAndNewlines
-                )""
+                )
 
         if !name.isEmpty {
             return name
