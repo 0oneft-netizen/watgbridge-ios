@@ -1,79 +1,72 @@
 import SwiftUI
 
 struct InboxAccountPicker: View {
-    @Binding
-    var accountID:
-        String?
-
-    @ObservedObject
-    private var sessions =
-        SessionDirectory.shared
+    @Binding var accountID: String?
+    @ObservedObject var sessions: SessionDirectory
 
     var body: some View {
         Menu {
             Button {
                 accountID = nil
             } label: {
-                if accountID == nil {
-                    Label(
-                        "All Accounts",
-                        systemImage:
-                            "checkmark"
-                    )
-                } else {
-                    Text(
-                        "All Accounts"
-                    )
-                }
+                Label(
+                    "כל החשבונות",
+                    systemImage: accountID == nil
+                        ? "checkmark.circle.fill"
+                        : "circle"
+                )
             }
 
             Divider()
 
             ForEach(
-                sessions.accounts
-            ) { account in
+                Array(sessions.accounts.enumerated()),
+                id: \.offset
+            ) { _, account in
+                let resolvedID = account.id
 
                 Button {
-                    accountID =
-                        account.id
+                    accountID = resolvedID
                 } label: {
-                    if accountID ==
-                        account.id {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(
+                                account.displayName
+                                ?? resolvedID
+                            )
 
-                        Label(
-                            account
-                                .displayName,
-                            systemImage:
-                                "checkmark"
-                        )
-                    } else {
-                        Text(
-                            account
-                                .displayName
-                        )
+                            if let phone = account.phone,
+                               !phone.isEmpty {
+                                Text(phone)
+                                    .font(.caption)
+                            }
+                        }
+
+                        if accountID == resolvedID {
+                            Image(systemName: "checkmark")
+                        }
                     }
                 }
             }
         } label: {
             Label(
-                selectedName,
-                systemImage:
-                    "rectangle.stack"
+                selectedTitle,
+                systemImage: "person.2.circle"
             )
         }
     }
 
-    private var selectedName:
-        String {
-        guard
-            let accountID
-        else {
-            return "All Accounts"
+    private var selectedTitle: String {
+        guard let accountID else {
+            return "כל החשבונות"
         }
 
-        return sessions.name(
-            for:
-                accountID
-        )
+        if let account = sessions.accounts.first(
+            where: { $0.id == accountID }
+        ) {
+            return account.displayName ?? accountID
+        }
+
+        return accountID
     }
 }
