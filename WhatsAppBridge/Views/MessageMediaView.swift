@@ -582,4 +582,3 @@ private struct MediaViewer: View {
         return destination
     }
     }
-}
