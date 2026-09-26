@@ -14,9 +14,11 @@ struct ChatView: View {
     @State private var replyToMessage: Message?
     @State private var forwardMessage: Message?
     @State private var isSending = false
+    @State private var isRefreshingMessages = false
+    @State private var isSendingMedia = false
+    @State private var mediaSendProgress = 0.0
 
-    @State private var selectedPhotoItem:
-        PhotosPickerItem?
+    @State private var selectedPhotoItems: [PhotosPickerItem] = []
 
     @State private var showPhotos = false
     @State private var showCamera = false
@@ -24,6 +26,7 @@ struct ChatView: View {
     @State private var showAttachmentMenu = false
     @State private var searchText = ""
     @State private var isSearching = false
+    @State private var showConversationInfo = false
 
 
     @StateObject
@@ -40,9 +43,14 @@ struct ChatView: View {
                 placement: .principal
             ) {
                 HStack(spacing: 8) {
-                    ChatAvatar(
-                        conversation: conversation
-                    )
+                    Button {
+                        showConversationInfo = true
+                    } label: {
+                        ChatAvatar(
+                            conversation: conversation
+                        )
+                    }
+                    .buttonStyle(.plain)
 
                     VStack(
                         alignment: .leading,
@@ -94,22 +102,35 @@ struct ChatView: View {
         )
         .onChange(of: searchText) {
             Task {
-                if searchText.trimmingCharacters(
-                    in: .whitespacesAndNewlines
-                ).isEmpty {
+                let normalizedSearch =
+                    searchText.trimmingCharacters(
+                        in: .whitespacesAndNewlines
+                    )
+
+                if normalizedSearch.isEmpty {
                     await loadMessages()
                 } else {
                     do {
                         messages = try await APIClient.shared
                             .searchMessages(
                     chatJID: conversation.jid,
-                    query: searchText,
+                    query: normalizedSearch,
                     accountID:
                         conversation.accountID ?? "default"
                 )
                     } catch {
                     }
                 }
+            }
+        }
+        .sheet(
+            isPresented: $showConversationInfo
+        ) {
+            NavigationStack {
+                CustomerProfileView(
+                    conversation: conversation,
+                    messages: messages
+                )
             }
         }
         .sheet(
@@ -123,14 +144,16 @@ struct ChatView: View {
             NotificationCenter.default.publisher(
                 for: .bridgeRealtimeUpdate
             )
-        ) { _ in
+        ) { notification in
             Task {
                 await loadMessages()
 
                 try? await APIClient.shared
                     .markRead(
                         chatJID:
-                            conversation.jid
+                            conversation.jid,
+                        accountID:
+                            conversation.accountID ?? "default"
                     )
             }
         }
@@ -138,7 +161,9 @@ struct ChatView: View {
             try? await APIClient.shared
                 .markRead(
                     chatJID:
-                        conversation.jid
+                        conversation.jid,
+                    accountID:
+                        conversation.accountID ?? "default"
                 )
 
             await loadMessages()
@@ -153,13 +178,16 @@ struct ChatView: View {
                 try? await APIClient.shared
                     .markRead(
                         chatJID:
-                            conversation.jid
+                            conversation.jid,
+                        accountID:
+                            conversation.accountID ?? "default"
                     )
             }
         }
         .photosPicker(
             isPresented: $showPhotos,
-            selection: $selectedPhotoItem,
+            selection: $selectedPhotoItems,
+            maxSelectionCount: 20,
             matching: .any(
                 of: [
                     .images,
@@ -168,22 +196,46 @@ struct ChatView: View {
             )
         )
         .onChange(
-            of: selectedPhotoItem
+            of: selectedPhotoItems
         ) {
-            Task {
-                await sendSelectedMedia()
+            if !selectedPhotoItems.isEmpty {
+                showMediaPreview = true
             }
+        }
+        .sheet(
+            isPresented: $showMediaPreview
+        ) {
+            MediaSendPreview(
+                items: selectedPhotoItems,
+                caption: $mediaCaption,
+                onCancel: {
+                    selectedPhotoItems = []
+                    mediaCaption = ""
+                    showMediaPreview = false
+                },
+                onSend: {
+                    showMediaPreview = false
+                    Task {
+                        await sendSelectedMediaItems()
+                    }
+                }
+            )
         }
         .sheet(
             isPresented: $showCamera
         ) {
-            CameraPicker { image in
-                Task {
-                    await sendCameraImage(
-                        image
-                    )
+            CameraPicker(
+                onImage: { image in
+                    Task {
+                        await sendCameraImage(image)
+                    }
+                },
+                onVideo: { url in
+                    Task {
+                        await sendCameraVideo(url)
+                    }
                 }
-            }
+            )
             .ignoresSafeArea()
         }
         .fileImporter(
@@ -231,13 +283,48 @@ struct ChatView: View {
     private var messageList: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(spacing: 6) {
-                    ForEach(messages) {
-                        message in
+                LazyVStack(spacing: ConversationDesign.messageSpacing) {
+                    ForEach(
+                        Array(messages.enumerated()),
+                        id: \.element.id
+                    ) { index, message in
+
+                        let previous =
+                            index > 0
+                            ? messages[index - 1]
+                            : nil
+
+                        let next =
+                            index + 1 < messages.count
+                            ? messages[index + 1]
+                            : nil
+
+                        if MessageGrouping.needsDateSeparator(
+                            message,
+                            previous: previous
+                        ) {
+                            ChatDateChip(
+                                timestamp:
+                                    message.createdAt
+                            )
+                            .frame(
+                                maxWidth: .infinity
+                            )
+                        }
 
                         ProductionMessageBubble(
                             message: message,
                             messages: messages,
+                            beginsGroup:
+                                MessageGrouping.beginsGroup(
+                                    message,
+                                    previous: previous
+                                ),
+                            endsGroup:
+                                MessageGrouping.endsGroup(
+                                    message,
+                                    next: next
+                                ),
                             onReply: {
                                 replyToMessage = message
                             },
@@ -254,21 +341,41 @@ struct ChatView: View {
                             }
                         )
                         .id(message.id)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 1)
+                        .padding(
+                            .horizontal,
+                            ConversationDesign.horizontalInset
+                        )
+                        .padding(
+                            .vertical,
+                            MessageGrouping.endsGroup(
+                                message,
+                                next: next
+                            ) ? 3 : 0
+                        )
 }
                 }
                 .padding(.horizontal, 8)
                 .padding(.vertical, 12)
             }
 
+            .scrollDismissesKeyboard(.interactively)
+            .defaultScrollAnchor(.bottom)
             .refreshable {
                 await loadMessages()
             }
             .onChange(
-                of: messages.count
+                of: messages.last?.id
             ) {
-                scrollToBottom(proxy)
+                guard let last = messages.last else {
+                    return
+                }
+
+                withAnimation(.easeOut(duration: 0.18)) {
+                    proxy.scrollTo(
+                        last.id,
+                        anchor: .bottom
+                    )
+                }
             }
             .onAppear {
                 scrollToBottom(proxy)
@@ -347,15 +454,25 @@ struct ChatView: View {
                     )
             )
 
-            Text("Recording…")
-                .foregroundStyle(
-                    .secondary
-                )
+            VStack(
+                alignment: .leading,
+                spacing: 2
+            ) {
+                Text("Recording voice message")
+                    .font(.subheadline.weight(.medium))
+
+                Text("Tap the microphone again to send")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
 
             Spacer()
 
-            Button("Cancel") {
+            Button {
                 recorder.cancel()
+            } label: {
+                Image(systemName: "trash")
+                    .font(.headline)
             }
             .foregroundStyle(.red)
         }
@@ -419,8 +536,18 @@ struct ChatView: View {
 
 
     private func toggleProductionRecording() {
-        // Production voice adapter.
-        // Existing AudioRecorder flow is wired separately.
+        if recorder.isRecording {
+            guard let url = recorder.stop() else { return }
+            Task { await sendVoice(url: url) }
+        } else {
+            Task {
+                do {
+                    try await recorder.start()
+                } catch {
+                    errorMessage = error.localizedDescription
+                }
+            }
+        }
     }
 
 
@@ -662,19 +789,24 @@ struct ChatView: View {
     }
 
     @MainActor
-    private func sendSelectedMedia()
+    private func sendSelectedMediaItems()
         async {
+        guard !isSendingMedia else { return }
+        isSendingMedia = true
+        mediaSendProgress = 0
 
-        guard let item =
-                selectedPhotoItem
-        else {
-            return
-        }
+
+
+        let items = selectedPhotoItems
+        let caption = mediaCaption
+
+        guard !items.isEmpty else { return }
 
         defer {
-            selectedPhotoItem = nil
+            selectedPhotoItems = []
         }
 
+        for item in items {
         do {
             guard let data =
                     try await item
@@ -719,15 +851,19 @@ struct ChatView: View {
                     filename:
                         "media.\(ext)",
                     mimeType: mime,
+                    caption: item == items.first ? caption : "",
                     accountID: conversation.accountID ?? "default"
                 )
 
-            await loadMessages()
 
         } catch {
             errorMessage =
                 error.localizedDescription
         }
+        }
+
+        mediaCaption = ""
+        await loadMessages()
     }
 
     @MainActor
@@ -760,6 +896,29 @@ struct ChatView: View {
         } catch {
             errorMessage =
                 error.localizedDescription
+        }
+    }
+
+    @MainActor
+    private func sendCameraVideo(
+        _ url: URL
+    ) async {
+        do {
+            let data = try Data(contentsOf: url)
+
+            try await APIClient.shared.sendMedia(
+                chatJID: conversation.jid,
+                type: "video",
+                data: data,
+                filename: "camera.mov",
+                mimeType: "video/quicktime",
+                accountID:
+                    conversation.accountID ?? "default"
+            )
+
+            await loadMessages()
+        } catch {
+            errorMessage = error.localizedDescription
         }
     }
 
@@ -864,12 +1023,22 @@ struct ChatView: View {
     private func loadMessages()
         async {
 
+        guard !isRefreshingMessages else {
+            return
+        }
+
+        isRefreshingMessages = true
+
+        defer {
+            isRefreshingMessages = false
+        }
+
         if messages.isEmpty {
             isLoading = true
         }
 
         do {
-            messages =
+            let fetched =
                 try await APIClient.shared
                     .fetchMessages(
                         chatJID:

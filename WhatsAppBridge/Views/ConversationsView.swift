@@ -153,7 +153,11 @@ struct ConversationsView: View {
                     }
                 }
             }
-            .navigationTitle("Chats")
+                    .searchable(
+            text: $inboxSearch,
+            prompt: "Search chats"
+        )
+.navigationTitle("Chats")
             .toolbar {
                 ToolbarItem(
                     placement: .topBarTrailing
@@ -485,6 +489,37 @@ private struct ConversationRow: View {
             3
         )
     }
+
+    private var visibleConversations: [Conversation] {
+        let query =
+            inboxSearch.trimmingCharacters(
+                in: .whitespacesAndNewlines
+            )
+
+        guard !query.isEmpty else {
+            return conversations
+        }
+
+        return conversations.filter { conversation in
+            let name =
+                ChatIdentity.customerName(
+                    conversation: conversation
+                )
+
+            let phone =
+                ChatIdentity.customerPhone(
+                    from: conversation.jid
+                )
+
+            return name.localizedCaseInsensitiveContains(
+                query
+            ) ||
+            phone.localizedCaseInsensitiveContains(
+                query
+            )
+        }
+    }
+
 }
 
 // BUILD_TRIGGER_REALTIME_FIX

@@ -75,30 +75,24 @@ struct ForwardMessageView: View {
     private func forward(
         to conversation: Conversation
     ) async {
-        guard !sending else {
-            return
-        }
-
+        guard !sending else { return }
         sending = true
 
-        let text: String
-
-        if message.text.isEmpty {
-            text = "Forwarded \(message.type)"
-        } else {
-            text = message.text
-        }
-
         do {
-            try await APIClient.shared
-                .sendMessage(
-                    chatJID:
-                        conversation.jid,
-                    text: text
+            if message.type == "text" {
+                try await APIClient.shared.sendMessage(
+                    chatJID: conversation.jid,
+                    text: message.text,
+                    accountID: conversation.accountID ?? "default"
                 )
+            } else {
+                try await APIClient.shared.forwardMedia(
+                    message,
+                    to: conversation
+                )
+            }
 
             dismiss()
-
         } catch {
             sending = false
         }

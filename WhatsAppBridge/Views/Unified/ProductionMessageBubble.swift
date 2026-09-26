@@ -1,8 +1,11 @@
 import SwiftUI
 
 struct ProductionMessageBubble: View {
+    @State private var replyDrag: CGFloat = 0
     let message: Message
     let messages: [Message]
+    var beginsGroup: Bool = true
+    var endsGroup: Bool = true
 
     let onReply: () -> Void
     let onReact: (String) -> Void
@@ -64,6 +67,18 @@ struct ProductionMessageBubble: View {
                 for: original
             )
 
+    }
+
+    private var hasRenderableMedia: Bool {
+        switch message.type {
+        case "image", "video", "gif", "video_note",
+             "voice", "audio", "document",
+             "view_once_image", "view_once_video",
+             "view_once_audio":
+            return true
+        default:
+            return false
+        }
     }
 
     var body: some View {

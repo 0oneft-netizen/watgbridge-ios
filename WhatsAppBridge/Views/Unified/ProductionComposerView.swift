@@ -50,14 +50,17 @@ struct ProductionComposerView: View {
                     spacing: 8
                 ) {
                     TextField(
-                        "Message",
+                        "Message…",
                         text: $text,
                         axis: .vertical
                     )
-                    .lineLimit(1...6)
+                     .lineLimit(1...6)
+                    .submitLabel(.send)
+                    .font(.system(size: 16))
+                    .foregroundStyle(.primary)
                     .padding(
                         .vertical,
-                        9
+                        10
                     )
 
                     Button(

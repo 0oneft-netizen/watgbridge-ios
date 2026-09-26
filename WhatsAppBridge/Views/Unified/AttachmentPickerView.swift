@@ -1,51 +1,73 @@
 import SwiftUI
 
 struct AttachmentPickerView: View {
-    let onSelect:
-        (ComposerAttachment) -> Void
+    let onCamera: () -> Void
+    let onPhotos: () -> Void
+    let onDocument: () -> Void
+
+    @Environment(\.dismiss)
+    private var dismiss
 
     var body: some View {
-        HStack(spacing: 24) {
-            ForEach(
-                ComposerAttachment.allCases
-            ) { item in
-                Button {
-                    AppHaptics.selection()
-                    onSelect(item)
-                } label: {
-                    VStack(spacing: 7) {
-                        ZStack {
-                            Circle()
-                                .fill(
-                                    ChatDesign
-                                        .subtleFill
-                                )
+        VStack(spacing: 18) {
+            Capsule()
+                .fill(Color.secondary.opacity(0.35))
+                .frame(width: 38, height: 5)
+                .padding(.top, 8)
 
-                            Image(
-                                systemName:
-                                    item.systemImage
-                            )
-                            .font(.title3)
-                            .foregroundStyle(
-                                ChatDesign.accent
-                            )
-                        }
-                        .frame(
-                            width: 48,
-                            height: 48
-                        )
+            Text("Share")
+                .font(.headline)
 
-                        Text(item.title)
-                            .font(.caption)
-                            .foregroundStyle(
-                                .primary
-                            )
-                    }
-                }
-                .buttonStyle(.plain)
+            HStack(spacing: 26) {
+                attachment(
+                    "Camera",
+                    icon: "camera.fill",
+                    action: onCamera
+                )
+
+                attachment(
+                    "Photos",
+                    icon: "photo.on.rectangle.angled",
+                    action: onPhotos
+                )
+
+                attachment(
+                    "Document",
+                    icon: "doc.fill",
+                    action: onDocument
+                )
             }
+            .padding(.horizontal)
+            .padding(.bottom, 24)
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 14)
+        .presentationDetents([.height(190)])
+        .presentationDragIndicator(.hidden)
+    }
+
+    private func attachment(
+        _ title: String,
+        icon: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button {
+            dismiss()
+            action()
+        } label: {
+            VStack(spacing: 8) {
+                ZStack {
+                    Circle()
+                        .fill(Color.secondary.opacity(0.12))
+                        .frame(width: 58, height: 58)
+
+                    Image(systemName: icon)
+                        .font(.title2)
+                }
+
+                Text(title)
+                    .font(.caption)
+            }
+            .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.plain)
     }
 }

@@ -573,3 +573,49 @@ extension APIClient {
         }
     }
 }
+
+extension APIClient {
+    func forwardMedia(
+        _ message: Message,
+        to conversation: Conversation
+    ) async throws {
+        guard MessageMediaPolicy.mayShare(message),
+              let sourceURL = mediaURL(
+                for: message.messageID,
+                accountID: message.accountID
+              )
+        else {
+            throw URLError(.unsupportedURL)
+        }
+
+        let (data, response) =
+            try await URLSession.shared.data(from: sourceURL)
+
+        guard let http = response as? HTTPURLResponse,
+              (200...299).contains(http.statusCode),
+              !data.isEmpty
+        else {
+            throw URLError(.badServerResponse)
+        }
+
+        let type: String
+        switch message.type {
+        case "image": type = "image"
+        case "video", "gif": type = "video"
+        case "voice": type = "voice"
+        case "audio": type = "audio"
+        case "document": type = "document"
+        default: throw URLError(.unsupportedURL)
+        }
+
+        try await sendMedia(
+            chatJID: conversation.jid,
+            type: type,
+            data: data,
+            filename: message.fileName ?? "forwarded-media",
+            mimeType: message.mimeType ?? "application/octet-stream",
+            caption: message.text,
+            accountID: conversation.accountID ?? "default"
+        )
+    }
+}

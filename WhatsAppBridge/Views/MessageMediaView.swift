@@ -24,9 +24,23 @@ struct MessageMediaView: View {
         message.type == "view_once_audio"
     }
 
+    private var isSupportedMedia: Bool {
+        switch message.type {
+        case "image", "video", "gif", "video_note",
+             "voice", "audio", "document",
+             "view_once_image", "view_once_video",
+             "view_once_audio":
+            return true
+        default:
+            return false
+        }
+    }
+
     @ViewBuilder
     var body: some View {
-        if MessageMediaPolicy.isViewOnce(
+        if !isSupportedMedia {
+            EmptyView()
+        } else if MessageMediaPolicy.isViewOnce(
             message
         ) {
             ViewOnceMessageView()
@@ -44,7 +58,7 @@ struct MessageMediaView: View {
                         }
                     } label: {
                         Label(
-                            "Tap to retry media",
+                            "Media unavailable · Tap to retry",
                             systemImage:
                                 "arrow.clockwise"
                         )
@@ -193,52 +207,11 @@ struct MessageMediaView: View {
             )
 
         case "document":
-            ShareLink(item: url) {
-                HStack(spacing: 10) {
-                    Image(systemName: "doc.fill")
-                        .font(.title2)
-
-                    VStack(alignment: .leading) {
-                        Text(
-                            message.fileName?
-                                .isEmpty == false
-                            ? message.fileName!
-                            : "Document"
-                        )
-                        .font(
-                            .subheadline
-                                .weight(.semibold)
-                        )
-                        .lineLimit(2)
-
-                        if let mime =
-                            message.mimeType,
-                           !mime.isEmpty {
-                            Text(mime)
-                                .font(.caption2)
-                                .foregroundStyle(
-                                    .secondary
-                                )
-                        }
-                    }
-
-                    Spacer()
-
-                    Image(
-                        systemName:
-                            "square.and.arrow.up"
-                    )
-                }
-                .padding(10)
-                .background(
-                    Color.secondary.opacity(0.08)
-                )
-                .clipShape(
-                    RoundedRectangle(
-                        cornerRadius: 10
-                    )
-                )
-            }
+            DocumentMessageView(
+                url: url,
+                fileName: message.fileName,
+                mimeType: message.mimeType
+            )
 
         default:
             mediaPlaceholder(
@@ -266,6 +239,10 @@ struct MessageMediaView: View {
     private func loadMedia(
         force: Bool = false
     ) async {
+        guard isSupportedMedia else {
+            return
+        }
+
         guard !isViewOnce else {
             return
         }
@@ -336,37 +313,26 @@ private struct MediaViewer: View {
 
                 switch kind {
                 case .image:
-                    AsyncImage(url: url) { phase in
-                        switch phase {
-                        case .success(let image):
-                            image
-                                .resizable()
-                                .scaledToFit()
-                                .frame(
-                                    maxWidth: .infinity,
-                                    maxHeight: .infinity
-                                )
-
-                        case .failure:
-                            ContentUnavailableView(
-                                "Unable to load photo",
-                                systemImage: "photo"
+                    if let data = try? Data(contentsOf: url),
+                       let image = UIImage(data: data) {
+                        ZoomableMediaImage(image: image)
+                            .frame(
+                                maxWidth: .infinity,
+                                maxHeight: .infinity
                             )
-                            .foregroundStyle(.white)
-
-                        default:
-                            ProgressView()
-                                .tint(.white)
-                        }
+                    } else {
+                        ContentUnavailableView(
+                            "Unable to load photo",
+                            systemImage: "photo"
+                        )
+                        .foregroundStyle(.white)
                     }
 
                 case .video:
-                    VideoPlayer(
-                        player: AVPlayer(url: url)
-                    )
-                    .ignoresSafeArea(
-                        edges: .bottom
-                    )
+                    MediaVideoPlayer(url: url)
+                        .ignoresSafeArea(
+                            edges: .bottom
+                        )
                 }
             }
             .toolbar {

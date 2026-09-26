@@ -90,8 +90,8 @@ struct ProductionChatHeader: View {
             }
         }
         .frame(
-            width: 36,
-            height: 36
+            width: 40,
+            height: 40
         )
         .clipShape(Circle())
     }

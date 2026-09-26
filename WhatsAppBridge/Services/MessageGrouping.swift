@@ -1,66 +1,73 @@
 import Foundation
 
 enum MessageGrouping {
-    static func belongsTogether(
-        _ first: Message,
-        _ second: Message
-    ) -> Bool {
-        guard
-            first.fromMe == second.fromMe,
-            first.senderJID == second.senderJID
-        else {
-            return false
-        }
-
-        let firstDate =
-            MessageDatePresentation.date(
-                from: first.createdAt
-            )
-
-        let secondDate =
-            MessageDatePresentation.date(
-                from: second.createdAt
-            )
-
-        guard Calendar.current.isDate(
-            firstDate,
-            inSameDayAs: secondDate
-        ) else {
-            return false
-        }
-
-        return abs(
-            secondDate.timeIntervalSince(
-                firstDate
-            )
-        ) < 120
-    }
-
-    static func isGroupStart(
-        message: Message,
+    static func beginsGroup(
+        _ message: Message,
         previous: Message?
     ) -> Bool {
         guard let previous else {
             return true
         }
 
-        return !belongsTogether(
-            previous,
-            message
-        )
+        if previous.fromMe != message.fromMe {
+            return true
+        }
+
+        if previous.senderJID != message.senderJID {
+            return true
+        }
+
+        return abs(
+            message.createdAt -
+            previous.createdAt
+        ) > 300
     }
 
-    static func isGroupEnd(
-        message: Message,
+    static func endsGroup(
+        _ message: Message,
         next: Message?
     ) -> Bool {
         guard let next else {
             return true
         }
 
-        return !belongsTogether(
-            message,
-            next
+        if next.fromMe != message.fromMe {
+            return true
+        }
+
+        if next.senderJID != message.senderJID {
+            return true
+        }
+
+        return abs(
+            next.createdAt -
+            message.createdAt
+        ) > 300
+    }
+
+    static func needsDateSeparator(
+        _ message: Message,
+        previous: Message?
+    ) -> Bool {
+        guard let previous else {
+            return true
+        }
+
+        let calendar = Calendar.current
+
+        let a = Date(
+            timeIntervalSince1970:
+                TimeInterval(message.createdAt)
+        )
+
+        let b = Date(
+            timeIntervalSince1970:
+                TimeInterval(previous.createdAt)
+        )
+
+        return !calendar.isDate(
+            a,
+            inSameDayAs: b
         )
     }
 }

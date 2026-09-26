@@ -1,32 +1,31 @@
 import SwiftUI
 import UIKit
+import UniformTypeIdentifiers
 
 struct CameraPicker: UIViewControllerRepresentable {
     let onImage: (UIImage) -> Void
+    let onVideo: (URL) -> Void
 
     @Environment(\.dismiss)
     private var dismiss
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(
-            parent: self
-        )
+        Coordinator(parent: self)
     }
 
     func makeUIViewController(
         context: Context
     ) -> UIImagePickerController {
-
-        let picker =
-            UIImagePickerController()
+        let picker = UIImagePickerController()
 
         picker.sourceType = .camera
         picker.mediaTypes = [
-            "public.image"
+            UTType.image.identifier,
+            UTType.movie.identifier
         ]
-
-        picker.delegate =
-            context.coordinator
+        picker.videoQuality = .typeHigh
+        picker.videoMaximumDuration = 300
+        picker.delegate = context.coordinator
 
         return picker
     }
@@ -34,8 +33,7 @@ struct CameraPicker: UIViewControllerRepresentable {
     func updateUIViewController(
         _ uiViewController: UIImagePickerController,
         context: Context
-    ) {
-    }
+    ) {}
 
     final class Coordinator:
         NSObject,
@@ -53,11 +51,12 @@ struct CameraPicker: UIViewControllerRepresentable {
             didFinishPickingMediaWithInfo info:
                 [UIImagePickerController.InfoKey: Any]
         ) {
-
             if let image =
                 info[.originalImage] as? UIImage {
-
                 parent.onImage(image)
+            } else if let url =
+                info[.mediaURL] as? URL {
+                parent.onVideo(url)
             }
 
             parent.dismiss()
