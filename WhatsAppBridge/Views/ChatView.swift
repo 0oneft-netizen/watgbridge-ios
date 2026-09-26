@@ -245,10 +245,6 @@ struct ChatView: View {
                                 reactToProductionMessage(
                                     message,
                                     emoji: emoji,
-                                accountID:
-                                    message.accountID
-                                    ?? conversation.accountID
-                                    ?? "default"
                                 )
                             },
                             onDelete: {

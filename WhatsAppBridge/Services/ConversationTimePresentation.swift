@@ -40,7 +40,7 @@ enum ConversationTimePresentation {
         return date.formatted(
             .dateTime
                 .day()
-                .month(.numeric)
+                .month(.twoDigits)
         )
     }
 }
