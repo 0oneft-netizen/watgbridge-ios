@@ -110,7 +110,8 @@ private struct ProfileMediaThumbnail:
             guard
                 let remoteURL =
                     APIClient.shared.mediaURL(
-                        for: message
+                        for: message.messageID,
+                        accountID: message.accountID
                     )
             else {
                 return
