@@ -72,9 +72,19 @@ private struct MediaGridItem: View {
                 return
             }
 
+            guard let remoteURL = APIClient.shared.mediaURL(
+                for: message.messageID,
+                accountID: message.accountID
+            ) else {
+                return
+            }
+
             localURL =
-                await MediaCache.shared.localURL(
-                    for: message
+                try? await MediaCache.shared.localURL(
+                    remoteURL: remoteURL,
+                    messageID: "\(message.accountID ?? "default")_\(message.messageID)",
+                    fileName: message.fileName,
+                    mimeType: message.mimeType
                 )
         }
     }
