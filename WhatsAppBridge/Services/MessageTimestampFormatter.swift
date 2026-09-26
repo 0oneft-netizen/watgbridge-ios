@@ -20,12 +20,7 @@ enum MessageTimestampFormatter {
     ) -> String {
         formatter.string(
             from:
-                Date(
-                    timeIntervalSince1970:
-                        TimeInterval(
-                            timestamp
-                        )
-                )
+                MessageTimestamp.date(timestamp)
         )
     }
 }

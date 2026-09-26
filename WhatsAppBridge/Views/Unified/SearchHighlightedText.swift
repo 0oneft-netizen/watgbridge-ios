@@ -5,51 +5,36 @@ struct SearchHighlightedText: View {
     let query: String
 
     var body: some View {
-        Text(attributed)
+        if query.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        ).isEmpty {
+            Text(text)
+        } else {
+            highlighted
+        }
     }
 
-    private var attributed:
-        AttributedString {
-
-        var value =
-            AttributedString(text)
-
-        let trimmed =
-            query.trimmingCharacters(
-                in:
-                    .whitespacesAndNewlines
-            )
+    private var highlighted: Text {
+        let needle = query.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        )
 
         guard
-            !trimmed.isEmpty
+            !needle.isEmpty,
+            let range = text.range(
+                of: needle,
+                options: [.caseInsensitive, .diacriticInsensitive]
+            )
         else {
-            return value
+            return Text(text)
         }
 
-        var searchStart =
-            value.startIndex
+        let before = String(text[..<range.lowerBound])
+        let match = String(text[range])
+        let after = String(text[range.upperBound...])
 
-        while searchStart <
-                value.endIndex,
-              let range =
-                value[
-                    searchStart...
-                ].range(
-                    of: trimmed,
-                    options:
-                        .caseInsensitive
-                ) {
-
-            value[range]
-                .backgroundColor =
-                    .yellow.opacity(
-                        0.35
-                    )
-
-            searchStart =
-                range.upperBound
-        }
-
-        return value
+        return Text(before)
+            + Text(match).bold()
+            + Text(after)
     }
 }

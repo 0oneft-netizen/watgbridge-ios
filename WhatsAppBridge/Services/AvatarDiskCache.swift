@@ -170,4 +170,23 @@ actor AvatarDiskCache {
                 withIntermediateDirectories: true
             )
     }
+
+
+    static func accountAwareKey(
+        accountID: String?,
+        jid: String
+    ) -> String {
+        let account = (accountID ?? "default")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        let route = account.isEmpty ? "default" : account
+
+        let raw = route + "|" + jid
+
+        return raw
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "\\", with: "_")
+            .replacingOccurrences(of: ":", with: "_")
+            .replacingOccurrences(of: "@", with: "_")
+    }
 }

@@ -5,12 +5,7 @@ enum ConversationFreshness {
         timestamp: Int64
     ) -> String {
         let date =
-            Date(
-                timeIntervalSince1970:
-                    TimeInterval(
-                        timestamp
-                    )
-            )
+            MessageTimestamp.date(timestamp)
 
         let seconds =
             Date()

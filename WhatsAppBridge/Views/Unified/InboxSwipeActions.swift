@@ -25,7 +25,7 @@ struct InboxSwipeActions: ViewModifier {
                     true
             ) {
                 Button {
-                    local.toggleArchived(
+                    local.toggleArchive(
                         conversation
                     )
                 } label: {

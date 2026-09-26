@@ -71,7 +71,7 @@ struct CustomerOperationMenu: View {
 
             Button {
                 localState
-                    .toggleArchived(
+                    .toggleArchive(
                         conversation
                     )
             } label: {
