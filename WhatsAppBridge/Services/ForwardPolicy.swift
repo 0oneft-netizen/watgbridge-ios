@@ -6,7 +6,7 @@ enum ForwardPolicy {
             Message
     ) -> Bool {
 
-        !message.deletedRemote
+        !(message.deletedRemote ?? false)
         &&
         MediaOperationPolicy
             .mayForward(
