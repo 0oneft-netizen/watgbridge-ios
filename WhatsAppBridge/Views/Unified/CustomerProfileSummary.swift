@@ -84,16 +84,15 @@ struct CustomerProfileSummary: View {
         )
     }
 
-    private var customerName:
-        String {
-        conversation.name?
+    private var customerName: String {
+        let name = conversation.name
             .trimmingCharacters(
-                in:
-                    .whitespacesAndNewlines
+                in: .whitespacesAndNewlines
             )
-            .nonEmpty
-        ??
-        customerPhone
+
+        return name.isEmpty
+            ? customerPhone
+            : name
     }
 
     private var customerPhone:
