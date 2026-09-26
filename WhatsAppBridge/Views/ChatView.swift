@@ -12,13 +12,6 @@ struct ChatView: View {
 
     @State private var messageText = ""
 
-            ChatDraftStore.shared.clear(
-                accountID:
-                    conversation.accountID
-                    ?? "default",
-                chatJID:
-                    conversation.jid
-            )
     @State private var replyToMessage: Message?
     @State private var forwardMessage: Message?
     @State private var isSending = false

@@ -1,6 +1,6 @@
 import Foundation
 
-struct ChatRouteIdentity:
+struct ChatRouteIdentity {
     let accountID: String
     let chatJID: String
 

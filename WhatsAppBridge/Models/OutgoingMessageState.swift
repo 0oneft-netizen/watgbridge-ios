@@ -1,6 +1,6 @@
 import Foundation
 
-enum OutgoingMessageState:
+enum OutgoingMessageState {
     case sending
     case sent
     case failed
