@@ -18,8 +18,14 @@ struct SessionAccountDetailView: View {
             ) {
                 NavigationLink {
                     RenameSessionView(
-                        account:
-                            account
+                        accountID:
+                            account.id,
+                        currentName:
+                            account.displayName
+                            ?? "",
+                        phone:
+                            account.phone
+                            ?? ""
                     )
                 } label: {
                     Label(
@@ -35,6 +41,7 @@ struct SessionAccountDetailView: View {
                             account.id,
                         sessionName:
                             account.displayName
+                            ?? ""
                     )
                 } label: {
                     Label(

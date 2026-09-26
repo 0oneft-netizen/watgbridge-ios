@@ -52,12 +52,21 @@ enum SharedContentFilter:
             ].contains(type)
 
         case .links:
-            return MessageLinkExtractor
-                .links(
-                    in:
-                        message.text
+            let text = message.text
+                .trimmingCharacters(
+                    in: .whitespacesAndNewlines
                 )
-                .isEmpty == false
+
+            guard !text.isEmpty else {
+                return false
+            }
+
+            return text.range(
+                of:
+                    #"https?://[^\s]+"#,
+                options:
+                    [.regularExpression, .caseInsensitive]
+            ) != nil
         }
     }
 }
