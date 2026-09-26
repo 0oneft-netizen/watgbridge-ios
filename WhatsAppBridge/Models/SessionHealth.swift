@@ -1,6 +1,6 @@
 import Foundation
 
-enum SessionHealthLevel {
+enum SessionHealthLevel:
     String,
     Codable {
 
@@ -36,7 +36,7 @@ enum SessionHealthLevel {
     }
 }
 
-struct SessionHealth {
+struct SessionHealth:
     Identifiable,
     Equatable {
 

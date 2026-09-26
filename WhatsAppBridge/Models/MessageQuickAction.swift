@@ -1,6 +1,6 @@
 import Foundation
 
-enum MessageQuickAction {
+enum MessageQuickAction:
     String,
     Identifiable
 {

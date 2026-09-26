@@ -1,6 +1,6 @@
 import Foundation
 
-enum CustomerRecencyLevel {
+enum CustomerRecencyLevel:
     Equatable {
 
     case recent

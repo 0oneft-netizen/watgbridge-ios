@@ -1,6 +1,6 @@
 import Foundation
 
-enum MediaTransferState {
+enum MediaTransferState:
     Equatable {
 
     case idle

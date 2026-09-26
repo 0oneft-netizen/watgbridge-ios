@@ -1,6 +1,6 @@
 import Foundation
 
-enum SharedContentFilter {
+enum SharedContentFilter:
     String,
     CaseIterable,
     Identifiable

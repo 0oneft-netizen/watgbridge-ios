@@ -1,6 +1,6 @@
 import Foundation
 
-struct SessionDiagnosticSnapshot {
+struct SessionDiagnosticSnapshot:
     Identifiable,
     Equatable {
 

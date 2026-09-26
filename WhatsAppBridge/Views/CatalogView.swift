@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct CatalogProduct {
+struct CatalogProduct:
     Identifiable,
     Codable
 {

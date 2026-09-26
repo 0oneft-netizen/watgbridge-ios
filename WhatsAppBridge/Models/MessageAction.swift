@@ -1,6 +1,6 @@
 import Foundation
 
-enum MessageAction {
+enum MessageAction:
     Hashable {
 
     case reply

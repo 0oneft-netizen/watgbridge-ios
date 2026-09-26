@@ -1,6 +1,6 @@
 import Foundation
 
-struct CreateWhatsAppAccountResponse {
+struct CreateWhatsAppAccountResponse:
     Codable
 {
     let id: String

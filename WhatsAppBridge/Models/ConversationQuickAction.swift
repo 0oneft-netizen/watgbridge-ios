@@ -1,6 +1,6 @@
 import Foundation
 
-enum ConversationQuickAction {
+enum ConversationQuickAction:
     String,
     Identifiable,
     CaseIterable

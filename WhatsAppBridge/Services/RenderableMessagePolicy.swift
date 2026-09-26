@@ -48,6 +48,7 @@ enum RenderableMessagePolicy {
         hasText(message)
         ||
         hasMedia(message)
-        || (message.deletedRemote ?? false)
+        ||
+        message.deletedRemote
     }
 }

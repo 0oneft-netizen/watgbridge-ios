@@ -1,6 +1,6 @@
 import Foundation
 
-struct SessionQuickReply {
+struct SessionQuickReply:
     Identifiable,
     Codable,
     Equatable {

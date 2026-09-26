@@ -1,6 +1,6 @@
 import Foundation
 
-struct SessionWorkload {
+struct SessionWorkload:
     Identifiable,
     Equatable {
 

@@ -1,6 +1,6 @@
 import Foundation
 
-enum ConversationMediaKind {
+enum ConversationMediaKind:
     String,
     CaseIterable,
     Identifiable {

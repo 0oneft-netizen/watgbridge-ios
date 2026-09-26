@@ -1,6 +1,6 @@
 import Foundation
 
-enum ComposerAttachment {
+enum ComposerAttachment:
     String,
     Identifiable,
     CaseIterable

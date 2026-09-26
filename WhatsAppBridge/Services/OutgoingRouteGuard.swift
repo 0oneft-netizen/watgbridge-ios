@@ -33,7 +33,7 @@ enum OutgoingRouteGuard {
         }
     }
 
-    enum RouteError {
+    enum RouteError:
         LocalizedError {
 
         case invalidConversation

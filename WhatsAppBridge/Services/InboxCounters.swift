@@ -1,6 +1,6 @@
 import Foundation
 
-struct InboxCountSnapshot {
+struct InboxCountSnapshot:
     Equatable {
 
     let total: Int

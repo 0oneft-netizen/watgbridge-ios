@@ -1,6 +1,6 @@
 import Foundation
 
-struct ConversationExportMetadata {
+struct ConversationExportMetadata:
     Equatable {
 
     let messageCount: Int

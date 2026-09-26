@@ -1,6 +1,6 @@
 import Foundation
 
-struct AppHealthSnapshot {
+struct AppHealthSnapshot:
     Equatable {
 
     let networkConnected: Bool

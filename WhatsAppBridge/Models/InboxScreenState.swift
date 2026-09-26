@@ -1,6 +1,6 @@
 import Foundation
 
-struct InboxScreenState {
+struct InboxScreenState:
     Equatable {
 
     var loading =

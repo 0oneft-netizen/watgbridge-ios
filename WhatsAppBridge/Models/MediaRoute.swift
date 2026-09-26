@@ -1,6 +1,6 @@
 import Foundation
 
-struct MediaRoute {
+struct MediaRoute:
     Hashable {
 
     let conversation:

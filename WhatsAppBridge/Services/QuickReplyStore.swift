@@ -1,6 +1,6 @@
 import Foundation
 
-struct QuickReply {
+struct QuickReply:
     Identifiable,
     Codable,
     Equatable {

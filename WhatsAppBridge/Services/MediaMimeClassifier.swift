@@ -1,6 +1,6 @@
 import Foundation
 
-enum MediaMimeClass {
+enum MediaMimeClass:
     Equatable {
 
     case image

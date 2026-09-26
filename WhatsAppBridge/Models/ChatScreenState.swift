@@ -1,6 +1,6 @@
 import Foundation
 
-struct ChatScreenState {
+struct ChatScreenState:
     Equatable {
 
     var loading =

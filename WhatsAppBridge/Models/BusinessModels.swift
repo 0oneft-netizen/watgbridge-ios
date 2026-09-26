@@ -6,7 +6,7 @@ struct BusinessCustomerMeta: Codable {
     var note: String
 }
 
-struct BusinessQuickReply {
+struct BusinessQuickReply:
     Codable,
     Identifiable
 {
