@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct CustomerProfileView: View {
     let conversation: Conversation
@@ -122,6 +123,10 @@ struct CustomerProfileView: View {
             }
 
             Section {
+                ProfileMediaStrip(
+                    messages: messages
+                )
+
                 NavigationLink {
                     ConversationMediaBrowser(
                         messages: media
@@ -151,8 +156,8 @@ struct CustomerProfileView: View {
                 }
 
                 NavigationLink {
-                    ConversationLinksView(
-                        links: links
+                    RichConversationLinksView(
+                        messages: messages
                     )
                 } label: {
                     profileRow(
@@ -163,6 +168,99 @@ struct CustomerProfileView: View {
                     )
                 }
             }
+
+            Section {
+                CustomerContactActions(
+                    conversation:
+                        conversation
+                )
+            }
+
+            Section {
+                CustomerSummaryCard(
+                    conversation:
+                        conversation
+                )
+
+                NavigationLink {
+                    CustomerBusinessInfoView(
+                        conversation:
+                            conversation
+                    )
+                } label: {
+                    Label(
+                        "Customer notes & labels",
+                        systemImage:
+                            "tag"
+                    )
+                }
+
+                NavigationLink {
+                    StarredMessagesView(
+                        messages:
+                            messages
+                    )
+                } label: {
+                    Label(
+                        "Starred messages",
+                        systemImage:
+                            "star"
+                    )
+                }
+            }
+
+            Section {
+                CustomerConversationStats(
+                    messages: messages
+                )
+            }
+
+            Section {
+                CustomerPhoneActions(
+                    conversation:
+                        conversation
+                )
+
+                ConversationRouteInfo(
+                    conversation:
+                        conversation
+                )
+            }
+
+            Section("Customer") {
+                NavigationLink {
+                    CustomerWorkflowEditor(
+                        conversation:
+                            conversation
+                    )
+                } label: {
+                    Label(
+                        "Workflow status",
+                        systemImage:
+                            "checklist"
+                    )
+                }
+
+                NavigationLink {
+                    CustomerBusinessInfoView(
+                        conversation:
+                            conversation
+                    )
+                } label: {
+                    Label(
+                        "Notes & labels",
+                        systemImage:
+                            "tag"
+                    )
+                }
+            }
+
+            CustomerProfileTools(
+                conversation:
+                    conversation,
+                messages:
+                    messages
+            )
 
             Section("Contact") {
                 LabeledContent(

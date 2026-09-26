@@ -1,13 +1,13 @@
 import Foundation
 
-enum ConversationMediaFilter:
+enum ConversationMediaKind:
     String,
     CaseIterable,
-    Identifiable
-{
-    case media
-    case documents
-    case links
+    Identifiable {
+
+    case all
+    case photos
+    case videos
 
     var id: String {
         rawValue
@@ -15,45 +15,69 @@ enum ConversationMediaFilter:
 
     var title: String {
         switch self {
-        case .media:
-            return "Media"
-        case .documents:
-            return "Docs"
-        case .links:
-            return "Links"
+        case .all:
+            return "All"
+        case .photos:
+            return "Photos"
+        case .videos:
+            return "Videos"
         }
     }
+}
 
-    func includes(
-        _ message: Message
-    ) -> Bool {
-        switch self {
-        case .media:
-            return [
-                "image",
-                "video",
-                "gif",
-                "video_note",
-                "ptv"
-            ].contains(
-                message.type.lowercased()
-            )
-            && !MessageMediaPolicy
-                .isViewOnce(message)
+enum ConversationMediaFilter {
+    static func filter(
+        _ messages: [Message],
+        kind:
+            ConversationMediaKind
+    ) -> [Message] {
+        messages.filter {
+            message in
 
-        case .documents:
-            return message.type
-                .lowercased()
-                == "document"
+            guard
+                !MessageMediaPolicy
+                    .isViewOnce(
+                        message
+                    )
+            else {
+                return false
+            }
 
-        case .links:
-            return message.text
-                .range(
-                    of:
-                        #"https?://[^\s]+"#,
-                    options:
-                        .regularExpression
-                ) != nil
+            switch kind {
+            case .all:
+                return [
+                    "image",
+                    "video",
+                    "gif",
+                    "video_note",
+                    "ptv"
+                ]
+                .contains(
+                    message.type
+                        .lowercased()
+                )
+
+            case .photos:
+                return [
+                    "image",
+                    "gif"
+                ]
+                .contains(
+                    message.type
+                        .lowercased()
+                )
+
+            case .videos:
+                return [
+                    "video",
+                    "video_note",
+                    "ptv"
+                ]
+                .contains(
+                    message.type
+                        .lowercased()
+                )
+            }
         }
     }
 }

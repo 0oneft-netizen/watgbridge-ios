@@ -133,14 +133,7 @@ struct ConversationInfoHub: View {
                     "Session",
                     value: sessionName
                 )
-
-                LabeledContent(
-                    "Account ID",
-                    value:
-                        conversation.accountID
-                        ?? "default"
-                )
-            }
+}
         }
         .navigationTitle("Contact Info")
         .navigationBarTitleDisplayMode(.inline)

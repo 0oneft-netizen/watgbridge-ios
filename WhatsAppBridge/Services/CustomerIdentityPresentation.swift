@@ -1,46 +1,32 @@
 import Foundation
 
 enum CustomerIdentityPresentation {
-    static func cleanPhone(
-        from jid: String
+    static func title(
+        conversation:
+            Conversation
     ) -> String {
-        let raw = jid
-            .replacingOccurrences(
-                of: "@s.whatsapp.net",
-                with: ""
-            )
-            .replacingOccurrences(
-                of: "@lid",
-                with: ""
-            )
-            .replacingOccurrences(
-                of: "@g.us",
-                with: ""
-            )
 
-        return raw
-            .split(separator: ":")
-            .first
-            .map(String.init)
-            ?? raw
-    }
+        let name =
+            conversation.name?
+                .trimmingCharacters(
+                    in:
+                        .whitespacesAndNewlines
+                )
+            ?? ""
 
-    static func formattedPhone(
-        from jid: String
-    ) -> String {
-        let value = cleanPhone(
-            from: jid
-        )
-
-        guard
-            !value.isEmpty,
-            value.allSatisfy(\.isNumber)
-        else {
-            return value
+        if !name.isEmpty {
+            return name
         }
 
-        return value.hasPrefix("+")
-            ? value
-            : "+" + value
+        let phone =
+            ChatIdentity
+                .customerPhone(
+                    from:
+                        conversation.jid
+                )
+
+        return phone.isEmpty
+            ? "Customer"
+            : phone
     }
 }

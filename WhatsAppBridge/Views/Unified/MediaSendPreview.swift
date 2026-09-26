@@ -1,6 +1,7 @@
 import SwiftUI
 import PhotosUI
 import AVKit
+import UIKit
 
 struct MediaSendPreview: View {
     let items: [PhotosPickerItem]

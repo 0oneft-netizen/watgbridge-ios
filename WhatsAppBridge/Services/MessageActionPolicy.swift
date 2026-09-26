@@ -1,33 +1,53 @@
 import Foundation
 
 enum MessageActionPolicy {
-    static func canCopy(
+    static func mayCopy(
         _ message: Message
     ) -> Bool {
         !message.text
             .trimmingCharacters(
-                in: .whitespacesAndNewlines
+                in:
+                    .whitespacesAndNewlines
             )
             .isEmpty
-        && message.deletedRemote != true
     }
 
-    static func canReply(
+    static func mayForward(
         _ message: Message
     ) -> Bool {
-        message.deletedRemote != true
+        ViewOnceSafety
+            .mayForward(
+                message
+            )
     }
 
-    static func canReact(
+    static func mayShare(
         _ message: Message
     ) -> Bool {
-        message.deletedRemote != true
+        ViewOnceSafety
+            .mayShare(
+                message
+            )
     }
 
-    static func canDeleteForEveryone(
+    static func maySave(
         _ message: Message
     ) -> Bool {
-        message.fromMe
-        && message.deletedRemote != true
+        ViewOnceSafety
+            .mayPersist(
+                message
+            )
+    }
+
+    static func mayReact(
+        _ message: Message
+    ) -> Bool {
+        !message.deletedRemote
+    }
+
+    static func mayReply(
+        _ message: Message
+    ) -> Bool {
+        !message.deletedRemote
     }
 }

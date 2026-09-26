@@ -16,7 +16,7 @@ struct MessageDeliveryIndicator: View {
             )
             .foregroundStyle(.secondary)
             .accessibilityLabel(
-                "Sent"
+                ""
             )
         }
     }

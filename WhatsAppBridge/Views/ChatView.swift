@@ -11,6 +11,14 @@ struct ChatView: View {
     @State private var errorMessage: String?
 
     @State private var messageText = ""
+
+            ChatDraftStore.shared.clear(
+                accountID:
+                    conversation.accountID
+                    ?? "default",
+                chatJID:
+                    conversation.jid
+            )
     @State private var replyToMessage: Message?
     @State private var forwardMessage: Message?
     @State private var isSending = false
@@ -378,6 +386,24 @@ struct ChatView: View {
                 }
             }
             .onAppear {
+                let route =
+                    ChatRouteIdentity(
+                        conversation:
+                            conversation
+                    )
+
+                if messageText.isEmpty {
+                    messageText =
+                        ChatDraftStore
+                            .shared
+                            .text(
+                                accountID:
+                                    route.accountID,
+                                chatJID:
+                                    route.chatJID
+                            )
+                }
+
                 scrollToBottom(proxy)
             }
         }
@@ -1046,6 +1072,15 @@ struct ChatView: View {
                         accountID:
                             conversation.accountID ?? "default"
                     )
+
+            ChatPerformanceMonitor.loaded(
+                count: messages.count,
+                accountID:
+                    conversation.accountID
+                    ?? "default",
+                chatJID:
+                    conversation.jid
+            )
 
             errorMessage = nil
 

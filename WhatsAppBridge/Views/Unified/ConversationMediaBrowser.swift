@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct ConversationMediaBrowser: View {
     let messages: [Message]

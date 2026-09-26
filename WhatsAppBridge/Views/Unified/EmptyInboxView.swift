@@ -1,17 +1,24 @@
 import SwiftUI
 
 struct EmptyInboxView: View {
+    let searching:
+        Bool
+
     var body: some View {
-        ContentUnavailableView {
-            Label(
-                "No conversations yet",
-                systemImage:
-                    "message.badge.waveform"
-            )
-        } description: {
-            Text(
-                "Messages from your connected accounts will appear here."
-            )
-        }
+        ContentUnavailableView(
+            searching
+            ? "No Results"
+            : "No Conversations",
+            systemImage:
+                searching
+                ? "magnifyingglass"
+                : "message",
+            description:
+                Text(
+                    searching
+                    ? "Try another name, phone number, note or label."
+                    : "New conversations will appear here."
+                )
+        )
     }
 }

@@ -46,4 +46,41 @@ enum MessageMediaPolicy {
     ) -> Bool {
         !isViewOnce(message)
     }
+
+
+    static func isRenderableMedia(
+        _ message: Message
+    ) -> Bool {
+        if isViewOnce(message) {
+            return true
+        }
+
+        let type =
+            message.type.lowercased()
+
+        let supported:
+            Set<String> = [
+                "image",
+                "video",
+                "gif",
+                "video_note",
+                "ptv",
+                "voice",
+                "audio",
+                "document",
+                "sticker"
+            ]
+
+        if supported.contains(type) {
+            return true
+        }
+
+        if let path =
+            message.mediaPath,
+           !path.isEmpty {
+            return true
+        }
+
+        return false
+    }
 }

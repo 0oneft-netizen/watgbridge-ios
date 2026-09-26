@@ -1,5 +1,6 @@
 import SwiftUI
 import AVKit
+import UIKit
 
 struct ChatMediaGalleryView: View {
     let messages: [Message]

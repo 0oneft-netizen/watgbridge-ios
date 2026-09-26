@@ -1,22 +1,47 @@
 import SwiftUI
 
 struct ChatConnectionBanner: View {
-    let text: String
+    let status: String
+
+    private var visible: Bool {
+        status != "connected"
+    }
 
     var body: some View {
-        HStack(spacing: 7) {
-            ProgressView()
-                .controlSize(.mini)
+        if visible {
+            HStack(spacing: 8) {
+                ProgressView()
+                    .controlSize(.small)
 
-            Text(text)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                Text(label)
+                    .font(
+                        .caption.weight(
+                            .medium
+                        )
+                    )
+
+                Spacer()
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 7)
+            .background(
+                Color.orange.opacity(
+                    0.14
+                )
+            )
         }
-        .padding(.horizontal, 11)
-        .padding(.vertical, 6)
-        .background(
-            .ultraThinMaterial,
-            in: Capsule()
-        )
+    }
+
+    private var label: String {
+        switch status {
+        case "reconnect_required":
+            return "WhatsApp needs to be reconnected"
+
+        case "disconnected":
+            return "Waiting for connection…"
+
+        default:
+            return "Connecting…"
+        }
     }
 }

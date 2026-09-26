@@ -6,7 +6,11 @@ struct Conversation: Identifiable, Codable, Hashable {
         "\(accountID ?? "default")|\(jid)"
     }
 
-    var id: String { jid }
+    var id: String {
+        (accountID ?? "default")
+        + "|"
+        + jid
+    }
 
     let accountID: String?
     let jid: String

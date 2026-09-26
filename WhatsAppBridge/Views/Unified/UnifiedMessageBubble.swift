@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct UnifiedMessageBubble: View {
     let message: Message
