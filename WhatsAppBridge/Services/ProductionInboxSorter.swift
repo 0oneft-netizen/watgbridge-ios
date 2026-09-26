@@ -48,9 +48,9 @@ enum ProductionInboxSorter {
             }
 
             return
-                (left.updatedAt ?? 0)
+                left.lastMessageAt
                 >
-                (right.updatedAt ?? 0)
+                right.lastMessageAt
         }
     }
 }

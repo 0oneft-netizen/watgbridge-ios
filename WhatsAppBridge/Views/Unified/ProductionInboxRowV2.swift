@@ -181,7 +181,7 @@ struct ProductionInboxRowV2: View {
         }
 
         return conversation
-            .lastMessage?
+            .lastMessage
             .trimmingCharacters(
                 in:
                     .whitespacesAndNewlines
@@ -192,7 +192,7 @@ struct ProductionInboxRowV2: View {
 
     private var latestTimestamp:
         Int64? {
-        conversation.updatedAt
+        conversation.lastMessageAt
     }
 }
 
