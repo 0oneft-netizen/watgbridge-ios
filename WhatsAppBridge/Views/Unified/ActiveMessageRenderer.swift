@@ -33,13 +33,8 @@ struct ActiveMessageRenderer: View {
                 ) {
 
                 ChatDateChip(
-                    date:
-                        Date(
-                            timeIntervalSince1970:
-                                TimeInterval(
-                                    message.createdAt
-                                )
-                        )
+                    timestamp:
+                        message.createdAt
                 )
             }
 
