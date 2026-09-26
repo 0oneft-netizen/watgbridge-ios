@@ -42,12 +42,12 @@ enum MessageActionPolicy {
     static func mayReact(
         _ message: Message
     ) -> Bool {
-        !message.deletedRemote
+        !(message.deletedRemote ?? false)
     }
 
     static func mayReply(
         _ message: Message
     ) -> Bool {
-        !message.deletedRemote
+        !(message.deletedRemote ?? false)
     }
 }

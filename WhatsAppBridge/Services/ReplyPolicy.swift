@@ -6,7 +6,7 @@ enum ReplyPolicy {
             Message
     ) -> Bool {
 
-        !message.deletedRemote
+        !(message.deletedRemote ?? false)
         &&
         !message.messageID
             .isEmpty

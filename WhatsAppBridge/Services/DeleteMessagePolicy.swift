@@ -15,7 +15,7 @@ enum DeleteMessagePolicy {
 
         message.fromMe
         &&
-        !message.deletedRemote
+        !(message.deletedRemote ?? false)
         &&
         !message.messageID
             .isEmpty
