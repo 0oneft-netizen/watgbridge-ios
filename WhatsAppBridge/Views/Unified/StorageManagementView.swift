@@ -28,7 +28,7 @@ struct StorageManagementView: View {
                         cleaning =
                             true
 
-                        await CacheMaintenance.cleanup()
+                        CacheMaintenance.removeFilesOlderThan()
 
                         await refresh()
 
@@ -67,13 +67,7 @@ struct StorageManagementView: View {
     private func refresh()
         async {
 
-        let bytes =
-            await CacheSizeCalculator.bytes()
-
         size =
-            CacheSizeCalculator
-                .display(
-                    bytes
-                )
+            CacheSizeCalculator.formatted()
     }
 }
