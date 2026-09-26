@@ -57,7 +57,7 @@ struct SessionAccountDetailView: View {
             ) {
                 SessionConnectionChip(
                     status:
-                        account.status
+                        account.status ?? ""
                 )
 
                 Text(
@@ -70,7 +70,9 @@ struct SessionAccountDetailView: View {
             }
         }
         .navigationTitle(
-            account.displayName
+            (account.displayName ?? "").isEmpty
+                ? ((account.phone ?? "").isEmpty ? "WhatsApp Account" : (account.phone ?? ""))
+                : (account.displayName ?? "")
         )
         .navigationBarTitleDisplayMode(
             .inline
