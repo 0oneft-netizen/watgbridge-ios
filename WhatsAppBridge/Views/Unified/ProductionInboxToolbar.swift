@@ -16,7 +16,9 @@ struct ProductionInboxToolbar: View {
         HStack(spacing: 10) {
             InboxAccountPicker(
                 accountID:
-                    $selectedAccountID
+                    $selectedAccountID,
+                sessions:
+                    sessions
             )
 
             Spacer()
