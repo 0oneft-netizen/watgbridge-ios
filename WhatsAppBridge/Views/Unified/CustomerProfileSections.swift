@@ -35,7 +35,7 @@ struct CustomerProfileSections: View {
                     conversation
             )
 
-            CustomerFollowUpEditor(
+            CustomerFollowUpView(
                 conversation:
                     conversation
             )
