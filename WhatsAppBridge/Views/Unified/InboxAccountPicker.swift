@@ -31,8 +31,9 @@ struct InboxAccountPicker: View {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(
-                                account.displayName
-                                ?? resolvedID
+                                account.name.isEmpty
+                                ? resolvedID
+                                : account.name
                             )
 
                             if let phone = account.phone,
@@ -64,7 +65,9 @@ struct InboxAccountPicker: View {
         if let account = sessions.accounts.first(
             where: { $0.id == accountID }
         ) {
-            return account.displayName ?? accountID
+            return account.name.isEmpty
+                ? accountID
+                : account.name
         }
 
         return accountID
