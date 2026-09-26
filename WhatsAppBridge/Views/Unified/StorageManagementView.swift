@@ -28,9 +28,7 @@ struct StorageManagementView: View {
                         cleaning =
                             true
 
-                        await CacheMaintenance
-                            .shared
-                            .cleanup()
+                        await CacheMaintenance.cleanup()
 
                         await refresh()
 
@@ -70,9 +68,7 @@ struct StorageManagementView: View {
         async {
 
         let bytes =
-            await CacheSizeCalculator
-                .shared
-                .bytes()
+            await CacheSizeCalculator.bytes()
 
         size =
             CacheSizeCalculator
