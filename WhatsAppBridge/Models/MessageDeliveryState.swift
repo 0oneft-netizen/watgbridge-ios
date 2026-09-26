@@ -1,6 +1,6 @@
 import Foundation
 
-enum MessageDeliveryState:
+enum MessageDeliveryState {
     String,
     Codable
 {

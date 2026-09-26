@@ -1,6 +1,6 @@
 import Foundation
 
-enum ChatLoadState:
+enum ChatLoadState {
     Equatable {
 
     case idle

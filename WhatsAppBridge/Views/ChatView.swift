@@ -1171,7 +1171,7 @@ private struct MessageBubble: View {
                     Text(message.text)
                 }
 
-                if message.deletedRemote == true {
+                if message.deletedRemote ?? false {
                     Label(
                         "Deleted on WhatsApp",
                         systemImage: "trash.slash"

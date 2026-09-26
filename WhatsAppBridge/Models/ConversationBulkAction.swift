@@ -1,6 +1,6 @@
 import Foundation
 
-enum ConversationBulkAction:
+enum ConversationBulkAction {
     Hashable {
 
     case markUnread

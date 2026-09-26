@@ -1,6 +1,6 @@
 import Foundation
 
-struct CustomerProfileRoute:
+struct CustomerProfileRoute {
     Hashable {
 
     let conversation:

@@ -32,9 +32,7 @@ struct ProductionSessionRow: View {
                     .leading,
                 spacing: 4
             ) {
-                Text(
-                    account.displayName
-                )
+                Text(account.displayName ?? account.id)
                 .font(
                     .headline
                 )

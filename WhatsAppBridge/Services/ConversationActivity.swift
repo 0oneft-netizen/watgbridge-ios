@@ -1,6 +1,6 @@
 import Foundation
 
-struct ConversationActivitySnapshot:
+struct ConversationActivitySnapshot {
     Equatable {
 
     let firstMessage:

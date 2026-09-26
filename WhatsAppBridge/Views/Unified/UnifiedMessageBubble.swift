@@ -52,7 +52,7 @@ struct UnifiedMessageBubble: View {
                     quotedMessage(quotedText)
                 }
 
-                if message.deletedRemote == true {
+                if message.deletedRemote ?? false {
                     deletedMessage
                 } else {
                     content

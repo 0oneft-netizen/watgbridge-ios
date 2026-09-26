@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct ConversationSwipeActions:
+struct ConversationSwipeActions {
     ViewModifier {
 
     let conversation: Conversation

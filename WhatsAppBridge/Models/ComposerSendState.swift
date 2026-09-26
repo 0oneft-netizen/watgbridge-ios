@@ -1,6 +1,6 @@
 import Foundation
 
-enum ComposerSendState:
+enum ComposerSendState {
     Equatable {
 
     case ready

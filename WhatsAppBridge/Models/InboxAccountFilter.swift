@@ -1,6 +1,6 @@
 import Foundation
 
-enum InboxAccountFilter:
+enum InboxAccountFilter {
     Hashable {
 
     case all

@@ -1,6 +1,6 @@
 import Foundation
 
-struct AccountRoute:
+struct AccountRoute {
     Hashable,
     Sendable
 {

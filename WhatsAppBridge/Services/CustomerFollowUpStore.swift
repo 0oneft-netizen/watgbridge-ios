@@ -1,6 +1,6 @@
 import Foundation
 
-struct CustomerFollowUp:
+struct CustomerFollowUp {
     Codable,
     Equatable {
 

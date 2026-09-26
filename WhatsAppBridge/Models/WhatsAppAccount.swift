@@ -1,6 +1,6 @@
 import Foundation
 
-struct WhatsAppAccount:
+struct WhatsAppAccount {
     Codable,
     Identifiable
 {

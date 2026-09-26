@@ -1,6 +1,6 @@
 import Foundation
 
-enum NetworkQuality:
+enum NetworkQuality {
     Equatable {
 
     case online

@@ -1,6 +1,6 @@
 import Foundation
 
-struct RealtimeMessageEvent:
+struct RealtimeMessageEvent {
     Equatable {
 
     let accountID: String

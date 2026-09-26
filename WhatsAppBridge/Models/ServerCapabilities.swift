@@ -1,6 +1,6 @@
 import Foundation
 
-struct ServerCapabilities:
+struct ServerCapabilities {
     Equatable {
 
     var accountAwareMessages =

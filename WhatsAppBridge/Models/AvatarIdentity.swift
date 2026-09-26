@@ -1,6 +1,6 @@
 import Foundation
 
-struct AvatarIdentity:
+struct AvatarIdentity {
     Hashable {
 
     let accountID: String

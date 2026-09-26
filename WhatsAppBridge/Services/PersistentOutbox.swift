@@ -1,6 +1,6 @@
 import Foundation
 
-struct OutboxTextMessage:
+struct OutboxTextMessage {
     Identifiable,
     Codable,
     Equatable {

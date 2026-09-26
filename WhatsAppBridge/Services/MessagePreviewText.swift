@@ -4,7 +4,7 @@ enum MessagePreviewText {
     static func value(
         _ message: Message
     ) -> String {
-        if message.deletedRemote {
+        if message.deletedRemote ?? false {
             return "Message deleted"
         }
 

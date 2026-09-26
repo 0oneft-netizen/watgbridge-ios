@@ -117,7 +117,7 @@ private struct WhatsAppAccountRow: View {
                 .font(.headline)
 
                 if !account.phone.isEmpty {
-                    Text(account.phone)
+                    Text(account.phone ?? "")
                         .font(.caption)
                         .foregroundStyle(
                             Color.secondary

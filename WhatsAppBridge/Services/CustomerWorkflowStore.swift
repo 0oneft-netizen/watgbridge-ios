@@ -1,6 +1,6 @@
 import Foundation
 
-enum CustomerWorkflowStage:
+enum CustomerWorkflowStage {
     String,
     Codable,
     CaseIterable,
@@ -45,7 +45,7 @@ enum CustomerWorkflowStage:
     }
 }
 
-struct CustomerWorkflowData:
+struct CustomerWorkflowData {
     Codable,
     Equatable {
 

@@ -1,6 +1,6 @@
 import Foundation
 
-enum InboxSmartFilter:
+enum InboxSmartFilter {
     String,
     CaseIterable,
     Identifiable

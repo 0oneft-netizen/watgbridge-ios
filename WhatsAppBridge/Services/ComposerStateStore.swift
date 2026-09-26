@@ -1,6 +1,6 @@
 import Foundation
 
-struct ComposerState:
+struct ComposerState {
     Codable,
     Equatable {
 

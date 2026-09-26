@@ -1,6 +1,6 @@
 import Foundation
 
-struct SessionConversationCount:
+struct SessionConversationCount {
     Identifiable,
     Equatable {
 

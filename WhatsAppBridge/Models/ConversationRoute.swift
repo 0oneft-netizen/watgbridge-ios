@@ -1,6 +1,6 @@
 import Foundation
 
-struct ConversationRoute:
+struct ConversationRoute {
     Hashable,
     Codable {
 

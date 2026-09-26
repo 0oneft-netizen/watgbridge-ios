@@ -1,9 +1,9 @@
 import Foundation
 
-struct OutgoingSendIntent:
+struct OutgoingSendIntent {
     Hashable {
 
-    enum Kind:
+    enum Kind {
         String,
         Hashable {
 

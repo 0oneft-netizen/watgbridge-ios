@@ -1,6 +1,6 @@
 import Foundation
 
-enum MediaDownloadState:
+enum MediaDownloadState {
     Equatable {
 
     case idle
