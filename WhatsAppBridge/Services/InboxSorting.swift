@@ -1,5 +1,6 @@
 import Foundation
 
+@MainActor
 enum InboxSorting {
     static func sorted(
         _ conversations: [Conversation],
