@@ -74,53 +74,19 @@ struct CustomerProfileView: View {
 
     var body: some View {
         List {
+            profileHeader
+
             Section {
-                VStack(spacing: 10) {
-                    Button {
-                        showPhoto = true
-                    } label: {
-                        CustomerAvatarView(
-                            jid:
-                                conversation.jid,
-                            size: 104
-                        )
-                    }
-                    .buttonStyle(.plain)
-
-                    Text(name)
-                        .font(
-                            .title2.bold()
-                        )
-                        .multilineTextAlignment(
-                            .center
-                        )
-
-                    Text(phone)
-                        .font(.body)
-                        .foregroundStyle(
-                            .secondary
-                        )
-
-                    if !session.isEmpty {
-                        Text(session)
-                            .font(
-                                .caption.weight(
-                                    .semibold
-                                )
-                            )
-                            .foregroundStyle(
-                                .secondary
-                            )
-                    }
-                }
-                .frame(
-                    maxWidth: .infinity
-                )
-                .padding(.vertical, 12)
-                .listRowBackground(
-                    Color.clear
-                )
+                quickActions
             }
+            .listRowInsets(
+                EdgeInsets(
+                    top: 10,
+                    leading: 16,
+                    bottom: 10,
+                    trailing: 16
+                )
+            )
 
             Section {
                 ProfileMediaStrip(
@@ -143,13 +109,12 @@ struct CustomerProfileView: View {
 
                 NavigationLink {
                     ConversationDocumentBrowser(
-                        messages:
-                            documents
+                        messages: documents
                     )
                 } label: {
                     profileRow(
                         "Documents",
-                        icon: "doc",
+                        icon: "doc.fill",
                         detail:
                             "\(documents.count)"
                     )
@@ -167,52 +132,59 @@ struct CustomerProfileView: View {
                             "\(links.count)"
                     )
                 }
+            } header: {
+                Text("Shared Content")
             }
 
             Section {
-                CustomerContactActions(
-                    conversation:
-                        conversation
-                )
-            }
-
-            Section {
-                CustomerSummaryCard(
-                    conversation:
-                        conversation
-                )
-
                 NavigationLink {
                     CustomerBusinessInfoView(
                         conversation:
                             conversation
                     )
                 } label: {
-                    Label(
-                        "Customer notes & labels",
-                        systemImage:
-                            "tag"
+                    profileRow(
+                        "Notes & Labels",
+                        icon: "tag.fill",
+                        detail: ""
                     )
                 }
 
                 NavigationLink {
                     StarredMessagesView(
-                        messages:
-                            messages
+                        messages: messages
                     )
                 } label: {
-                    Label(
-                        "Starred messages",
-                        systemImage:
-                            "star"
+                    profileRow(
+                        "Starred Messages",
+                        icon: "star.fill",
+                        detail: ""
                     )
                 }
+
+                NavigationLink {
+                    CustomerWorkflowEditor(
+                        conversation:
+                            conversation
+                    )
+                } label: {
+                    profileRow(
+                        "Workflow Status",
+                        icon:
+                            "checklist",
+                        detail: ""
+                    )
+                }
+            } header: {
+                Text("Customer")
             }
 
             Section {
                 CustomerConversationStats(
                     messages: messages
                 )
+            } header: {
+                Text("Conversation")
             }
 
             Section {
@@ -225,34 +197,6 @@ struct CustomerProfileView: View {
                     conversation:
                         conversation
                 )
-            }
-
-            Section("Customer") {
-                NavigationLink {
-                    CustomerWorkflowEditor(
-                        conversation:
-                            conversation
-                    )
-                } label: {
-                    Label(
-                        "Workflow status",
-                        systemImage:
-                            "checklist"
-                    )
-                }
-
-                NavigationLink {
-                    CustomerBusinessInfoView(
-                        conversation:
-                            conversation
-                    )
-                } label: {
-                    Label(
-                        "Notes & labels",
-                        systemImage:
-                            "tag"
-                    )
-                }
             }
 
             CustomerProfileTools(
@@ -274,27 +218,29 @@ struct CustomerProfileView: View {
                         value: session
                     )
                 }
-            }
 
-            Section {
                 Button {
                     UIPasteboard
                         .general
                         .string = phone
+
+                    Haptics.success()
                 } label: {
                     Label(
-                        "Copy phone number",
+                        "Copy Phone Number",
                         systemImage:
                             "doc.on.doc"
                     )
                 }
             }
         }
-        .navigationTitle(
-            "Contact Info"
-        )
+        .listStyle(.insetGrouped)
+        .navigationTitle("Contact Info")
         .navigationBarTitleDisplayMode(
             .inline
+        )
+        .tint(
+            AppVisualDesign.accent
         )
         .sheet(
             isPresented: $showPhoto
@@ -309,6 +255,152 @@ struct CustomerProfileView: View {
         .task {
             await sessions.refresh()
         }
+    }
+
+    private var profileHeader: some View {
+        Section {
+            VStack(spacing: 8) {
+                Button {
+                    showPhoto = true
+                } label: {
+                    CustomerAvatarView(
+                        jid:
+                            conversation.jid,
+                        size: 112
+                    )
+                    .overlay(
+                        Circle()
+                            .stroke(
+                                Color.secondary
+                                    .opacity(0.12),
+                                lineWidth: 0.5
+                            )
+                    )
+                }
+                .buttonStyle(.plain)
+
+                Text(name)
+                    .font(
+                        .system(
+                            size: 23,
+                            weight: .semibold
+                        )
+                    )
+                    .multilineTextAlignment(
+                        .center
+                    )
+
+                if !phone.isEmpty {
+                    Text(phone)
+                        .font(.body)
+                        .foregroundStyle(
+                            .secondary
+                        )
+                        .textSelection(
+                            .enabled
+                        )
+                }
+
+                if !session.isEmpty {
+                    SessionMiniBadge(
+                        name: session
+                    )
+                    .padding(.top, 1)
+                }
+            }
+            .frame(
+                maxWidth: .infinity
+            )
+            .padding(.vertical, 12)
+        }
+        .listRowBackground(
+            Color.clear
+        )
+    }
+
+    private var quickActions: some View {
+        HStack(spacing: 8) {
+            profileAction(
+                title: "Message",
+                icon: "message.fill"
+            ) {
+            }
+
+            profileAction(
+                title: "Call",
+                icon: "phone.fill"
+            ) {
+            }
+            .disabled(true)
+
+            profileAction(
+                title: "Search",
+                icon:
+                    "magnifyingglass"
+            ) {
+            }
+
+            profileAction(
+                title: "More",
+                icon:
+                    "ellipsis"
+            ) {
+            }
+        }
+        .frame(
+            maxWidth: .infinity
+        )
+    }
+
+    private func profileAction(
+        title: String,
+        icon: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(
+            action: action
+        ) {
+            VStack(spacing: 7) {
+                Image(
+                    systemName: icon
+                )
+                .font(
+                    .system(
+                        size: 18,
+                        weight: .medium
+                    )
+                )
+                .frame(height: 22)
+
+                Text(title)
+                    .font(
+                        .system(
+                            size: 11,
+                            weight: .medium
+                        )
+                    )
+                    .lineLimit(1)
+            }
+            .foregroundStyle(
+                AppVisualDesign.accent
+            )
+            .frame(
+                maxWidth: .infinity
+            )
+            .frame(height: 62)
+            .background(
+                Color(
+                    uiColor:
+                        .secondarySystemGroupedBackground
+                ),
+                in:
+                    RoundedRectangle(
+                        cornerRadius: 12,
+                        style: .continuous
+                    )
+            )
+        }
+        .buttonStyle(.plain)
     }
 
     private func profileRow(
