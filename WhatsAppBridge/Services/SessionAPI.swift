@@ -46,3 +46,58 @@ extension APIClient {
         ).accounts
     }
 }
+
+extension APIClient {
+    func disconnectSession(
+        accountID: String
+    ) async throws {
+        let url = baseURL
+            .appendingPathComponent(
+                "accounts/disconnect"
+            )
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+
+        request.setValue(
+            "application/json",
+            forHTTPHeaderField: "Content-Type"
+        )
+
+        request.httpBody =
+            try JSONSerialization.data(
+                withJSONObject: [
+                    "account_id": accountID
+                ]
+            )
+
+        let (data, response) =
+            try await URLSession.shared
+                .data(for: request)
+
+        guard let http =
+                response as? HTTPURLResponse,
+              (200...299).contains(
+                http.statusCode
+              )
+        else {
+            let message =
+                String(
+                    data: data,
+                    encoding: .utf8
+                ) ?? "Disconnect failed"
+
+            throw NSError(
+                domain: "SessionDisconnect",
+                code:
+                    (response as? HTTPURLResponse)?
+                        .statusCode ?? -1,
+                userInfo: [
+                    NSLocalizedDescriptionKey:
+                        message
+                ]
+            )
+        }
+    }
+}
+
