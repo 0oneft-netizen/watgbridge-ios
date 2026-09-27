@@ -5,114 +5,108 @@ struct SessionAccountDetailView: View {
     @State private var isDisconnecting = false
     @State private var disconnectError: String?
 
-    let account:
-        SessionAccountDTO
+    let account: SessionAccountDTO
 
     var body: some View {
         List {
             Section {
                 SessionDetailCard(
-                    account:
-                        account
+                    account: account
                 )
             }
 
-            Section(
-                "Tools"
-            ) {
+            Section("Tools") {
                 NavigationLink {
                     RenameSessionView(
-                        accountID:
-                            account.id,
+                        accountID: account.id,
                         currentName:
-                            account.displayName
-                            ?? "",
+                            account.displayName ?? "",
                         phone:
-                            account.phone
-                            ?? ""
+                            account.phone ?? ""
                     )
                 } label: {
                     Label(
                         "Rename Session",
-                        systemImage:
-                            "pencil"
+                        systemImage: "pencil"
                     )
                 }
 
                 NavigationLink {
                     SessionQuickReplyEditor(
-                        accountID:
-                            account.id,
+                        accountID: account.id,
                         sessionName:
-                            account.displayName
-                            ?? ""
+                            account.displayName ?? ""
                     )
                 } label: {
                     Label(
                         "Quick Replies",
-                        systemImage:
-                            "bolt.fill"
+                        systemImage: "bolt.fill"
                     )
                 }
             }
 
-            Section(
-                "Connection"
-            ) {
+            Section("Connection") {
                 SessionConnectionChip(
-                    status:
-                        account.status ?? ""
+                    status: account.status ?? ""
                 )
 
                 Text(
                     "Renaming this session does not change its routing identity."
                 )
                 .font(.caption)
-                .foregroundStyle(
-                    .secondary
-                )
+                .foregroundStyle(.secondary)
             }
-        }
-        
-        .safeAreaInset(edge: .bottom) {
-            VStack(spacing: 8) {
+
+            Section {
                 Button(role: .destructive) {
                     showDisconnectConfirmation = true
                 } label: {
                     HStack {
+                        Spacer()
+
                         if isDisconnecting {
                             ProgressView()
+                                .padding(.trailing, 4)
                         }
 
-                        Text(
+                        Label(
                             isDisconnecting
-                            ? "Disconnecting…"
-                            : "Disconnect Session"
+                                ? "Disconnecting…"
+                                : "Disconnect Session",
+                            systemImage:
+                                "rectangle.portrait.and.arrow.right"
                         )
                         .fontWeight(.semibold)
+
+                        Spacer()
                     }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
                 }
-                .buttonStyle(.bordered)
-                .disabled(isDisconnecting)
-                .padding(.horizontal)
+                .disabled(
+                    isDisconnecting
+                    || account.status?.lowercased()
+                        == "disconnected"
+                )
+            } footer: {
+                Text(
+                    "Disconnecting keeps this session's existing "
+                    + "message history and routing identity."
+                )
             }
-            .padding(.vertical, 8)
-            .background(.bar)
         }
-.navigationTitle(
+        .navigationTitle(
             (account.displayName ?? "").isEmpty
-                ? ((account.phone ?? "").isEmpty ? "WhatsApp Account" : (account.phone ?? ""))
+                ? (
+                    (account.phone ?? "").isEmpty
+                        ? "WhatsApp Account"
+                        : (account.phone ?? "")
+                )
                 : (account.displayName ?? "")
         )
-        .navigationBarTitleDisplayMode(
-            .inline
-        )
-    }
+        .navigationBarTitleDisplayMode(.inline)
         .confirmationDialog(
             "Disconnect this session?",
-            isPresented: $showDisconnectConfirmation,
+            isPresented:
+                $showDisconnectConfirmation,
             titleVisibility: .visible
         ) {
             Button(
@@ -120,47 +114,73 @@ struct SessionAccountDetailView: View {
                 role: .destructive
             ) {
                 Task {
-                    isDisconnecting = true
-                    disconnectError = nil
-
-                    do {
-                        try await APIClient.shared
-                            .disconnectSession(
-                                accountID: account.id
-                            )
-
-                        await SessionDirectory.shared
-                            .refresh()
-                    } catch {
-                        disconnectError =
-                            error.localizedDescription
-                    }
-
-                    isDisconnecting = false
+                    await disconnect()
                 }
             }
 
-            Button("Cancel", role: .cancel) {}
+            Button(
+                "Cancel",
+                role: .cancel
+            ) {}
         } message: {
             Text(
-                "Messages stay in the app. "
-                + "Only this WhatsApp connection is disconnected."
+                "The WhatsApp connection will be disconnected. "
+                + "Existing message history will remain available."
             )
         }
         .alert(
             "Could Not Disconnect",
-            isPresented: Binding(
-                get: { disconnectError != nil },
-                set: { value in
-                    if !value {
-                        disconnectError = nil
-                    }
-                }
-            )
+            isPresented:
+                disconnectErrorBinding
         ) {
-            Button("OK", role: .cancel) {}
+            Button(
+                "OK",
+                role: .cancel
+            ) {}
         } message: {
             Text(disconnectError ?? "")
         }
+    }
 
+    private var disconnectErrorBinding:
+        Binding<Bool>
+    {
+        Binding(
+            get: {
+                disconnectError != nil
+            },
+            set: { presented in
+                if !presented {
+                    disconnectError = nil
+                }
+            }
+        )
+    }
+
+    @MainActor
+    private func disconnect() async {
+        guard !isDisconnecting else {
+            return
+        }
+
+        isDisconnecting = true
+        disconnectError = nil
+
+        defer {
+            isDisconnecting = false
+        }
+
+        do {
+            try await APIClient.shared
+                .disconnectSession(
+                    accountID: account.id
+                )
+
+            await SessionDirectory.shared
+                .refresh()
+        } catch {
+            disconnectError =
+                error.localizedDescription
+        }
+    }
 }
