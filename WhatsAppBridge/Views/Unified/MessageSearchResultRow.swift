@@ -6,12 +6,12 @@ struct MessageSearchResultRow: View {
 
     private var dateText: String {
         let raw =
-            message.createdAt
+            Double(message.createdAt)
 
         let seconds =
             raw > 10_000_000_000
-            ? Double(raw) / 1000
-            : Double(raw)
+            ? raw / 1000
+            : raw
 
         guard seconds > 0 else {
             return ""
@@ -25,6 +25,25 @@ struct MessageSearchResultRow: View {
             date: .abbreviated,
             time: .shortened
         )
+    }
+
+    private var fallbackText: String {
+        switch message.type.lowercased() {
+        case "image":
+            return "Photo"
+        case "video", "video_note", "ptv":
+            return "Video"
+        case "gif":
+            return "GIF"
+        case "voice", "audio":
+            return "Voice message"
+        case "document":
+            return message.fileName ?? "Document"
+        case "sticker":
+            return "Sticker"
+        default:
+            return "Message"
+        }
     }
 
     var body: some View {
@@ -48,10 +67,7 @@ struct MessageSearchResultRow: View {
             ) {
                 Text(
                     message.text.isEmpty
-                    ? MessagePresentation
-                        .fallbackText(
-                            for: message
-                        )
+                    ? fallbackText
                     : message.text
                 )
                 .font(.body)

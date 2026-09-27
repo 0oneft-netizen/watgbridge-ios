@@ -15,7 +15,7 @@ struct SessionRouteCard: View {
 
                 Image(
                     systemName:
-                        session.accountType
+                        (session.accountType ?? "")
                             .lowercased()
                             == "business"
                         ? "briefcase.fill"

@@ -7,8 +7,7 @@ enum MessageRouteGuard {
         let value =
             message.accountID?
                 .trimmingCharacters(
-                    in:
-                        .whitespacesAndNewlines
+                    in: .whitespacesAndNewlines
                 )
             ?? ""
 
@@ -24,8 +23,7 @@ enum MessageRouteGuard {
         let value =
             message.chatJID
                 .trimmingCharacters(
-                    in:
-                        .whitespacesAndNewlines
+                    in: .whitespacesAndNewlines
                 )
 
         return value.isEmpty
