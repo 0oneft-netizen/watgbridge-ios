@@ -168,6 +168,7 @@ final class APIClient {
             "account_id",
             accountID
         )
+        addField("account_id", accountID)
         addField("chat_jid", chatJID)
         addField("type", type)
         addField("caption", caption)
