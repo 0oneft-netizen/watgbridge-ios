@@ -1,59 +1,55 @@
 import SwiftUI
 
 struct ChatBackgroundView: View {
+    @Environment(\.colorScheme)
+    private var colorScheme
+
     var body: some View {
         ZStack {
-            Color(
-                uiColor:
-                    .systemBackground
+            (
+                colorScheme == .dark
+                ? AppVisualDesign.chatBackgroundDark
+                : AppVisualDesign.chatBackgroundLight
             )
-
-            LinearGradient(
-                colors: [
-                    ChatDesign.accent
-                        .opacity(0.035),
-                    Color.clear,
-                    Color.secondary
-                        .opacity(0.025)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
+            .ignoresSafeArea()
 
             Canvas { context, size in
-                let spacing: CGFloat = 42
-                let dotSize: CGFloat = 1.35
+                let step: CGFloat = 58
 
-                var y: CGFloat = 16
+                var x: CGFloat = -20
+                while x < size.width + step {
+                    var y: CGFloat = -20
 
-                while y < size.height {
-                    var x: CGFloat = 18
-
-                    while x < size.width {
+                    while y < size.height + step {
                         let rect = CGRect(
                             x: x,
                             y: y,
-                            width: dotSize,
-                            height: dotSize
+                            width: 18,
+                            height: 18
                         )
 
-                        context.fill(
+                        context.stroke(
                             Path(
-                                ellipseIn: rect
+                                roundedRect: rect,
+                                cornerRadius: 6
                             ),
                             with: .color(
-                                Color.secondary
-                                    .opacity(0.055)
-                            )
+                                Color.secondary.opacity(
+                                    colorScheme == .dark
+                                    ? 0.025
+                                    : 0.035
+                                )
+                            ),
+                            lineWidth: 0.7
                         )
 
-                        x += spacing
+                        y += step
                     }
 
-                    y += spacing
+                    x += step
                 }
             }
+            .allowsHitTesting(false)
         }
-        .ignoresSafeArea()
     }
 }

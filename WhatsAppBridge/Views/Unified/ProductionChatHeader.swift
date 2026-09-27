@@ -4,7 +4,8 @@ struct ProductionChatHeader: View {
     let conversation: Conversation
 
     @ObservedObject
-    private var sessions = SessionDirectory.shared
+    private var sessions =
+        SessionDirectory.shared
 
     private var sessionName: String {
         sessions.name(
@@ -36,33 +37,21 @@ struct ProductionChatHeader: View {
                     .foregroundStyle(.primary)
                     .lineLimit(1)
 
-                HStack(spacing: 5) {
-                    Circle()
-                        .fill(ChatDesign.accent)
-                        .frame(
-                            width: 5,
-                            height: 5
-                        )
-
-                    Text(sessionName)
-                        .font(
-                            .system(
-                                size: 11.5,
-                                weight: .medium
-                            )
-                        )
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
+                SessionMiniBadge(
+                    name: sessionName
+                )
             }
 
-            Spacer(minLength: 4)
+            Spacer(minLength: 2)
         }
         .frame(
             maxWidth: .infinity,
             alignment: .leading
         )
-        .accessibilityElement(children: .combine)
+        .contentShape(Rectangle())
+        .accessibilityElement(
+            children: .combine
+        )
         .accessibilityLabel(
             "\(customerName), \(sessionName)"
         )
@@ -86,32 +75,21 @@ struct ProductionChatHeader: View {
                     .scaledToFill()
 
             default:
-                avatarFallback
+                AppAvatarPlaceholder(
+                    initials:
+                        conversation.initials,
+                    size:
+                        AppVisualDesign
+                            .chatAvatarSize
+                )
             }
         }
         .frame(
-            width: 40,
-            height: 40
+            width:
+                AppVisualDesign.chatAvatarSize,
+            height:
+                AppVisualDesign.chatAvatarSize
         )
         .clipShape(Circle())
-    }
-
-    private var avatarFallback: some View {
-        ZStack {
-            Circle()
-                .fill(
-                    Color.secondary
-                        .opacity(0.14)
-                )
-
-            Text(conversation.initials)
-                .font(
-                    .system(
-                        size: 12,
-                        weight: .semibold
-                    )
-                )
-                .foregroundStyle(.secondary)
-        }
     }
 }

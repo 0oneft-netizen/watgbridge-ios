@@ -12,6 +12,14 @@ struct ProductionComposerView: View {
     let onSend: () -> Void
     let onVoice: () -> Void
 
+    private var hasText: Bool {
+        !text
+            .trimmingCharacters(
+                in: .whitespacesAndNewlines
+            )
+            .isEmpty
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             if let replyingTo {
@@ -20,29 +28,25 @@ struct ProductionComposerView: View {
 
             HStack(
                 alignment: .bottom,
-                spacing: 8
+                spacing: 7
             ) {
                 Button(
                     action: onAttachment
                 ) {
-                    Image(
-                        systemName: "plus"
-                    )
-                    .font(
-                        .system(
-                            size: 18,
-                            weight: .semibold
+                    Image(systemName: "plus")
+                        .font(
+                            .system(
+                                size: 23,
+                                weight: .regular
+                            )
                         )
-                    )
-                    .frame(
-                        width: 34,
-                        height: 34
-                    )
-                    .background(
-                        Color.secondary
-                            .opacity(0.10),
-                        in: Circle()
-                    )
+                        .foregroundStyle(
+                            Color.accentColor
+                        )
+                        .frame(
+                            width: 34,
+                            height: 38
+                        )
                 }
 
                 HStack(
@@ -50,18 +54,16 @@ struct ProductionComposerView: View {
                     spacing: 8
                 ) {
                     TextField(
-                        "Message…",
+                        "Message",
                         text: $text,
                         axis: .vertical
                     )
-                     .lineLimit(1...6)
+                    .lineLimit(1...6)
                     .submitLabel(.send)
                     .font(.system(size: 16))
                     .foregroundStyle(.primary)
-                    .padding(
-                        .vertical,
-                        10
-                    )
+                    .padding(.leading, 3)
+                    .padding(.vertical, 9)
 
                     Button(
                         action: onCamera
@@ -70,40 +72,40 @@ struct ProductionComposerView: View {
                             systemName:
                                 "camera.fill"
                         )
+                        .font(.system(size: 17))
                         .foregroundStyle(
-                            .secondary
+                            Color.accentColor
                         )
                     }
-                    .padding(
-                        .bottom,
-                        9
-                    )
+                    .padding(.trailing, 2)
+                    .padding(.bottom, 10)
                 }
-                .padding(
-                    .horizontal,
-                    12
-                )
+                .padding(.horizontal, 10)
                 .background(
-                    Color(
-                        uiColor:
-                            .secondarySystemBackground
-                    ),
+                    AppVisualDesign
+                        .composerField,
                     in: RoundedRectangle(
-                        cornerRadius: 21,
+                        cornerRadius: 20,
                         style: .continuous
                     )
                 )
+                .overlay {
+                    RoundedRectangle(
+                        cornerRadius: 20,
+                        style: .continuous
+                    )
+                    .stroke(
+                        Color.secondary
+                            .opacity(0.12),
+                        lineWidth: 0.5
+                    )
+                }
 
                 Button {
-                    if text
-                        .trimmingCharacters(
-                            in:
-                                .whitespacesAndNewlines
-                        )
-                        .isEmpty {
-                        onVoice()
-                    } else {
+                    if hasText {
                         onSend()
+                    } else {
+                        onVoice()
                     }
                 } label: {
                     ZStack {
@@ -114,14 +116,15 @@ struct ProductionComposerView: View {
 
                         Image(
                             systemName:
-                                text
-                                    .trimmingCharacters(
-                                        in:
-                                            .whitespacesAndNewlines
-                                    )
-                                    .isEmpty
-                                ? "mic.fill"
-                                : "paperplane.fill"
+                                hasText
+                                ? "paperplane.fill"
+                                : "mic.fill"
+                        )
+                        .font(
+                            .system(
+                                size: 17,
+                                weight: .semibold
+                            )
                         )
                         .foregroundStyle(.white)
                     }
@@ -131,12 +134,12 @@ struct ProductionComposerView: View {
                     )
                 }
             }
-            .padding(.horizontal, 10)
-            .padding(.top, 6)
+            .padding(.horizontal, 8)
+            .padding(.top, 5)
             .padding(.bottom, 7)
             .animation(
-                .easeInOut(duration: 0.16),
-                value: text.isEmpty
+                .easeInOut(duration: 0.15),
+                value: hasText
             )
         }
         .background(.ultraThinMaterial)
@@ -175,9 +178,7 @@ struct ProductionComposerView: View {
                     : message.text
                 )
                 .font(.caption)
-                .foregroundStyle(
-                    .secondary
-                )
+                .foregroundStyle(.secondary)
                 .lineLimit(1)
             }
 
@@ -190,18 +191,10 @@ struct ProductionComposerView: View {
                     systemName:
                         "xmark.circle.fill"
                 )
-                .foregroundStyle(
-                    .secondary
-                )
+                .foregroundStyle(.secondary)
             }
         }
-        .padding(
-            .horizontal,
-            12
-        )
-        .padding(
-            .vertical,
-            7
-        )
+        .padding(.horizontal, 12)
+        .padding(.vertical, 7)
     }
 }

@@ -1,36 +1,30 @@
 import SwiftUI
+import UIKit
 
 enum ChatDesign {
-    static let bubbleRadius: CGFloat = 12
-    static let bubbleMaxWidth: CGFloat = 310
+    static let bubbleRadius =
+        AppVisualDesign.bubbleRadius
+
+    static let bubbleMaxWidth =
+        AppVisualDesign.bubbleMaximumWidth
 
     static let incomingBubble =
-        Color(uiColor: .secondarySystemBackground)
+        AppVisualDesign.incomingBubble
 
     static let outgoingBubble =
-        Color(
-            red: 0.82,
-            green: 0.96,
-            blue: 0.78
-        )
+        AppVisualDesign.outgoingBubble
 
     static let chatBackground =
-        Color(uiColor: .systemBackground)
+        AppVisualDesign.screenBackground
 
     static let subtleFill =
         Color(uiColor: .secondarySystemBackground)
 
-
     static let separator =
-        Color(uiColor: .separator)
-            .opacity(0.35)
+        AppVisualDesign.separator
 
     static let accent =
-        Color(
-            red: 0.10,
-            green: 0.65,
-            blue: 0.39
-        )
+        AppVisualDesign.accent
 }
 
 struct ChatBubbleShape: Shape {
@@ -77,11 +71,16 @@ struct MessageStatusIcon: View {
                     ? "checkmark.circle.fill"
                     : "checkmark"
             )
-            .font(.system(size: 10))
+            .font(
+                .system(
+                    size: 10,
+                    weight: .semibold
+                )
+            )
             .foregroundStyle(
                 read
                 ? ChatDesign.accent
-                : .secondary
+                : AppVisualDesign.outgoingMetadata
             )
         }
     }
@@ -92,12 +91,22 @@ struct ChatDatePill: View {
 
     var body: some View {
         Text(text)
-            .font(.caption2.weight(.medium))
+            .font(.caption2.weight(.semibold))
             .foregroundStyle(.secondary)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 5)
-            .background(.thinMaterial)
-            .clipShape(Capsule())
+            .padding(.horizontal, 11)
+            .padding(.vertical, 6)
+            .background(.regularMaterial)
+            .clipShape(
+                RoundedRectangle(
+                    cornerRadius: 8,
+                    style: .continuous
+                )
+            )
+            .shadow(
+                color: .black.opacity(0.05),
+                radius: 1,
+                y: 1
+            )
     }
 }
 
@@ -109,7 +118,7 @@ struct SenderIdentityPill: View {
         HStack(spacing: 5) {
             Circle()
                 .fill(ChatDesign.accent)
-                .frame(width: 7, height: 7)
+                .frame(width: 6, height: 6)
 
             Text(name)
                 .font(.caption.weight(.semibold))

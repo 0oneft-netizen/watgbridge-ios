@@ -13,13 +13,13 @@ struct UnifiedMessageBubble: View {
 
     private var messageTextColor: Color {
         message.fromMe
-            ? Color(red: 0.08, green: 0.12, blue: 0.09)
+            ? AppVisualDesign.outgoingText
             : Color.primary
     }
 
     private var metadataColor: Color {
         message.fromMe
-            ? Color.black.opacity(0.55)
+            ? AppVisualDesign.outgoingMetadata
             : Color.secondary
     }
 
