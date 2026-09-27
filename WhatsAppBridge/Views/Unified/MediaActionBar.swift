@@ -1,80 +1,90 @@
 import SwiftUI
 
 struct MediaActionBar: View {
-    let message:
-        Message
+    let message: Message
 
-    let save:
-        () -> Void
-
-    let share:
-        () -> Void
-
-    let forward:
-        () -> Void
+    let save: () -> Void
+    let share: () -> Void
+    let forward: () -> Void
 
     var body: some View {
-        HStack {
+        HStack(spacing: 0) {
             if MediaOperationPolicy
-                .maySave(
-                    message
-                ) {
+                .maySave(message) {
 
-                Button(
-                    action:
-                        save
-                ) {
-                    Label(
-                        "Save",
-                        systemImage:
-                            "square.and.arrow.down"
-                    )
-                }
+                actionButton(
+                    title: "Save",
+                    icon:
+                        "square.and.arrow.down",
+                    action: save
+                )
             }
 
-            Spacer()
-
             if MediaOperationPolicy
-                .mayShare(
-                    message
-                ) {
+                .mayShare(message) {
 
-                Button(
-                    action:
-                        share
-                ) {
-                    Label(
-                        "Share",
-                        systemImage:
-                            "square.and.arrow.up"
-                    )
-                }
+                actionButton(
+                    title: "Share",
+                    icon:
+                        "square.and.arrow.up",
+                    action: share
+                )
             }
 
-            Spacer()
-
             if MediaOperationPolicy
-                .mayForward(
-                    message
-                ) {
+                .mayForward(message) {
 
-                Button(
-                    action:
-                        forward
-                ) {
-                    Label(
-                        "Forward",
-                        systemImage:
-                            "arrowshape.turn.up.right"
-                    )
-                }
+                actionButton(
+                    title: "Forward",
+                    icon:
+                        "arrowshape.turn.up.right",
+                    action: forward
+                )
             }
         }
-        .font(
-            .subheadline
-                .weight(
-                    .semibold
-                )
+        .frame(
+            maxWidth: .infinity
         )
+        .padding(.vertical, 7)
+        .background(
+            .ultraThinMaterial
+        )
+    }
+
+    private func actionButton(
+        title: String,
+        icon: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(
+            action: action
+        ) {
+            VStack(spacing: 4) {
+                Image(
+                    systemName: icon
+                )
+                .font(
+                    .system(
+                        size: 17,
+                        weight: .medium
+                    )
+                )
+
+                Text(title)
+                    .font(
+                        .system(
+                            size: 11,
+                            weight: .medium
+                        )
+                    )
+            }
+            .foregroundStyle(
+                AppVisualDesign.accent
+            )
+            .frame(
+                maxWidth: .infinity
+            )
+        }
+        .buttonStyle(.plain)
     }
 }

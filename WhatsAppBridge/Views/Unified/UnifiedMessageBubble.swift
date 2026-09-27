@@ -124,29 +124,60 @@ struct UnifiedMessageBubble: View {
                 )
             )
             .contextMenu {
-                Button(action: onReply) {
-                    Label(
-                        "Reply",
-                        systemImage:
-                            "arrowshape.turn.up.left"
-                    )
-                }
+                if MessageActionPolicy
+                    .mayReply(message) {
 
-                Menu("React") {
-                    ForEach(
-                        ["❤️", "👍", "😂", "😮", "😢", "🙏"],
-                        id: \.self
-                    ) { emoji in
-                        Button(emoji) {
-                            onReact(emoji)
-                        }
+                    Button(
+                        action: onReply
+                    ) {
+                        Label(
+                            "Reply",
+                            systemImage:
+                                "arrowshape.turn.up.left"
+                        )
                     }
                 }
 
-                if !message.text.isEmpty {
+                if MessageActionPolicy
+                    .mayReact(message) {
+
+                    Menu {
+                        ForEach(
+                            [
+                                "❤️",
+                                "👍",
+                                "😂",
+                                "😮",
+                                "😢",
+                                "🙏"
+                            ],
+                            id: \.self
+                        ) { emoji in
+                            Button {
+                                onReact(emoji)
+                            } label: {
+                                Text(emoji)
+                            }
+                        }
+                    } label: {
+                        Label(
+                            "React",
+                            systemImage:
+                                "face.smiling"
+                        )
+                    }
+                }
+
+                if MessageActionPolicy
+                    .mayCopy(message) {
+
                     Button {
-                        UIPasteboard.general.string =
-                            message.text
+                        UIPasteboard
+                            .general
+                            .string =
+                                message.text
+
+                        Haptics.success()
                     } label: {
                         Label(
                             "Copy",
@@ -158,29 +189,16 @@ struct UnifiedMessageBubble: View {
 
                 Button(
                     role: .destructive,
-                    action: onDeleteLocal
+                    action:
+                        onDeleteLocal
                 ) {
                     Label(
                         "Delete for Me",
-                        systemImage: "trash"
+                        systemImage:
+                            "trash"
                     )
                 }
             }
-            .gesture(
-                DragGesture(
-                    minimumDistance: 25
-                )
-                .onEnded { value in
-                    if value.translation.width > 65 {
-                        UIImpactFeedbackGenerator(
-                            style: .light
-                        ).impactOccurred()
-
-                        onReply()
-                    }
-                }
-            )
-
             if !message.fromMe {
                 Spacer(minLength: 45)
             }
