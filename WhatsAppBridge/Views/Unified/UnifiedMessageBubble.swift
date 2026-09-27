@@ -11,6 +11,18 @@ struct UnifiedMessageBubble: View {
     let onReact: (String) -> Void
     let onDeleteLocal: () -> Void
 
+    private var messageTextColor: Color {
+        message.fromMe
+            ? Color(red: 0.08, green: 0.12, blue: 0.09)
+            : Color.primary
+    }
+
+    private var metadataColor: Color {
+        message.fromMe
+            ? Color.black.opacity(0.55)
+            : Color.secondary
+    }
+
     private var timestamp: String {
         let raw = message.createdAt
 
@@ -63,7 +75,7 @@ struct UnifiedMessageBubble: View {
 
                     Text(timestamp)
                         .font(.system(size: 10))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(metadataColor)
 
                     MessageStatusIcon(
                         fromMe: message.fromMe,
@@ -205,7 +217,7 @@ struct UnifiedMessageBubble: View {
             if !message.text.isEmpty {
                 Text(message.text)
                     .font(.body)
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(messageTextColor)
                     .textSelection(.enabled)
             }
         }
