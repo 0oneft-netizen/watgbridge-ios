@@ -5,12 +5,14 @@ struct BusinessShellView: View {
 
     var body: some View {
         TabView(selection: $selection) {
-
             ConversationsView()
                 .tabItem {
                     Label(
                         "Chats",
-                        systemImage: "message.fill"
+                        systemImage:
+                            selection == 0
+                            ? "message.fill"
+                            : "message"
                     )
                 }
                 .tag(0)
@@ -19,7 +21,10 @@ struct BusinessShellView: View {
                 .tabItem {
                     Label(
                         "Customers",
-                        systemImage: "person.2.fill"
+                        systemImage:
+                            selection == 1
+                            ? "person.2.fill"
+                            : "person.2"
                     )
                 }
                 .tag(1)
@@ -28,7 +33,10 @@ struct BusinessShellView: View {
                 .tabItem {
                     Label(
                         "Catalog",
-                        systemImage: "bag.fill"
+                        systemImage:
+                            selection == 2
+                            ? "bag.fill"
+                            : "bag"
                     )
                 }
                 .tag(2)
@@ -37,7 +45,10 @@ struct BusinessShellView: View {
                 .tabItem {
                     Label(
                         "Business",
-                        systemImage: "briefcase.fill"
+                        systemImage:
+                            selection == 3
+                            ? "briefcase.fill"
+                            : "briefcase"
                     )
                 }
                 .tag(3)
@@ -46,10 +57,14 @@ struct BusinessShellView: View {
                 .tabItem {
                     Label(
                         "Settings",
-                        systemImage: "gearshape.fill"
+                        systemImage:
+                            selection == 4
+                            ? "gearshape.fill"
+                            : "gearshape"
                     )
                 }
                 .tag(4)
         }
+        .tint(AppVisualDesign.accent)
     }
 }

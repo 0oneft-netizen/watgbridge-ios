@@ -1,7 +1,8 @@
 import SwiftUI
 
 struct SettingsView: View {
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.dismiss)
+    private var dismiss
 
     @AppStorage(AppSettings.notificationsEnabled)
     private var notificationsEnabled = true
@@ -18,73 +19,95 @@ struct SettingsView: View {
     @AppStorage(AppSettings.hapticsEnabled)
     private var hapticsEnabled = true
 
+    @ObservedObject
+    private var sessions = SessionDirectory.shared
+
     var body: some View {
         NavigationStack {
-            Form {
-                Section("Notifications") {
-                    Toggle(
-                        "Notifications",
-                        isOn: $notificationsEnabled
-                    )
+            List {
+                accountSection
 
-                    Toggle(
-                        "Show message preview",
-                        isOn: $notificationPreview
-                    )
-                    .disabled(!notificationsEnabled)
-
-                    Toggle(
-                        "Sound",
-                        isOn: $notificationSound
-                    )
-                    .disabled(!notificationsEnabled)
-
-                    Toggle(
-                        "App badge",
-                        isOn: $badgeEnabled
-                    )
-                }
-
-                Section("WhatsApp Accounts") {
+                Section {
                     NavigationLink {
                         SessionsManagementView()
                     } label: {
-                        Label(
-                            "Sessions",
-                            systemImage: "iphone.gen3"
+                        settingsRow(
+                            icon: "iphone.gen3",
+                            title: "WhatsApp Accounts",
+                            subtitle:
+                                sessionSummary,
+                            tint:
+                                AppVisualDesign.accent
                         )
                     }
-                }
 
-                Section("Business Tools") {
                     NavigationLink {
                         QuickRepliesView()
                     } label: {
-                        Label(
-                            "Quick Replies",
-                            systemImage:
-                                "text.bubble"
+                        settingsRow(
+                            icon:
+                                "text.bubble.fill",
+                            title:
+                                "Quick Replies",
+                            subtitle:
+                                "Saved business responses",
+                            tint: .blue
                         )
                     }
                 }
 
-                Section("Notification Diagnostics") {
+                Section("Notifications") {
+                    Toggle(
+                        "Notifications",
+                        isOn:
+                            $notificationsEnabled
+                    )
+
+                    Toggle(
+                        "Show Message Preview",
+                        isOn:
+                            $notificationPreview
+                    )
+                    .disabled(
+                        !notificationsEnabled
+                    )
+
+                    Toggle(
+                        "Sounds",
+                        isOn:
+                            $notificationSound
+                    )
+                    .disabled(
+                        !notificationsEnabled
+                    )
+
+                    Toggle(
+                        "Badge",
+                        isOn:
+                            $badgeEnabled
+                    )
+                }
+
+                Section("App") {
+                    Toggle(
+                        "Haptic Feedback",
+                        isOn:
+                            $hapticsEnabled
+                    )
+
                     NavigationLink {
                         PushDiagnosticsView()
                     } label: {
-                        Label(
-                            "Push Diagnostics",
-                            systemImage:
-                                "bell.badge.fill"
+                        settingsRow(
+                            icon:
+                                "bell.badge.fill",
+                            title:
+                                "Notification Diagnostics",
+                            subtitle:
+                                "Delivery and registration status",
+                            tint: .orange
                         )
                     }
-                }
-
-                Section("Experience") {
-                    Toggle(
-                        "Haptic feedback",
-                        isOn: $hapticsEnabled
-                    )
                 }
 
                 Section("Connection") {
@@ -102,28 +125,163 @@ struct SettingsView: View {
                 Section("About") {
                     LabeledContent(
                         "App",
-                        value: "WhatsApp Bridge"
+                        value:
+                            "WhatsApp Bridge"
                     )
 
                     LabeledContent(
                         "Version",
-                        value:
-                            Bundle.main.infoDictionary?[
-                                "CFBundleShortVersionString"
-                            ] as? String ?? "1.0"
+                        value: version
                     )
                 }
             }
             .navigationTitle("Settings")
-            .toolbar {
-                ToolbarItem(
-                    placement: .confirmationAction
-                ) {
-                    Button("Done") {
-                        dismiss()
-                    }
+            .navigationBarTitleDisplayMode(
+                .large
+            )
+            .tint(
+                AppVisualDesign.accent
+            )
+            .task {
+                if sessions.sessions.isEmpty {
+                    await sessions.refresh()
                 }
             }
         }
+    }
+
+    private var accountSection: some View {
+        Section {
+            HStack(spacing: 14) {
+                ZStack {
+                    Circle()
+                        .fill(
+                            AppVisualDesign
+                                .accent
+                                .opacity(0.13)
+                        )
+
+                    Image(
+                        systemName:
+                            "message.fill"
+                    )
+                    .font(
+                        .system(
+                            size: 25,
+                            weight: .semibold
+                        )
+                    )
+                    .foregroundStyle(
+                        AppVisualDesign.accent
+                    )
+                }
+                .frame(
+                    width: 58,
+                    height: 58
+                )
+
+                VStack(
+                    alignment: .leading,
+                    spacing: 4
+                ) {
+                    Text("Messaging Bridge")
+                        .font(
+                            .title3
+                                .weight(.semibold)
+                        )
+
+                    Text(sessionSummary)
+                        .font(.subheadline)
+                        .foregroundStyle(
+                            .secondary
+                        )
+                }
+
+                Spacer()
+            }
+            .padding(.vertical, 5)
+        }
+    }
+
+    private var sessionSummary: String {
+        let values =
+            Array(sessions.sessions.values)
+
+        let connected =
+            values.filter {
+                $0.status
+                    .lowercased()
+                    == "connected"
+            }.count
+
+        if values.isEmpty {
+            return "No linked accounts"
+        }
+
+        if connected == values.count {
+            return values.count == 1
+                ? "1 connected account"
+                : "\(values.count) connected accounts"
+        }
+
+        return "\(connected) of \(values.count) connected"
+    }
+
+    @ViewBuilder
+    private func settingsRow(
+        icon: String,
+        title: String,
+        subtitle: String,
+        tint: Color
+    ) -> some View {
+        HStack(spacing: 12) {
+            ZStack {
+                RoundedRectangle(
+                    cornerRadius: 8,
+                    style: .continuous
+                )
+                .fill(tint)
+
+                Image(
+                    systemName: icon
+                )
+                .font(
+                    .system(
+                        size: 15,
+                        weight: .semibold
+                    )
+                )
+                .foregroundStyle(.white)
+            }
+            .frame(
+                width: 30,
+                height: 30
+            )
+
+            VStack(
+                alignment: .leading,
+                spacing: 2
+            ) {
+                Text(title)
+                    .foregroundStyle(
+                        .primary
+                    )
+
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(
+                        .secondary
+                    )
+                    .lineLimit(1)
+            }
+        }
+        .padding(.vertical, 2)
+    }
+
+    private var version: String {
+        Bundle.main
+            .infoDictionary?[
+                "CFBundleShortVersionString"
+            ] as? String ?? "1.0"
     }
 }
