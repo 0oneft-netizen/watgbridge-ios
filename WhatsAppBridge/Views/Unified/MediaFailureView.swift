@@ -1,65 +1,54 @@
 import SwiftUI
 
 struct MediaFailureView: View {
-    let type: String
     let retry: () -> Void
 
     var body: some View {
-        Button(
-            action: retry
-        ) {
-            VStack(spacing: 7) {
-                Image(
-                    systemName:
-                        icon
-                )
-                .font(.title2)
-
-                Text(
-                    "Media unavailable"
-                )
-                .font(
-                    .caption.bold()
-                )
-
-                Text(
-                    "Tap to retry"
-                )
-                .font(
-                    .caption2
-                )
-                .foregroundStyle(
-                    .secondary
-                )
-            }
-            .frame(
-                minWidth: 140,
-                minHeight: 90
+        VStack(spacing: 9) {
+            Image(
+                systemName:
+                    "exclamationmark.circle"
             )
-            .background(
-                Color.secondary
-                    .opacity(0.08),
-                in:
-                    RoundedRectangle(
-                        cornerRadius: 10
-                    )
+            .font(.title2)
+            .foregroundStyle(
+                .secondary
+            )
+
+            Text(
+                "Media unavailable"
+            )
+            .font(
+                .subheadline.weight(
+                    .medium
+                )
+            )
+
+            Button(
+                "Try Again",
+                action: retry
+            )
+            .font(
+                .subheadline.weight(
+                    .semibold
+                )
+            )
+            .foregroundStyle(
+                AppVisualDesign.accent
             )
         }
-        .buttonStyle(.plain)
-    }
-
-    private var icon:
-        String {
-        switch type {
-        case "video":
-            return "video.slash"
-        case "audio",
-             "voice":
-            return "waveform.badge.exclamationmark"
-        case "document":
-            return "doc.badge.ellipsis"
-        default:
-            return "photo.badge.exclamationmark"
-        }
+        .frame(
+            minWidth: 190,
+            minHeight: 110
+        )
+        .padding(12)
+        .background(
+            Color.primary
+                .opacity(0.045),
+            in:
+                RoundedRectangle(
+                    cornerRadius: 10,
+                    style: .continuous
+                )
+        )
     }
 }

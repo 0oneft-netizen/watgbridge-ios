@@ -89,6 +89,11 @@ struct CustomerProfileView: View {
             )
 
             Section {
+                SharedContentSummary(
+                    messages: messages
+                )
+                .padding(.vertical, 6)
+
                 ProfileMediaStrip(
                     messages: messages
                 )

@@ -16,27 +16,27 @@ enum MessageActionPolicy {
         _ message: Message
     ) -> Bool {
         ViewOnceSafety
-            .mayForward(
-                message
-            )
+            .mayForward(message)
+        &&
+        !(message.deletedRemote ?? false)
     }
 
     static func mayShare(
         _ message: Message
     ) -> Bool {
         ViewOnceSafety
-            .mayShare(
-                message
-            )
+            .mayShare(message)
+        &&
+        !(message.deletedRemote ?? false)
     }
 
     static func maySave(
         _ message: Message
     ) -> Bool {
         ViewOnceSafety
-            .mayPersist(
-                message
-            )
+            .maySave(message)
+        &&
+        !(message.deletedRemote ?? false)
     }
 
     static func mayReact(

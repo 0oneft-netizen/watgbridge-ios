@@ -1,38 +1,39 @@
 import SwiftUI
 
 struct MediaUnavailableView: View {
-    let retry:
-        (() -> Void)?
-
     var body: some View {
-        VStack(spacing: 7) {
+        VStack(spacing: 8) {
             Image(
                 systemName:
                     "photo.badge.exclamationmark"
             )
-            .font(
-                .title3
-            )
+            .font(.title2)
 
             Text(
                 "Media unavailable"
             )
             .font(
-                .caption.bold()
-            )
-
-            if let retry {
-                Button(
-                    "Retry",
-                    action:
-                        retry
+                .subheadline.weight(
+                    .medium
                 )
-                .font(.caption)
-            }
+            )
         }
         .foregroundStyle(
             .secondary
         )
-        .padding(12)
+        .frame(
+            minWidth: 190,
+            minHeight: 105
+        )
+        .padding(10)
+        .background(
+            Color.primary
+                .opacity(0.045),
+            in:
+                RoundedRectangle(
+                    cornerRadius: 10,
+                    style: .continuous
+                )
+        )
     }
 }

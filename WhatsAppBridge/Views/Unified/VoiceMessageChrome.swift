@@ -3,55 +3,112 @@ import SwiftUI
 struct VoiceMessageChrome: View {
     let isPlaying: Bool
     let progress: Double
+    let durationText: String
     let action: () -> Void
+
+    private var safeProgress: Double {
+        min(
+            max(progress, 0),
+            1
+        )
+    }
 
     var body: some View {
         HStack(spacing: 10) {
-            Button(action: action) {
+            Button(
+                action: action
+            ) {
                 Image(
                     systemName:
                         isPlaying
                         ? "pause.fill"
                         : "play.fill"
                 )
-                .font(.system(size: 15))
+                .font(
+                    .system(
+                        size: 15,
+                        weight: .bold
+                    )
+                )
+                .foregroundStyle(
+                    .white
+                )
                 .frame(
                     width: 34,
                     height: 34
                 )
                 .background(
-                    ChatDesign.accent,
+                    AppVisualDesign.accent,
                     in: Circle()
                 )
-                .foregroundStyle(.white)
             }
             .buttonStyle(.plain)
 
-            VStack(spacing: 4) {
-                ProgressView(
-                    value:
-                        min(
-                            1,
-                            max(0, progress)
-                        )
-                )
-                .tint(ChatDesign.accent)
+            VStack(
+                alignment: .leading,
+                spacing: 5
+            ) {
+                GeometryReader {
+                    proxy in
+
+                    ZStack(
+                        alignment: .leading
+                    ) {
+                        Capsule()
+                            .fill(
+                                Color.secondary
+                                    .opacity(0.22)
+                            )
+                            .frame(
+                                height: 3
+                            )
+
+                        Capsule()
+                            .fill(
+                                AppVisualDesign
+                                    .accent
+                            )
+                            .frame(
+                                width:
+                                    proxy.size.width
+                                    * safeProgress,
+                                height: 3
+                            )
+                    }
+                    .frame(
+                        maxHeight:
+                            .infinity
+                    )
+                }
+                .frame(height: 8)
 
                 HStack {
                     Image(
                         systemName:
                             "waveform"
                     )
-                    .font(.caption2)
 
                     Spacer()
 
-                    Text("Voice message")
-                        .font(.caption2)
+                    Text(durationText)
                 }
-                .foregroundStyle(.secondary)
+                .font(
+                    .system(
+                        size: 10,
+                        weight: .medium
+                    )
+                )
+                .foregroundStyle(
+                    .secondary
+                )
             }
         }
-        .frame(minWidth: 205)
+        .frame(
+            minWidth: 205
+        )
+        .padding(
+            .vertical,
+            3
+        )
     }
 }

@@ -2,57 +2,37 @@ import Foundation
 
 enum MediaOperationPolicy {
     static func mayDownload(
-        _ message:
-            Message
+        _ message: Message
     ) -> Bool {
-
-        !MessageMediaPolicy
-            .isViewOnce(
-                message
-            )
+        ViewOnceSafety
+            .mayPersist(message)
     }
 
     static func mayCache(
-        _ message:
-            Message
+        _ message: Message
     ) -> Bool {
-
-        !MessageMediaPolicy
-            .isViewOnce(
-                message
-            )
+        ViewOnceSafety
+            .mayCache(message)
     }
 
     static func maySave(
-        _ message:
-            Message
+        _ message: Message
     ) -> Bool {
-
-        !MessageMediaPolicy
-            .isViewOnce(
-                message
-            )
+        ViewOnceSafety
+            .maySave(message)
     }
 
     static func mayShare(
-        _ message:
-            Message
+        _ message: Message
     ) -> Bool {
-
-        !MessageMediaPolicy
-            .isViewOnce(
-                message
-            )
+        ViewOnceSafety
+            .mayShare(message)
     }
 
     static func mayForward(
-        _ message:
-            Message
+        _ message: Message
     ) -> Bool {
-
-        !MessageMediaPolicy
-            .isViewOnce(
-                message
-            )
+        ViewOnceSafety
+            .mayForward(message)
     }
 }
