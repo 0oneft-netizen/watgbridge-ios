@@ -207,11 +207,7 @@ struct MessageMediaView: View {
             )
 
         case "document":
-            DocumentMessageView(
-                url: url,
-                fileName: message.fileName,
-                mimeType: message.mimeType
-            )
+            DocumentMessageView(message: message)
 
         default:
             mediaPlaceholder(
