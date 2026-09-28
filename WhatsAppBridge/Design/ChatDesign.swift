@@ -61,28 +61,63 @@ struct ChatBubbleShape: Shape {
 
 struct MessageStatusIcon: View {
     let fromMe: Bool
-    let read: Bool
+    let deliveryState: String?
+
+    private var normalizedState: MessageDeliveryState {
+        MessageDeliveryState(
+            rawValue: deliveryState ?? ""
+        ) ?? .sent
+    }
 
     var body: some View {
         if fromMe {
-            Image(
-                systemName:
-                    read
-                    ? "checkmark.circle.fill"
-                    : "checkmark"
-            )
-            .font(
-                .system(
-                    size: 10,
-                    weight: .semibold
-                )
-            )
-            .foregroundStyle(
-                read
-                ? ChatDesign.accent
-                : AppVisualDesign.outgoingMetadata
-            )
+            switch normalizedState {
+            case .sending:
+                Image(systemName: "clock")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(Color.secondary)
+
+            case .failed:
+                Image(systemName: "exclamationmark.circle")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(Color.secondary)
+
+            case .sent:
+                checkmarks(count: 1, isRead: false)
+
+            case .delivered:
+                checkmarks(count: 2, isRead: false)
+
+            case .read:
+                checkmarks(count: 2, isRead: true)
+            }
         }
+    }
+
+    @ViewBuilder
+    private func checkmarks(
+        count: Int,
+        isRead: Bool
+    ) -> some View {
+        HStack(spacing: -3) {
+            Image(systemName: "checkmark")
+                .font(.system(size: 10, weight: .semibold))
+
+            if count > 1 {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 10, weight: .semibold))
+            }
+        }
+        .foregroundStyle(
+            isRead
+                ? Color.blue
+                : Color.secondary
+        )
+        .accessibilityLabel(
+            isRead
+                ? "Read"
+                : (count > 1 ? "Delivered" : "Sent")
+        )
     }
 }
 

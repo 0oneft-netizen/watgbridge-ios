@@ -79,7 +79,7 @@ struct UnifiedMessageBubble: View {
 
                     MessageStatusIcon(
                         fromMe: message.fromMe,
-                        read: false
+                        deliveryState: message.deliveryState
                     )
                 }
 

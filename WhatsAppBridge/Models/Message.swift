@@ -23,6 +23,7 @@ struct Message: Identifiable, Codable, Equatable {
 
     let deletedRemote: Bool?
     let deletedLocal: Bool?
+    let deliveryState: String?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -46,5 +47,6 @@ struct Message: Identifiable, Codable, Equatable {
 
         case deletedRemote = "deleted_remote"
         case deletedLocal = "deleted_local"
+        case deliveryState = "delivery_state"
     }
 }
