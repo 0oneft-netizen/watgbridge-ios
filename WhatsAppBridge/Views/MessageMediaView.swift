@@ -26,7 +26,7 @@ struct MessageMediaView: View {
 
     private var isSupportedMedia: Bool {
         switch message.type {
-        case "image", "video", "gif", "video_note",
+        case "image", "video", "gif", "video_note", "ptv",
              "voice", "audio", "document",
              "view_once_image", "view_once_video",
              "view_once_audio":
@@ -163,7 +163,7 @@ struct MessageMediaView: View {
                 )
             }
 
-        case "video_note":
+        case "video_note", "ptv":
             ZStack {
                 VideoPlayer(
                     player: AVPlayer(url: url)

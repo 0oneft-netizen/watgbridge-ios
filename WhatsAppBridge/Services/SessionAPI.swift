@@ -99,5 +99,65 @@ extension APIClient {
             )
         }
     }
+
+
+    func deleteSession(
+        accountID: String,
+        deleteHistory: Bool
+    ) async throws {
+        let url =
+            baseURL.appendingPathComponent(
+                "accounts/delete"
+            )
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue(
+            "application/json",
+            forHTTPHeaderField: "Content-Type"
+        )
+
+        request.httpBody =
+            try JSONSerialization.data(
+                withJSONObject: [
+                    "account_id": accountID,
+                    "delete_history": deleteHistory
+                ]
+            )
+
+        let (data, response) =
+            try await URLSession.shared.data(
+                for: request
+            )
+
+        guard let http =
+                response as? HTTPURLResponse
+        else {
+            throw URLError(
+                .badServerResponse
+            )
+        }
+
+        guard (200...299)
+                .contains(http.statusCode)
+        else {
+            let detail =
+                String(
+                    data: data,
+                    encoding: .utf8
+                )
+                ?? "Delete session failed"
+
+            throw NSError(
+                domain: "SessionAPI",
+                code: http.statusCode,
+                userInfo: [
+                    NSLocalizedDescriptionKey:
+                        detail
+                ]
+            )
+        }
+    }
+
 }
 

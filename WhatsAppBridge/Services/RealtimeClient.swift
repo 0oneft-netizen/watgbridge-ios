@@ -27,7 +27,7 @@ struct RealtimeIncomingMessage: Codable {
             return "📷 Photo"
         case "video":
             return "🎥 Video"
-        case "video_note":
+        case "video_note", "ptv":
             return "⭕ Video message"
         case "gif":
             return "GIF"

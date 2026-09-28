@@ -1,7 +1,6 @@
 import SwiftUI
 
 struct ProductionMessageBubble: View {
-    @State private var replyDrag: CGFloat = 0
     let message: Message
     let messages: [Message]
     var beginsGroup: Bool = true
@@ -71,7 +70,7 @@ struct ProductionMessageBubble: View {
 
     private var hasRenderableMedia: Bool {
         switch message.type {
-        case "image", "video", "gif", "video_note",
+        case "image", "video", "gif", "video_note", "ptv",
              "voice", "audio", "document",
              "view_once_image", "view_once_video",
              "view_once_audio":
@@ -116,46 +115,58 @@ struct ProductionMessageBubble: View {
                     ? min(0, dragX)
                     : max(0, dragX)
             )
-            .gesture(
+            .simultaneousGesture(
                 DragGesture(
-                    minimumDistance: 12
+                    minimumDistance: 18,
+                    coordinateSpace: .local
                 )
-                .onChanged {
-                    value in
-
-                    let amount =
+                .onChanged { value in
+                    let x =
                         value.translation.width
+                    let y =
+                        value.translation.height
+
+                    // Vertical scrolling wins. A reply gesture only
+                    // becomes active when horizontal intent is obvious.
+                    guard abs(x) > 22,
+                          abs(x) > abs(y) * 1.35
+                    else {
+                        dragX = 0
+                        return
+                    }
 
                     if message.fromMe {
                         dragX =
                             max(
-                                -80,
-                                min(
-                                    0,
-                                    amount
-                                )
+                                -72,
+                                min(0, x)
                             )
                     } else {
                         dragX =
                             min(
-                                80,
-                                max(
-                                    0,
-                                    amount
-                                )
+                                72,
+                                max(0, x)
                             )
                     }
                 }
                 .onEnded {
                     value in
 
-                    let amount =
+                    let x =
                         value.translation.width
+                    let y =
+                        value.translation.height
+
+                    let horizontalIntent =
+                        abs(x) > abs(y) * 1.35
 
                     let shouldReply =
-                        message.fromMe
-                        ? amount < -55
-                        : amount > 55
+                        horizontalIntent
+                        && (
+                            message.fromMe
+                            ? x < -72
+                            : x > 72
+                        )
 
                     withAnimation(
                         .spring(

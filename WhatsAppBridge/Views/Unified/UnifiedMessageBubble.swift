@@ -217,7 +217,7 @@ struct UnifiedMessageBubble: View {
                 [
                     "image",
                     "video",
-                    "video_note",
+                    "video_note", "ptv",
                     "gif",
                     "voice",
                     "audio",
