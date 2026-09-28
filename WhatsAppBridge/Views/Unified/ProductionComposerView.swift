@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct ProductionComposerView: View {
     @Binding
@@ -104,8 +105,6 @@ struct ProductionComposerView: View {
                 Button {
                     if hasText {
                         onSend()
-                    } else {
-                        onVoice()
                     }
                 } label: {
                     ZStack {
@@ -133,6 +132,23 @@ struct ProductionComposerView: View {
                         height: 40
                     )
                 }
+                .simultaneousGesture(
+                    LongPressGesture(
+                        minimumDuration: 0.45,
+                        maximumDistance: 18
+                    )
+                    .onEnded { _ in
+                        guard !hasText else { return }
+
+                        let generator =
+                            UIImpactFeedbackGenerator(
+                                style: .medium
+                            )
+                        generator.impactOccurred()
+
+                        onVoice()
+                    }
+                )
             }
             .padding(.horizontal, 8)
             .padding(.top, 5)

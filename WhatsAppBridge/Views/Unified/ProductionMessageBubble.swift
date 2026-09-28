@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct ProductionMessageBubble: View {
     let message: Message
@@ -128,8 +129,8 @@ struct ProductionMessageBubble: View {
 
                     // Vertical scrolling wins. A reply gesture only
                     // becomes active when horizontal intent is obvious.
-                    guard abs(x) > 22,
-                          abs(x) > abs(y) * 1.35
+                    guard abs(x) > 16,
+                          abs(x) > abs(y) * 1.25
                     else {
                         dragX = 0
                         return
@@ -138,13 +139,13 @@ struct ProductionMessageBubble: View {
                     if message.fromMe {
                         dragX =
                             max(
-                                -72,
+                                -58,
                                 min(0, x)
                             )
                     } else {
                         dragX =
                             min(
-                                72,
+                                58,
                                 max(0, x)
                             )
                     }
@@ -158,14 +159,14 @@ struct ProductionMessageBubble: View {
                         value.translation.height
 
                     let horizontalIntent =
-                        abs(x) > abs(y) * 1.35
+                        abs(x) > abs(y) * 1.25
 
                     let shouldReply =
                         horizontalIntent
                         && (
                             message.fromMe
-                            ? x < -72
-                            : x > 72
+                            ? x < -52
+                            : x > 52
                         )
 
                     withAnimation(
@@ -178,6 +179,11 @@ struct ProductionMessageBubble: View {
                     }
 
                     if shouldReply {
+                        let generator =
+                            UIImpactFeedbackGenerator(
+                                style: .light
+                            )
+                        generator.impactOccurred()
                         onReply()
                     }
                 }
