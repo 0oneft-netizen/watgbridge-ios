@@ -1176,7 +1176,8 @@ private struct MessageBubble: View {
 
                 if message.type != "text" {
                     MessageMediaView(
-                        message: message
+                        message: message,
+                        conversationMessages: messages
                     )
                 }
 

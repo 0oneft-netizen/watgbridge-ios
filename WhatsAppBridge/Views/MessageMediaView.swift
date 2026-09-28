@@ -284,6 +284,228 @@ struct MessageMediaView: View {
     }
 }
 
+
+private struct ConversationMediaViewer: View {
+    let initialMessage: Message
+    let messages: [Message]
+
+    @Environment(\.dismiss)
+    private var dismiss
+
+    @State private var selectedID: Int64
+
+    init(
+        initialMessage: Message,
+        messages: [Message]
+    ) {
+        self.initialMessage = initialMessage
+        self.messages = messages
+
+        _selectedID = State(
+            initialValue: initialMessage.id
+        )
+    }
+
+    private var mediaMessages: [Message] {
+        let source =
+            messages.isEmpty
+            ? [initialMessage]
+            : messages
+
+        let filtered =
+            ConversationMediaFilter.filter(
+                source,
+                kind: .all
+            )
+            .filter {
+                MediaActionPolicy.allowsGallery(
+                    message: $0
+                )
+            }
+
+        // Defensive fallback: opening an ordinary media message
+        // must still work if the caller only has that message.
+        if filtered.contains(
+            where: { $0.id == initialMessage.id }
+        ) {
+            return filtered
+        }
+
+        guard
+            !MessageMediaPolicy.isViewOnce(
+                initialMessage
+            )
+        else {
+            return filtered
+        }
+
+        return filtered + [initialMessage]
+    }
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Color.black
+                    .ignoresSafeArea()
+
+                if mediaMessages.isEmpty {
+                    ContentUnavailableView(
+                        "Media unavailable",
+                        systemImage: "photo.on.rectangle"
+                    )
+                    .foregroundStyle(.white)
+                } else {
+                    TabView(selection: $selectedID) {
+                        ForEach(
+                            mediaMessages,
+                            id: \.id
+                        ) { item in
+                            ConversationMediaPage(
+                                message: item
+                            )
+                            .tag(item.id)
+                        }
+                    }
+                    .tabViewStyle(
+                        .page(
+                            indexDisplayMode: .never
+                        )
+                    )
+                    .ignoresSafeArea(
+                        edges: .bottom
+                    )
+                }
+            }
+            .toolbar {
+                ToolbarItem(
+                    placement: .topBarLeading
+                ) {
+                    Button("Close") {
+                        dismiss()
+                    }
+                    .foregroundStyle(.white)
+                }
+
+                ToolbarItem(
+                    placement: .principal
+                ) {
+                    if let index =
+                        mediaMessages.firstIndex(
+                            where: {
+                                $0.id == selectedID
+                            }
+                        ) {
+                        Text(
+                            "\(index + 1) / \(mediaMessages.count)"
+                        )
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.white)
+                    }
+                }
+            }
+            .toolbarBackground(
+                .black,
+                for: .navigationBar
+            )
+            .toolbarColorScheme(
+                .dark,
+                for: .navigationBar
+            )
+        }
+    }
+}
+
+private struct ConversationMediaPage: View {
+    let message: Message
+
+    @State private var localURL: URL?
+    @State private var loadError = false
+
+    private var kind: MediaViewerKind {
+        switch message.type.lowercased() {
+        case "image":
+            return .image
+        default:
+            return .video
+        }
+    }
+
+    var body: some View {
+        Group {
+            if MessageMediaPolicy.isViewOnce(
+                message
+            ) {
+                // Second boundary. View Once must never enter
+                // this ordinary cached/exportable viewer.
+                ContentUnavailableView(
+                    "View Once",
+                    systemImage: "eye.slash"
+                )
+                .foregroundStyle(.white)
+
+            } else if let localURL {
+                MediaViewer(
+                    message: message,
+                    url: localURL,
+                    kind: kind
+                )
+
+            } else if loadError {
+                ContentUnavailableView(
+                    "Media unavailable",
+                    systemImage:
+                        "exclamationmark.triangle"
+                )
+                .foregroundStyle(.white)
+
+            } else {
+                ProgressView()
+                    .tint(.white)
+            }
+        }
+        .task(id: message.id) {
+            await load()
+        }
+    }
+
+    @MainActor
+    private func load() async {
+        guard
+            !MessageMediaPolicy.isViewOnce(
+                message
+            ),
+            MediaActionPolicy.allowsGallery(
+                message: message
+            )
+        else {
+            return
+        }
+
+        guard let remoteURL =
+            APIClient.shared.mediaURL(
+                for: message.messageID,
+                accountID: message.accountID
+            )
+        else {
+            loadError = true
+            return
+        }
+
+        do {
+            localURL =
+                try await MediaCache.shared.localURL(
+                    remoteURL: remoteURL,
+                    messageID:
+                        "\(message.accountID ?? "default")_\(message.messageID)",
+                    fileName: message.fileName,
+                    mimeType: message.mimeType
+                )
+        } catch {
+            loadError = true
+        }
+    }
+}
+
 private enum MediaViewerKind {
     case image
     case video
