@@ -69,17 +69,26 @@ enum ChatIdentity {
                     in: .whitespacesAndNewlines
                 )
 
-        // Do not show routing JIDs as names.
+        let normalized =
+            value.lowercased()
+
+        let genericNames: Set<String> = [
+            "whatsapp contact",
+            "whatsapp",
+            "unknown contact",
+            "unknown"
+        ]
+
+        // A real saved/contact name wins.
+        // Generic WhatsApp placeholders and routing identifiers do not.
         if !value.isEmpty &&
-            !value.contains(
-                "@s.whatsapp.net"
-            ) &&
-            !value.hasSuffix(
-                "@lid"
-            ) {
+            !genericNames.contains(normalized) &&
+            !value.contains("@s.whatsapp.net") &&
+            !value.hasSuffix("@lid") {
             return value
         }
 
+        // Prefer the server-resolved real customer phone.
         let phone =
             customerPhone(
                 conversation: conversation
@@ -89,8 +98,7 @@ enum ChatIdentity {
             return phone
         }
 
-        // Resolver may not know a newly-created LID yet.
-        // Better neutral UI than exposing the internal ID.
-        return "WhatsApp contact"
+        // Never expose an unresolved WhatsApp LID as a phone number.
+        return "Unknown contact"
     }
 }
