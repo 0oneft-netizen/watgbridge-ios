@@ -125,14 +125,50 @@ struct ActiveSessionsContent: View {
         _ account: SessionAccountDTO
     ) -> some View {
 
-        NavigationLink {
-            SessionAccountDetailView(
-                account: account
-            )
-        } label: {
-            ProductionSessionRow(
-                account: account
-            )
+        VStack(spacing: 0) {
+            NavigationLink {
+                SessionAccountDetailView(
+                    account: account
+                )
+            } label: {
+                ProductionSessionRow(
+                    account: account
+                )
+            }
+
+            if account.id != "default" {
+                Button(
+                    role: .destructive
+                ) {
+                    pendingDelete =
+                        account
+                } label: {
+                    HStack {
+                        Image(
+                            systemName: "trash"
+                        )
+
+                        Text(
+                            "Delete Session"
+                        )
+                        .fontWeight(
+                            .semibold
+                        )
+
+                        Spacer()
+                    }
+                    .contentShape(
+                        Rectangle()
+                    )
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.red)
+                .padding(.top, 10)
+                .padding(.bottom, 4)
+                .accessibilityLabel(
+                    "Delete Session"
+                )
+            }
         }
         .swipeActions(
             edge: .trailing,
@@ -147,32 +183,14 @@ struct ActiveSessionsContent: View {
                 } label: {
                     Label(
                         "Delete",
-                        systemImage: "trash"
+                        systemImage:
+                            "trash"
                     )
                 }
             }
-        }
-        .contextMenu {
-            if account.id != "default" {
-                Button(
-                    role: .destructive
-                ) {
-                    pendingDelete =
-                        account
-                } label: {
-                    Label(
-                        "Delete Session…",
-                        systemImage: "trash"
-                    )
-                }
-            }
-
-            Text(
-                account.status ??
-                "Unknown status"
-            )
         }
     }
+
 
     private var deleteConfirmationBinding:
         Binding<Bool> {

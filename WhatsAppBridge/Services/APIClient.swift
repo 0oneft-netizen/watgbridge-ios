@@ -126,107 +126,189 @@ final class APIClient {
         accountID: String = "default"
     ) async throws {
 
-        let url = baseURL.appendingPathComponent("send-media-v2")
+        let url =
+            baseURL.appendingPathComponent(
+                "send-media-v2"
+            )
 
         let boundary =
             "Boundary-\(UUID().uuidString)"
 
-        var request = URLRequest(url: url)
+        var body = Data()
+
+        func appendString(
+            _ string: String
+        ) {
+            guard let encoded =
+                    string.data(
+                        using: .utf8
+                    )
+            else {
+                return
+            }
+
+            body.append(encoded)
+        }
+
+        func appendField(
+            _ name: String,
+            _ value: String
+        ) {
+            appendString(
+                "--\(boundary)\r\n"
+            )
+
+            appendString(
+                "Content-Disposition: form-data; name=\"\(name)\"\r\n"
+            )
+
+            appendString(
+                "\r\n"
+            )
+
+            appendString(value)
+
+            appendString(
+                "\r\n"
+            )
+        }
+
+        appendField(
+            "account_id",
+            accountID
+        )
+
+        appendField(
+            "chat_jid",
+            chatJID
+        )
+
+        appendField(
+            "type",
+            type
+        )
+
+        appendField(
+            "caption",
+            caption
+        )
+
+        appendField(
+            "mime_type",
+            mimeType
+        )
+
+        let safeFilename =
+            filename
+                .replacingOccurrences(
+                    of: "\"",
+                    with: "_"
+                )
+                .replacingOccurrences(
+                    of: "\r",
+                    with: "_"
+                )
+                .replacingOccurrences(
+                    of: "\n",
+                    with: "_"
+                )
+
+        appendString(
+            "--\(boundary)\r\n"
+        )
+
+        appendString(
+            "Content-Disposition: form-data; name=\"file\"; filename=\"\(safeFilename)\"\r\n"
+        )
+
+        appendString(
+            "Content-Type: \(mimeType)\r\n"
+        )
+
+        appendString(
+            "Content-Transfer-Encoding: binary\r\n"
+        )
+
+        appendString(
+            "\r\n"
+        )
+
+        body.append(data)
+
+        appendString(
+            "\r\n"
+        )
+
+        appendString(
+            "--\(boundary)--\r\n"
+        )
+
+        var request =
+            URLRequest(url: url)
 
         request.httpMethod = "POST"
 
         request.setValue(
             "multipart/form-data; boundary=\(boundary)",
-            forHTTPHeaderField: "Content-Type"
+            forHTTPHeaderField:
+                "Content-Type"
         )
 
-        var body = Data()
-
-        func addField(
-            _ name: String,
-            _ value: String
-        ) {
-            body.append(
-                "--\(boundary)\r\n".data(
-                    using: .utf8
-                )!
-            )
-
-            body.append(
-                "Content-Disposition: form-data; name=\"\(name)\"\r\n\r\n"
-                    .data(using: .utf8)!
-            )
-
-            body.append(
-                "\(value)\r\n".data(
-                    using: .utf8
-                )!
-            )
-        }
-
-        addField(
-            "account_id",
-            accountID
-        )
-        addField("chat_jid", chatJID)
-        addField("type", type)
-        addField("caption", caption)
-        addField("mime_type", mimeType)
-
-        body.append(
-            "--\(boundary)\r\n".data(
-                using: .utf8
-            )!
+        request.setValue(
+            "application/json",
+            forHTTPHeaderField:
+                "Accept"
         )
 
-        body.append(
-            """
-            Content-Disposition: form-data; name="file"; filename="\(filename)"\r
-            Content-Type: \(mimeType)\r
-            \r
-            """.data(using: .utf8)!
-        )
-
-        body.append(data)
-
-        body.append(
-            "\r\n--\(boundary)--\r\n".data(
-                using: .utf8
-            )!
+        request.setValue(
+            String(body.count),
+            forHTTPHeaderField:
+                "Content-Length"
         )
 
         request.httpBody = body
 
         let (responseData, response) =
-            try await URLSession.shared.data(
-                for: request
-            )
+            try await URLSession.shared
+                .data(for: request)
 
         guard let http =
                 response as? HTTPURLResponse
         else {
-            throw URLError(.badServerResponse)
+            throw NSError(
+                domain: "MediaSend",
+                code: -1,
+                userInfo: [
+                    NSLocalizedDescriptionKey:
+                        "Invalid server response"
+                ]
+            )
         }
 
-        guard (200...299).contains(http.statusCode)
+        guard (200...299)
+                .contains(http.statusCode)
         else {
-            let detail =
+            let serverMessage =
                 String(
                     data: responseData,
                     encoding: .utf8
                 )?
                 .trimmingCharacters(
-                    in: .whitespacesAndNewlines
+                    in:
+                        .whitespacesAndNewlines
                 )
+
+            let detail =
+                (serverMessage?.isEmpty == false)
+                ? serverMessage!
+                : "HTTP \(http.statusCode)"
 
             throw NSError(
                 domain: "MediaSend",
                 code: http.statusCode,
                 userInfo: [
                     NSLocalizedDescriptionKey:
-                        (detail?.isEmpty == false)
-                        ? detail!
-                        : "Media send failed (HTTP \(http.statusCode))"
+                        detail
                 ]
             )
         }
