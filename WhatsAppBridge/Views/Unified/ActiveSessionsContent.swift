@@ -10,6 +10,17 @@ struct ActiveSessionsContent: View {
         SessionLiveStatusCoordinator()
 
     var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Tap a session to rename, disconnect, or delete it.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            sessionsContent
+        }
+    }
+
+    @ViewBuilder
+    private var sessionsContent: some View {
         List {
             ForEach(
                 SessionSorting

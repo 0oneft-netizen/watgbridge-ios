@@ -58,6 +58,32 @@ struct SessionAccountDetailView: View {
         }
         .navigationTitle(displayName)
         .navigationBarTitleDisplayMode(.inline)
+        .safeAreaInset(edge: .bottom) {
+            if account.id != "default" {
+                Button(role: .destructive) {
+                    showDeleteConfirmation = true
+                } label: {
+                    HStack {
+                        Spacer()
+
+                        Image(systemName: "trash")
+
+                        Text("Delete Session")
+                            .fontWeight(.semibold)
+
+                        Spacer()
+                    }
+                    .padding(.vertical, 12)
+                }
+                .buttonStyle(.bordered)
+                .tint(.red)
+                .padding(.horizontal)
+                .padding(.top, 6)
+                .padding(.bottom, 4)
+                .background(.ultraThinMaterial)
+                .disabled(isDeleting)
+            }
+        }
         .confirmationDialog(
             "Disconnect this session?",
             isPresented: $showDisconnectConfirmation,

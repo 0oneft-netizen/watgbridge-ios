@@ -8,6 +8,32 @@ struct SessionsManagementView: View {
     var body: some View {
         List {
             Section {
+                HStack {
+                    Image(systemName: "checkmark.seal.fill")
+                        .foregroundStyle(AppVisualDesign.accent)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Runtime Build")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+
+                        Text(BuildIdentity.marker)
+                            .font(.system(
+                                size: 12,
+                                weight: .semibold,
+                                design: .monospaced
+                            ))
+                    }
+
+                    Spacer()
+
+                    Text("Build \(BuildIdentity.code)")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            Section {
                 NavigationLink {
                     WhatsAppTypePickerView()
                 } label: {
