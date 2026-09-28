@@ -318,9 +318,17 @@ private struct ConversationMediaViewer: View {
                 kind: .all
             )
             .filter {
+                !MessageMediaPolicy.isViewOnce($0)
+                &&
                 MediaActionPolicy.allowsGallery(
                     message: $0
                 )
+            }
+            .sorted {
+                if $0.createdAt == $1.createdAt {
+                    return $0.id < $1.id
+                }
+                return $0.createdAt < $1.createdAt
             }
 
         // Defensive fallback: opening an ordinary media message
