@@ -3,13 +3,18 @@ import SwiftUI
 struct SessionAccountDetailView: View {
     let account: SessionAccountDTO
 
+    @Environment(\.dismiss) private var dismiss
+
     @State private var showDisconnectConfirmation = false
     @State private var showDeleteConfirmation = false
+
     @State private var isDisconnecting = false
     @State private var isDeleting = false
-    @State private var operationError: String?
 
-    private var displayTitle: String {
+    @State private var disconnectError: String?
+    @State private var deleteError: String?
+
+    private var displayName: String {
         let name = (account.displayName ?? "")
             .trimmingCharacters(in: .whitespacesAndNewlines)
 
@@ -20,60 +25,51 @@ struct SessionAccountDetailView: View {
         let phone = (account.phone ?? "")
             .trimmingCharacters(in: .whitespacesAndNewlines)
 
-        return phone.isEmpty
-            ? "WhatsApp Account"
-            : phone
+        return phone.isEmpty ? "WhatsApp Account" : phone
+    }
+
+    private var status: String {
+        account.status ?? ""
     }
 
     private var isDisconnected: Bool {
-        (account.status ?? "").lowercased() == "disconnected"
+        status.lowercased() == "disconnected"
     }
 
-    private var canDelete: Bool {
-        account.id != "default" && !isDeleting
+    private var isPrimary: Bool {
+        account.id == "default"
     }
 
-    private var errorPresented: Binding<Bool> {
-        Binding(
-            get: {
-                operationError != nil
-            },
-            set: { presented in
-                if !presented {
-                    operationError = nil
-                }
-            }
-        )
+    private var deleteFooter: String {
+        if isPrimary {
+            return "The primary legacy session cannot be deleted here."
+        }
+
+        return "Deletes only this WhatsApp session and its local chat history. Other sessions are not affected."
     }
 
     var body: some View {
         List {
-            identitySection
+            accountSection
             toolsSection
             connectionSection
             disconnectSection
             deleteSection
         }
-        .navigationTitle(displayTitle)
+        .navigationTitle(displayName)
         .navigationBarTitleDisplayMode(.inline)
         .confirmationDialog(
             "Disconnect this session?",
             isPresented: $showDisconnectConfirmation,
             titleVisibility: .visible
         ) {
-            Button(
-                "Disconnect",
-                role: .destructive
-            ) {
+            Button("Disconnect", role: .destructive) {
                 Task {
                     await disconnect()
                 }
             }
 
-            Button(
-                "Cancel",
-                role: .cancel
-            ) {}
+            Button("Cancel", role: .cancel) {}
         } message: {
             Text(
                 "The WhatsApp connection will be disconnected. Existing message history will remain available."
@@ -93,33 +89,33 @@ struct SessionAccountDetailView: View {
                 }
             }
 
-            Button(
-                "Cancel",
-                role: .cancel
-            ) {}
+            Button("Cancel", role: .cancel) {}
         } message: {
             Text(
                 "This removes only this session and its local history from the app. Other WhatsApp sessions are not affected."
             )
         }
         .alert(
-            "Session Operation Failed",
-            isPresented: errorPresented
+            "Could Not Disconnect",
+            isPresented: disconnectErrorBinding
         ) {
-            Button(
-                "OK",
-                role: .cancel
-            ) {}
+            Button("OK", role: .cancel) {}
         } message: {
-            Text(operationError ?? "")
+            Text(disconnectError ?? "")
+        }
+        .alert(
+            "Could Not Delete Session",
+            isPresented: deleteErrorBinding
+        ) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(deleteError ?? "")
         }
     }
 
-    private var identitySection: some View {
+    private var accountSection: some View {
         Section {
-            SessionDetailCard(
-                account: account
-            )
+            SessionDetailCard(account: account)
         }
     }
 
@@ -154,9 +150,7 @@ struct SessionAccountDetailView: View {
 
     private var connectionSection: some View {
         Section("Connection") {
-            SessionConnectionChip(
-                status: account.status ?? ""
-            )
+            SessionConnectionChip(status: status)
 
             Text(
                 "Renaming this session does not change its routing identity."
@@ -168,9 +162,7 @@ struct SessionAccountDetailView: View {
 
     private var disconnectSection: some View {
         Section {
-            Button(
-                role: .destructive
-            ) {
+            Button(role: .destructive) {
                 showDisconnectConfirmation = true
             } label: {
                 HStack {
@@ -194,7 +186,9 @@ struct SessionAccountDetailView: View {
                 }
             }
             .disabled(
-                isDisconnecting || isDisconnected
+                isDisconnecting ||
+                isDeleting ||
+                isDisconnected
             )
         } footer: {
             Text(
@@ -205,9 +199,7 @@ struct SessionAccountDetailView: View {
 
     private var deleteSection: some View {
         Section {
-            Button(
-                role: .destructive
-            ) {
+            Button(role: .destructive) {
                 showDeleteConfirmation = true
             } label: {
                 HStack {
@@ -229,18 +221,40 @@ struct SessionAccountDetailView: View {
                     Spacer()
                 }
             }
-            .disabled(!canDelete)
+            .disabled(
+                isDeleting ||
+                isDisconnecting ||
+                isPrimary
+            )
         } footer: {
-            if account.id == "default" {
-                Text(
-                    "The primary legacy session cannot be deleted here."
-                )
-            } else {
-                Text(
-                    "Deletes this WhatsApp session and its local chat history. Other sessions are not affected."
-                )
-            }
+            Text(deleteFooter)
         }
+    }
+
+    private var disconnectErrorBinding: Binding<Bool> {
+        Binding(
+            get: {
+                disconnectError != nil
+            },
+            set: { presented in
+                if !presented {
+                    disconnectError = nil
+                }
+            }
+        )
+    }
+
+    private var deleteErrorBinding: Binding<Bool> {
+        Binding(
+            get: {
+                deleteError != nil
+            },
+            set: { presented in
+                if !presented {
+                    deleteError = nil
+                }
+            }
+        )
     }
 
     @MainActor
@@ -250,7 +264,7 @@ struct SessionAccountDetailView: View {
         }
 
         isDisconnecting = true
-        operationError = nil
+        disconnectError = nil
 
         defer {
             isDisconnecting = false
@@ -263,18 +277,18 @@ struct SessionAccountDetailView: View {
 
             await SessionDirectory.shared.refresh()
         } catch {
-            operationError = error.localizedDescription
+            disconnectError = error.localizedDescription
         }
     }
 
     @MainActor
     private func deleteSession() async {
-        guard canDelete else {
+        guard !isDeleting, !isPrimary else {
             return
         }
 
         isDeleting = true
-        operationError = nil
+        deleteError = nil
 
         defer {
             isDeleting = false
@@ -287,8 +301,9 @@ struct SessionAccountDetailView: View {
             )
 
             await SessionDirectory.shared.refresh()
+            dismiss()
         } catch {
-            operationError = error.localizedDescription
+            deleteError = error.localizedDescription
         }
     }
 }
