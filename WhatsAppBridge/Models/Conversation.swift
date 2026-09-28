@@ -15,6 +15,7 @@ struct Conversation: Identifiable, Codable, Hashable {
     let accountID: String?
     let jid: String
     let name: String
+    let displayPhone: String?
     let lastMessage: String
     let lastMessageAt: Int64
     let unread: Int
@@ -26,6 +27,7 @@ struct Conversation: Identifiable, Codable, Hashable {
         case accountID = "account_id"
         case jid
         case name
+        case displayPhone = "display_phone"
         case lastMessage = "last_message"
         case lastMessageAt = "last_message_at"
         case unread

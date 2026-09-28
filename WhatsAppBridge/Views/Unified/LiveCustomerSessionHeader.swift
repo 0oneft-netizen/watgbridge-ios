@@ -26,7 +26,7 @@ struct LiveCustomerSessionHeader: View {
                 ),
             customerPhone:
                 ChatIdentity.customerPhone(
-                    from: conversation.jid
+                    conversation: conversation
                 ),
             sessionName: sessionName
         )
