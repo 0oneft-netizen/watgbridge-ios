@@ -168,7 +168,6 @@ final class APIClient {
             "account_id",
             accountID
         )
-        addField("account_id", accountID)
         addField("chat_jid", chatJID)
         addField("type", type)
         addField("caption", caption)
@@ -198,13 +197,38 @@ final class APIClient {
 
         request.httpBody = body
 
-        let (_, response) = try await URLSession.shared.data(
-            for: request
-        )
+        let (responseData, response) =
+            try await URLSession.shared.data(
+                for: request
+            )
 
-        guard let http = response as? HTTPURLResponse,
-              (200...299).contains(http.statusCode) else {
+        guard let http =
+                response as? HTTPURLResponse
+        else {
             throw URLError(.badServerResponse)
+        }
+
+        guard (200...299).contains(http.statusCode)
+        else {
+            let detail =
+                String(
+                    data: responseData,
+                    encoding: .utf8
+                )?
+                .trimmingCharacters(
+                    in: .whitespacesAndNewlines
+                )
+
+            throw NSError(
+                domain: "MediaSend",
+                code: http.statusCode,
+                userInfo: [
+                    NSLocalizedDescriptionKey:
+                        (detail?.isEmpty == false)
+                        ? detail!
+                        : "Media send failed (HTTP \(http.statusCode))"
+                ]
+            )
         }
     }
 

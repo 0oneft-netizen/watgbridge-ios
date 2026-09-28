@@ -9,48 +9,120 @@ struct ActiveSessionsContent: View {
     private var live =
         SessionLiveStatusCoordinator()
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Tap a session to rename, disconnect, or delete it.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+    @State
+    private var selectedAccount:
+        SessionAccountDTO?
 
-            sessionsContent
-        }
+    private var accounts:
+        [SessionAccountDTO] {
+
+        SessionSorting
+            .sorted(
+                sessions.accounts
+            )
+            .map { session in
+                SessionAccountDTO(
+                    id: session.id,
+                    displayName:
+                        session.name,
+                    phone:
+                        session.phone,
+                    jid:
+                        session.jid,
+                    status:
+                        session.status,
+                    accountType:
+                        session.accountType
+                )
+            }
     }
 
-    @ViewBuilder
-    private var sessionsContent: some View {
+    var body: some View {
         List {
-            ForEach(
-                SessionSorting
-                    .sorted(
-                        sessions.accounts
-                    )
-                    .map { session in
-                        SessionAccountDTO(
-                            id: session.id,
-                            displayName: session.name,
-                            phone: session.phone,
-                            jid: session.jid,
-                            status: session.status,
-                            accountType: session.accountType
+            Section {
+                ForEach(accounts) { account in
+                    NavigationLink {
+                        SessionAccountDetailView(
+                            account: account
+                        )
+                    } label: {
+                        ProductionSessionRow(
+                            account: account
                         )
                     }
-            ) { account in
+                    .contextMenu {
+                        Button {
+                            selectedAccount =
+                                account
+                        } label: {
+                            Label(
+                                "Manage Session",
+                                systemImage:
+                                    "gearshape"
+                            )
+                        }
 
-                NavigationLink {
-                    SessionAccountDetailView(
-                        account:
-                            account
-                    )
-                } label: {
-                    ProductionSessionRow(
-                        account:
-                            account
-                    )
+                        if account.id != "default" {
+                            Button(
+                                role: .destructive
+                            ) {
+                                selectedAccount =
+                                    account
+                            } label: {
+                                Label(
+                                    "Delete Session…",
+                                    systemImage:
+                                        "trash"
+                                )
+                            }
+                        }
+                    }
+                    .swipeActions(
+                        edge: .trailing,
+                        allowsFullSwipe: false
+                    ) {
+                        if account.id != "default" {
+                            Button(
+                                role: .destructive
+                            ) {
+                                selectedAccount =
+                                    account
+                            } label: {
+                                Label(
+                                    "Delete",
+                                    systemImage:
+                                        "trash"
+                                )
+                            }
+                        }
+
+                        Button {
+                            selectedAccount =
+                                account
+                        } label: {
+                            Label(
+                                "Manage",
+                                systemImage:
+                                    "gearshape"
+                            )
+                        }
+                        .tint(.gray)
+                    }
                 }
+            } header: {
+                Text("WhatsApp Accounts")
+            } footer: {
+                Text(
+                    "Tap an account to manage it. Swipe left on a non-primary account for Delete."
+                )
             }
+        }
+        .navigationDestination(
+            item: $selectedAccount
+        ) { account in
+            SessionAccountDetailView(
+                account: account
+            )
         }
         .task {
             await sessions.refresh()

@@ -171,6 +171,26 @@ struct ChatView: View {
 
             await loadMessages()
         }
+        .alert(
+            "Send Failed",
+            isPresented: Binding(
+                get: {
+                    errorMessage != nil &&
+                    !messages.isEmpty
+                },
+                set: { presented in
+                    if !presented {
+                        errorMessage = nil
+                    }
+                }
+            )
+        ) {
+            Button("OK", role: .cancel) {
+                errorMessage = nil
+            }
+        } message: {
+            Text(errorMessage ?? "")
+        }
         .photosPicker(
             isPresented: $showPhotos,
             selection: $selectedPhotoItems,
@@ -805,10 +825,15 @@ struct ChatView: View {
         let items = selectedPhotoItems
         let caption = mediaCaption
 
-        guard !items.isEmpty else { return }
+        guard !items.isEmpty else {
+            isSendingMedia = false
+            return
+        }
 
         defer {
             selectedPhotoItems = []
+            isSendingMedia = false
+            mediaSendProgress = 0
         }
 
         for item in items {
