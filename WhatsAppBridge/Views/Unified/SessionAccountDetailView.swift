@@ -1,151 +1,64 @@
 import SwiftUI
 
 struct SessionAccountDetailView: View {
-    @State private var showDisconnectConfirmation = false
-    @State private var isDisconnecting = false
-    @State private var disconnectError: String?
-    @State private var showDeleteConfirmation = false
-    @State private var isDeleting = false
-    @State private var deleteError: String?
-
     let account: SessionAccountDTO
+
+    @State private var showDisconnectConfirmation = false
+    @State private var showDeleteConfirmation = false
+    @State private var isDisconnecting = false
+    @State private var isDeleting = false
+    @State private var operationError: String?
+
+    private var displayTitle: String {
+        let name = (account.displayName ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if !name.isEmpty {
+            return name
+        }
+
+        let phone = (account.phone ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        return phone.isEmpty
+            ? "WhatsApp Account"
+            : phone
+    }
+
+    private var isDisconnected: Bool {
+        (account.status ?? "").lowercased() == "disconnected"
+    }
+
+    private var canDelete: Bool {
+        account.id != "default" && !isDeleting
+    }
+
+    private var errorPresented: Binding<Bool> {
+        Binding(
+            get: {
+                operationError != nil
+            },
+            set: { presented in
+                if !presented {
+                    operationError = nil
+                }
+            }
+        )
+    }
 
     var body: some View {
         List {
-            Section {
-                SessionDetailCard(
-                    account: account
-                )
-            }
-
-            Section("Tools") {
-                NavigationLink {
-                    RenameSessionView(
-                        accountID: account.id,
-                        currentName:
-                            account.displayName ?? "",
-                        phone:
-                            account.phone ?? ""
-                    )
-                } label: {
-                    Label(
-                        "Rename Session",
-                        systemImage: "pencil"
-                    )
-                }
-
-                NavigationLink {
-                    SessionQuickReplyEditor(
-                        accountID: account.id,
-                        sessionName:
-                            account.displayName ?? ""
-                    )
-                } label: {
-                    Label(
-                        "Quick Replies",
-                        systemImage: "bolt.fill"
-                    )
-                }
-            }
-
-            Section("Connection") {
-                SessionConnectionChip(
-                    status: account.status ?? ""
-                )
-
-                Text(
-                    "Renaming this session does not change its routing identity."
-                )
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            }
-
-            Section {
-                Button(role: .destructive) {
-                    showDisconnectConfirmation = true
-                } label: {
-                    HStack {
-                        Spacer()
-
-                        if isDisconnecting {
-                            ProgressView()
-                                .padding(.trailing, 4)
-                        }
-
-                        Label(
-                            isDisconnecting
-                                ? "Disconnecting…"
-                                : "Disconnect Session",
-                            systemImage:
-                                "rectangle.portrait.and.arrow.right"
-                        )
-                        .fontWeight(.semibold)
-
-                        Spacer()
-                    }
-                }
-                .disabled(
-                    isDisconnecting
-                    || account.status?.lowercased()
-                        == "disconnected"
-                )
-            }
-
-            Section {
-                Button(role: .destructive) {
-                    showDeleteConfirmation = true
-                } label: {
-                    HStack {
-                        Spacer()
-
-                        if isDeleting {
-                            ProgressView()
-                                .padding(.trailing, 4)
-                        }
-
-                        Label(
-                            isDeleting
-                                ? "Deleting…"
-                                : "Delete Session",
-                            systemImage: "trash"
-                        )
-                        .fontWeight(.semibold)
-
-                        Spacer()
-                    }
-                }
-                .disabled(
-                    isDeleting
-                    || account.id == "default"
-                )
-            } footer: {
-                Text(
-                    account.id == "default"
-                    ? "The primary legacy session cannot be deleted here."
-                    : "Deletes this WhatsApp session and its local chat history. Other sessions are not affected."
-                )
-            }
- footer: {
-                Text(
-                    "Disconnecting keeps this session's existing "
-                    + "message history and routing identity."
-                )
-            }
+            identitySection
+            toolsSection
+            connectionSection
+            disconnectSection
+            deleteSection
         }
-        .navigationTitle(
-            (account.displayName ?? "").isEmpty
-                ? (
-                    (account.phone ?? "").isEmpty
-                        ? "WhatsApp Account"
-                        : (account.phone ?? "")
-                )
-                : (account.displayName ?? "")
-        )
+        .navigationTitle(displayTitle)
         .navigationBarTitleDisplayMode(.inline)
         .confirmationDialog(
             "Disconnect this session?",
-            isPresented:
-                $showDisconnectConfirmation,
+            isPresented: $showDisconnectConfirmation,
             titleVisibility: .visible
         ) {
             Button(
@@ -163,8 +76,7 @@ struct SessionAccountDetailView: View {
             ) {}
         } message: {
             Text(
-                "The WhatsApp connection will be disconnected. "
-                + "Existing message history will remain available."
+                "The WhatsApp connection will be disconnected. Existing message history will remain available."
             )
         }
         .confirmationDialog(
@@ -187,36 +99,148 @@ struct SessionAccountDetailView: View {
             ) {}
         } message: {
             Text(
-                "This removes only this session and its local history from the app. It does not delete another connected WhatsApp session."
+                "This removes only this session and its local history from the app. Other WhatsApp sessions are not affected."
             )
         }
         .alert(
-            "Could Not Disconnect",
-            isPresented:
-                disconnectErrorBinding
+            "Session Operation Failed",
+            isPresented: errorPresented
         ) {
             Button(
                 "OK",
                 role: .cancel
             ) {}
         } message: {
-            Text(disconnectError ?? "")
+            Text(operationError ?? "")
         }
     }
 
-    private var disconnectErrorBinding:
-        Binding<Bool>
-    {
-        Binding(
-            get: {
-                disconnectError != nil
-            },
-            set: { presented in
-                if !presented {
-                    disconnectError = nil
+    private var identitySection: some View {
+        Section {
+            SessionDetailCard(
+                account: account
+            )
+        }
+    }
+
+    private var toolsSection: some View {
+        Section("Tools") {
+            NavigationLink {
+                RenameSessionView(
+                    accountID: account.id,
+                    currentName: account.displayName ?? "",
+                    phone: account.phone ?? ""
+                )
+            } label: {
+                Label(
+                    "Rename Session",
+                    systemImage: "pencil"
+                )
+            }
+
+            NavigationLink {
+                SessionQuickReplyEditor(
+                    accountID: account.id,
+                    sessionName: account.displayName ?? ""
+                )
+            } label: {
+                Label(
+                    "Quick Replies",
+                    systemImage: "bolt.fill"
+                )
+            }
+        }
+    }
+
+    private var connectionSection: some View {
+        Section("Connection") {
+            SessionConnectionChip(
+                status: account.status ?? ""
+            )
+
+            Text(
+                "Renaming this session does not change its routing identity."
+            )
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
+    }
+
+    private var disconnectSection: some View {
+        Section {
+            Button(
+                role: .destructive
+            ) {
+                showDisconnectConfirmation = true
+            } label: {
+                HStack {
+                    Spacer()
+
+                    if isDisconnecting {
+                        ProgressView()
+                            .padding(.trailing, 4)
+                    }
+
+                    Label(
+                        isDisconnecting
+                            ? "Disconnecting…"
+                            : "Disconnect Session",
+                        systemImage:
+                            "rectangle.portrait.and.arrow.right"
+                    )
+                    .fontWeight(.semibold)
+
+                    Spacer()
                 }
             }
-        )
+            .disabled(
+                isDisconnecting || isDisconnected
+            )
+        } footer: {
+            Text(
+                "Disconnecting keeps this session's existing message history and routing identity."
+            )
+        }
+    }
+
+    private var deleteSection: some View {
+        Section {
+            Button(
+                role: .destructive
+            ) {
+                showDeleteConfirmation = true
+            } label: {
+                HStack {
+                    Spacer()
+
+                    if isDeleting {
+                        ProgressView()
+                            .padding(.trailing, 4)
+                    }
+
+                    Label(
+                        isDeleting
+                            ? "Deleting…"
+                            : "Delete Session",
+                        systemImage: "trash"
+                    )
+                    .fontWeight(.semibold)
+
+                    Spacer()
+                }
+            }
+            .disabled(!canDelete)
+        } footer: {
+            if account.id == "default" {
+                Text(
+                    "The primary legacy session cannot be deleted here."
+                )
+            } else {
+                Text(
+                    "Deletes this WhatsApp session and its local chat history. Other sessions are not affected."
+                )
+            }
+        }
     }
 
     @MainActor
@@ -226,54 +250,45 @@ struct SessionAccountDetailView: View {
         }
 
         isDisconnecting = true
-        disconnectError = nil
+        operationError = nil
 
         defer {
             isDisconnecting = false
         }
 
         do {
-            try await APIClient.shared
-                .disconnectSession(
-                    accountID: account.id
-                )
+            try await APIClient.shared.disconnectSession(
+                accountID: account.id
+            )
 
-            await SessionDirectory.shared
-                .refresh()
+            await SessionDirectory.shared.refresh()
         } catch {
-            disconnectError =
-                error.localizedDescription
+            operationError = error.localizedDescription
         }
     }
 
     @MainActor
     private func deleteSession() async {
-        guard !isDeleting,
-              account.id != "default"
-        else {
+        guard canDelete else {
             return
         }
 
         isDeleting = true
-        disconnectError = nil
+        operationError = nil
 
         defer {
             isDeleting = false
         }
 
         do {
-            try await APIClient.shared
-                .deleteSession(
-                    accountID: account.id,
-                    deleteHistory: true
-                )
+            try await APIClient.shared.deleteSession(
+                accountID: account.id,
+                deleteHistory: true
+            )
 
-            await SessionDirectory.shared
-                .refresh()
+            await SessionDirectory.shared.refresh()
         } catch {
-            disconnectError =
-                error.localizedDescription
+            operationError = error.localizedDescription
         }
     }
-
 }
