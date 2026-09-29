@@ -15,7 +15,7 @@ struct ConversationInfoHub: View {
 
     private var customerPhone: String {
         ChatIdentity.customerPhone(
-            from: conversation.jid
+            conversation: conversation
         )
     }
 

@@ -20,7 +20,7 @@ struct CustomerProfileView: View {
 
     private var phone: String {
         ChatIdentity.customerPhone(
-            from: conversation.jid
+            conversation: conversation
         )
     }
 
