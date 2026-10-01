@@ -232,6 +232,41 @@ struct UnifiedMessageBubble: View {
                 )
             }
 
+            if let campaignImageURL = message.campaignImageURL,
+               let url = URL(string: campaignImageURL),
+               !campaignImageURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .scaledToFill()
+                            .frame(
+                                maxWidth: 280,
+                                maxHeight: 220
+                            )
+                            .clipShape(
+                                RoundedRectangle(cornerRadius: 9)
+                            )
+                            .clipped()
+
+                    case .failure:
+                        EmptyView()
+
+                    case .empty:
+                        ProgressView()
+                            .frame(width: 80, height: 80)
+
+                    @unknown default:
+                        EmptyView()
+                    }
+                }
+                .frame(
+                    maxWidth: 280,
+                    maxHeight: 220
+                )
+            }
+
             if !message.text.isEmpty {
                 Text(message.text)
                     .font(.body)

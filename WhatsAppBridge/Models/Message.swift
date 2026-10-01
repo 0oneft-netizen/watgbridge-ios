@@ -14,6 +14,8 @@ struct Message: Identifiable, Codable, Equatable {
     let fromMe: Bool
     let createdAt: Int64
 
+    let campaignImageURL: String?
+
     let mediaPath: String?
     let mimeType: String?
     let fileName: String?
@@ -37,6 +39,8 @@ struct Message: Identifiable, Codable, Equatable {
 
         case fromMe = "from_me"
         case createdAt = "created_at"
+
+        case campaignImageURL = "campaign_image_url"
 
         case mediaPath = "media_path"
         case mimeType = "mime_type"
