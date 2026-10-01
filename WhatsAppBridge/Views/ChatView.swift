@@ -3,10 +3,36 @@ import PhotosUI
 import UniformTypeIdentifiers
 import UIKit
 
+private struct ChatContentBottomPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+
+    static func reduce(
+        value: inout CGFloat,
+        nextValue: () -> CGFloat
+    ) {
+        value = nextValue()
+    }
+}
+
+private struct ChatViewportBottomPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+
+    static func reduce(
+        value: inout CGFloat,
+        nextValue: () -> CGFloat
+    ) {
+        value = nextValue()
+    }
+}
+
 struct ChatView: View {
     let conversation: Conversation
 
     @State private var messages: [Message] = []
+    @State private var isNearBottom = true
+    @State private var showNewMessages = false
+    @State private var chatContentBottom: CGFloat = 0
+    @State private var chatViewportBottom: CGFloat = 0
     @State private var showMediaPreview = false
     @State private var mediaCaption = ""
     @State private var isLoading = true
@@ -361,14 +387,52 @@ struct ChatView: View {
                         )
 }
                 }
+
                 .padding(.horizontal, 8)
                 .padding(.vertical, 12)
-            }
 
+                GeometryReader { geometry in
+                    Color.clear
+                        .preference(
+                            key: ChatContentBottomPreferenceKey.self,
+                            value: geometry.frame(
+                                in: .named("chat-scroll")
+                            ).maxY
+                        )
+                }
+                .frame(height: 1)
+                .id("chat-bottom-sentinel")
+            }
+            .coordinateSpace(name: "chat-scroll")
+            .overlay(
+                GeometryReader { geometry in
+                    Color.clear
+                        .preference(
+                            key: ChatViewportBottomPreferenceKey.self,
+                            value: geometry.frame(
+                                in: .named("chat-scroll")
+                            ).maxY
+                        )
+                }
+            )
             .scrollDismissesKeyboard(.interactively)
             .defaultScrollAnchor(.bottom)
             .refreshable {
                 await loadMessages()
+            }
+            .onPreferenceChange(
+                ChatContentBottomPreferenceKey.self
+            ) { value in
+                chatContentBottom = value
+
+                updateChatBottomState()
+            }
+            .onPreferenceChange(
+                ChatViewportBottomPreferenceKey.self
+            ) { value in
+                chatViewportBottom = value
+
+                updateChatBottomState()
             }
             .onChange(
                 of: messages.last?.id
@@ -377,11 +441,70 @@ struct ChatView: View {
                     return
                 }
 
-                withAnimation(.easeOut(duration: 0.18)) {
-                    proxy.scrollTo(
-                        last.id,
-                        anchor: .bottom
+                if isNearBottom {
+                    withAnimation(.easeOut(duration: 0.18)) {
+                        proxy.scrollTo(
+                            last.id,
+                            anchor: .bottom
+                        )
+                    }
+
+                    showNewMessages = false
+                } else {
+                    showNewMessages = true
+                }
+            }
+            .overlay(alignment: .bottom) {
+                if showNewMessages {
+                    Button {
+                        isNearBottom = true
+                        showNewMessages = false
+
+                        if let last = messages.last {
+                            withAnimation(
+                                .easeOut(duration: 0.22)
+                            ) {
+                                proxy.scrollTo(
+                                    last.id,
+                                    anchor: .bottom
+                                )
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 7) {
+                            Image(
+                                systemName:
+                                    "arrow.down"
+                            )
+
+                            Text("הודעות חדשות")
+                                .font(
+                                    .system(
+                                        size: 14,
+                                        weight: .semibold
+                                    )
+                                )
+                        }
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 9)
+                        .background(.regularMaterial)
+                        .clipShape(
+                            Capsule()
+                        )
+                        .shadow(
+                            radius: 8,
+                            y: 3
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.bottom, 12)
+                    .transition(
+                        .move(edge: .bottom)
+                        .combined(
+                            with: .opacity
+                        )
                     )
+                    .zIndex(10)
                 }
             }
             .onAppear {
@@ -403,6 +526,8 @@ struct ChatView: View {
                             )
                 }
 
+                isNearBottom = true
+                showNewMessages = false
                 scrollToBottom(proxy)
             }
         }
@@ -1098,6 +1223,30 @@ struct ChatView: View {
         isLoading = false
     }
 
+    private func updateChatBottomState() {
+        guard chatContentBottom > 0,
+              chatViewportBottom > 0
+        else {
+            return
+        }
+
+        let distance =
+            chatContentBottom - chatViewportBottom
+
+        let nearBottom =
+            distance <= 80
+
+        if isNearBottom != nearBottom {
+            isNearBottom = nearBottom
+        }
+
+        if nearBottom && showNewMessages {
+            withAnimation(.easeOut(duration: 0.15)) {
+                showNewMessages = false
+            }
+        }
+    }
+
     private func scrollToBottom(
         _ proxy: ScrollViewProxy
     ) {
@@ -1106,6 +1255,9 @@ struct ChatView: View {
         else {
             return
         }
+
+        isNearBottom = true
+        showNewMessages = false
 
         DispatchQueue.main
             .asyncAfter(
