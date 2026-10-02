@@ -61,6 +61,9 @@ struct ConversationsView: View {
                             conversation: conversation
                         )
                     }
+                    .listRowBackground(WhatsAppVisualDesign.surface)
+                    .listRowSeparatorTint(WhatsAppVisualDesign.border)
+                    .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
                     .swipeActions(
                         edge: .leading,
                         allowsFullSwipe: false
@@ -153,11 +156,9 @@ struct ConversationsView: View {
                     }
                 }
             }
-                    .searchable(
-            text: $searchText,
-            prompt: "Search chats"
-        )
-.navigationTitle("Chats")
+            .listStyle(.plain)
+            .modifier(WhatsAppListStyle())
+            .navigationTitle("Chats")
             .toolbar {
                 ToolbarItem(
                     placement: .topBarTrailing
@@ -169,6 +170,7 @@ struct ConversationsView: View {
                         Image(
                             systemName: "gearshape"
                         )
+                        .foregroundStyle(WhatsAppVisualDesign.accent)
                     }
                 }
             }

@@ -115,6 +115,8 @@ NavigationLink {
                     )
                 }
             }
+            .listStyle(.insetGrouped)
+            .modifier(WhatsAppListStyle())
             .navigationTitle("Settings")
         }
     }

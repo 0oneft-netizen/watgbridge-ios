@@ -18,7 +18,8 @@ struct AudioMessageView: View {
                 Image(systemName: isPlaying ? "pause.fill" : "play.fill")
                     .font(.headline)
                     .frame(width: 38, height: 38)
-                    .background(Circle().fill(Color.secondary.opacity(0.14)))
+                    .foregroundStyle(WhatsAppVisualDesign.accent)
+                    .background(Circle().fill(WhatsAppVisualDesign.accent.opacity(0.12)))
             }
             .buttonStyle(.plain)
 
@@ -54,6 +55,7 @@ struct AudioMessageView: View {
             }
         }
         .frame(minWidth: 220)
+        .tint(WhatsAppVisualDesign.accent)
         .task(id: url) {
             preparePlayer()
         }

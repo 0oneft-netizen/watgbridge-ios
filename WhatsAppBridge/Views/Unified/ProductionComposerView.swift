@@ -13,6 +13,8 @@ struct ProductionComposerView: View {
     let onSend: () -> Void
     let onVoice: () -> Void
 
+    @FocusState private var isFocused: Bool
+
     private var hasText: Bool {
         !text
             .trimmingCharacters(
@@ -42,7 +44,7 @@ struct ProductionComposerView: View {
                             )
                         )
                         .foregroundStyle(
-                            Color.accentColor
+                            WhatsAppVisualDesign.accent
                         )
                         .frame(
                             width: 34,
@@ -61,7 +63,8 @@ struct ProductionComposerView: View {
                     )
                     .lineLimit(1...6)
                     .submitLabel(.send)
-                    .font(.system(size: 16))
+                    .font(.system(size: 17))
+                    .focused($isFocused)
                     .foregroundStyle(.primary)
                     .padding(.leading, 3)
                     .padding(.vertical, 9)
@@ -75,7 +78,7 @@ struct ProductionComposerView: View {
                         )
                         .font(.system(size: 17))
                         .foregroundStyle(
-                            Color.accentColor
+                            WhatsAppVisualDesign.accent
                         )
                     }
                     .padding(.trailing, 2)
@@ -83,8 +86,7 @@ struct ProductionComposerView: View {
                 }
                 .padding(.horizontal, 10)
                 .background(
-                    AppVisualDesign
-                        .composerField,
+                    WhatsAppVisualDesign.background,
                     in: RoundedRectangle(
                         cornerRadius: 20,
                         style: .continuous
@@ -96,9 +98,8 @@ struct ProductionComposerView: View {
                         style: .continuous
                     )
                     .stroke(
-                        Color.secondary
-                            .opacity(0.12),
-                        lineWidth: 0.5
+                        isFocused ? WhatsAppVisualDesign.brand : WhatsAppVisualDesign.border,
+                        lineWidth: 1
                     )
                 }
 
@@ -109,14 +110,12 @@ struct ProductionComposerView: View {
                 } label: {
                     ZStack {
                         Circle()
-                            .fill(
-                                Color.accentColor
-                            )
+                            .fill(WhatsAppVisualDesign.brand)
 
                         Image(
                             systemName:
                                 hasText
-                                ? "paperplane.fill"
+                                ? "arrow.up"
                                 : "mic.fill"
                         )
                         .font(
@@ -128,8 +127,8 @@ struct ProductionComposerView: View {
                         .foregroundStyle(.white)
                     }
                     .frame(
-                        width: 40,
-                        height: 40
+                        width: 36,
+                        height: 36
                     )
                 }
                 .simultaneousGesture(
@@ -150,15 +149,18 @@ struct ProductionComposerView: View {
                     }
                 )
             }
-            .padding(.horizontal, 8)
-            .padding(.top, 5)
-            .padding(.bottom, 7)
+            .padding(.horizontal, 12)
+            .padding(.top, 6)
+            .padding(.bottom, 6)
             .animation(
                 .easeInOut(duration: 0.15),
                 value: hasText
             )
         }
-        .background(.ultraThinMaterial)
+        .background(WhatsAppVisualDesign.surface)
+        .overlay(alignment: .top) {
+            Rectangle().fill(WhatsAppVisualDesign.border).frame(height: 0.5)
+        }
     }
 
     private func replyPreview(
@@ -168,7 +170,7 @@ struct ProductionComposerView: View {
             RoundedRectangle(
                 cornerRadius: 2
             )
-            .fill(Color.accentColor)
+            .fill(WhatsAppVisualDesign.accent)
             .frame(width: 3)
 
             VStack(
@@ -185,7 +187,7 @@ struct ProductionComposerView: View {
                         .weight(.semibold)
                 )
                 .foregroundStyle(
-                    Color.accentColor
+                    WhatsAppVisualDesign.accent
                 )
 
                 Text(

@@ -65,6 +65,8 @@ struct BusinessShellView: View {
                 }
                 .tag(4)
         }
-        .tint(AppVisualDesign.accent)
+        .tint(WhatsAppVisualDesign.accent)
+        .toolbarBackground(WhatsAppVisualDesign.surface, for: .tabBar)
+        .toolbarBackground(.visible, for: .tabBar)
     }
 }

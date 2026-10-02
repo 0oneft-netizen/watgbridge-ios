@@ -96,7 +96,7 @@ struct MessageMediaView: View {
                     .scaledToFill()
                     .frame(
                         width: 250,
-                        height: 250
+                        height: min(320, max(120, 250 * uiImage.size.height / max(uiImage.size.width, 1)))
                     )
                     .clipped()
                     .clipShape(
@@ -164,34 +164,11 @@ struct MessageMediaView: View {
             }
 
         case "video_note", "ptv":
-            ZStack {
-                VideoPlayer(
-                    player: AVPlayer(url: url)
-                )
-                .allowsHitTesting(false)
-
-                Image(systemName: "play.fill")
-                    .font(.title2)
-                    .foregroundStyle(.white)
-                    .shadow(radius: 4)
-            }
-            .frame(
-                width: 210,
-                height: 210
-            )
-            .clipShape(Circle())
-            .contentShape(Circle())
-            .onTapGesture {
+            WhatsAppRoundVideoNote(url: url) {
                 showViewer = true
             }
-            .fullScreenCover(
-                isPresented: $showViewer
-            ) {
-                MediaViewer(
-                    message: message,
-                    url: url,
-                    kind: .video
-                )
+            .fullScreenCover(isPresented: $showViewer) {
+                MediaViewer(message: message, url: url, kind: .video)
             }
 
         case "voice":

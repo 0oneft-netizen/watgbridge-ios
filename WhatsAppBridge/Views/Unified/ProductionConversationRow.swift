@@ -35,7 +35,7 @@ struct ProductionConversationRow: View {
 
             VStack(
                 alignment: .leading,
-                spacing: 3
+                spacing: 5
             ) {
                 HStack(
                     alignment: .firstTextBaseline,
@@ -44,7 +44,7 @@ struct ProductionConversationRow: View {
                     Text(title)
                         .font(
                             .system(
-                                size: 16.5,
+                                size: 17,
                                 weight:
                                     hasUnread
                                     ? .semibold
@@ -108,7 +108,7 @@ struct ProductionConversationRow: View {
                     Text(preview)
                         .font(
                             .system(
-                                size: 14.5,
+                                size: 15,
                                 weight:
                                     hasUnread
                                     ? .medium
@@ -136,7 +136,7 @@ struct ProductionConversationRow: View {
         }
         .padding(
             .vertical,
-            AppVisualDesign.rowVerticalPadding
+            12
         )
         .contentShape(Rectangle())
         .task {
@@ -165,10 +165,11 @@ struct ProductionConversationRow: View {
             }
         }
         .frame(
-            width: AppVisualDesign.avatarSize,
-            height: AppVisualDesign.avatarSize
+            width: 52,
+            height: 52
         )
         .clipShape(Circle())
+        .overlay(Circle().stroke(WhatsAppVisualDesign.border, lineWidth: 1))
     }
 
     private var timeText: String {

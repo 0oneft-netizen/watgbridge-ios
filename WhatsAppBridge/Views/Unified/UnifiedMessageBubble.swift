@@ -13,14 +13,14 @@ struct UnifiedMessageBubble: View {
 
     private var messageTextColor: Color {
         message.fromMe
-            ? AppVisualDesign.outgoingText
-            : Color.primary
+            ? WhatsAppVisualDesign.outgoingText
+            : WhatsAppVisualDesign.primaryText
     }
 
     private var metadataColor: Color {
         message.fromMe
-            ? AppVisualDesign.outgoingMetadata
-            : Color.secondary
+            ? WhatsAppVisualDesign.outgoingText.opacity(0.65)
+            : WhatsAppVisualDesign.mutedText
     }
 
     private var timestamp: String {
@@ -107,22 +107,24 @@ struct UnifiedMessageBubble: View {
                         .offset(y: 10)
                 }
             }
-            .padding(.horizontal, 9)
-            .padding(.vertical, 7)
+            .padding(.horizontal, 10)
+            .padding(.top, 10)
+            .padding(.bottom, 6)
             .frame(
                 maxWidth: ChatDesign.bubbleMaxWidth,
                 alignment: .leading
             )
             .background(
                 message.fromMe
-                ? ChatDesign.outgoingBubble
-                : ChatDesign.incomingBubble
+                ? WhatsAppVisualDesign.outgoing
+                : WhatsAppVisualDesign.incoming
             )
-            .clipShape(
-                ChatBubbleShape(
-                    fromMe: message.fromMe
-                )
-            )
+            .clipShape(WhatsAppVisualDesign.bubbleShape(fromMe: message.fromMe))
+            .overlay {
+                WhatsAppVisualDesign.bubbleShape(fromMe: message.fromMe)
+                    .stroke(message.fromMe ? Color.clear : WhatsAppVisualDesign.border, lineWidth: 0.5)
+            }
+            .shadow(color: .black.opacity(0.05), radius: 1, y: 1)
             .contextMenu {
                 if MessageActionPolicy
                     .mayReply(message) {
@@ -219,8 +221,8 @@ struct UnifiedMessageBubble: View {
                 CampaignReferralCard(
                     referral: message.campaignReferral,
                     legacyImageURL: message.campaignImageURL,
-                    textColor: messageTextColor,
-                    metadataColor: metadataColor
+                    textColor: message.fromMe ? AppVisualDesign.outgoingText : Color.primary,
+                    metadataColor: message.fromMe ? AppVisualDesign.outgoingMetadata : Color.secondary
                 )
             }
 
@@ -245,7 +247,7 @@ struct UnifiedMessageBubble: View {
 
             if !message.text.isEmpty {
                 Text(message.text)
-                    .font(.body)
+                    .font(.system(size: 17))
                     .foregroundStyle(messageTextColor)
                     .textSelection(.enabled)
             }

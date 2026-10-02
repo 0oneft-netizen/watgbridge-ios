@@ -135,6 +135,8 @@ struct SettingsView: View {
                     )
                 }
             }
+            .listStyle(.insetGrouped)
+            .modifier(WhatsAppListStyle())
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(
                 .large
@@ -237,7 +239,7 @@ struct SettingsView: View {
         HStack(spacing: 12) {
             ZStack {
                 RoundedRectangle(
-                    cornerRadius: 8,
+                    cornerRadius: 5,
                     style: .continuous
                 )
                 .fill(tint)
@@ -275,7 +277,7 @@ struct SettingsView: View {
                     .lineLimit(1)
             }
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, 4)
     }
 
     private var version: String {

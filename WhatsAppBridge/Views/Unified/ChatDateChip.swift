@@ -32,11 +32,11 @@ struct ChatDateChip: View {
             .font(
                 .caption2.weight(.semibold)
             )
-            .foregroundStyle(.secondary)
+            .foregroundStyle(WhatsAppVisualDesign.mutedText)
             .padding(.horizontal, 10)
             .padding(.vertical, 5)
             .background(
-                .thinMaterial,
+                WhatsAppVisualDesign.surface,
                 in: Capsule()
             )
             .padding(.vertical, 7)
