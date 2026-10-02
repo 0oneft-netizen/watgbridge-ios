@@ -171,9 +171,24 @@ struct ChatView: View {
         }
         .onReceive(
             NotificationCenter.default.publisher(
-                for: .bridgeRealtimeUpdate
+                for: .bridgeIncomingMessage
             )
         ) { notification in
+            guard let incoming =
+                notification.object as? RealtimeIncomingMessage
+            else {
+                return
+            }
+
+            let accountID =
+                conversation.accountID ?? "default"
+
+            guard incoming.account_id == accountID,
+                  incoming.chat_jid == conversation.jid
+            else {
+                return
+            }
+
             Task {
                 await loadMessages()
 
@@ -182,8 +197,21 @@ struct ChatView: View {
                         chatJID:
                             conversation.jid,
                         accountID:
-                            conversation.accountID ?? "default"
+                            accountID
                     )
+            }
+        }
+
+        .onReceive(
+            NotificationCenter.default.publisher(
+                for: .bridgeRealtimeUpdate
+            )
+        ) { _ in
+            // Keep generic realtime events as a fallback for
+            // non-message updates, but do not depend on them
+            // for incoming-message delivery.
+            Task {
+                await loadMessages()
             }
         }
         .task {
