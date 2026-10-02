@@ -51,11 +51,28 @@ struct RealtimeIncomingMessage: Codable {
     }
 }
 
+@MainActor
 final class RealtimeClient {
     static let shared = RealtimeClient()
 
     private var updateTask: Task<Void, Never>?
     private var messageTask: Task<Void, Never>?
+    private var refreshTask: Task<Void, Never>?
+    private let streamSession: URLSession = {
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 45
+        config.timeoutIntervalForResource = 24 * 60 * 60
+        return URLSession(configuration: config)
+    }()
+    private func scheduleRefresh() {
+        guard refreshTask == nil else { return }
+        refreshTask = Task {
+            try? await Task.sleep(for: .milliseconds(80))
+            guard !Task.isCancelled else { return }
+            refreshTask = nil
+            NotificationCenter.default.post(name: .bridgeRealtimeUpdate, object: nil)
+        }
+    }
 
     private init() {}
 
@@ -79,16 +96,22 @@ final class RealtimeClient {
 
         updateTask = nil
         messageTask = nil
+        refreshTask?.cancel()
+        refreshTask = nil
     }
 
     private func listenForUpdates() async {
         while !Task.isCancelled {
             do {
                 let url = URL(
-                    string: "https://5jjltkwg.tail256e07.ts.net/events"
+                    string: APIClient.shared.baseURL.appendingPathComponent("events").absoluteString
                 )!
 
-                let (bytes, _) = try await URLSession.shared.bytes(from: url)
+                let (bytes, response) = try await streamSession.bytes(from: url)
+                guard let http = response as? HTTPURLResponse, http.statusCode == 200,
+                      http.value(forHTTPHeaderField: "Content-Type")?.contains("text/event-stream") == true
+                else { throw URLError(.badServerResponse) }
+                scheduleRefresh()
 
                 for try await line in bytes.lines {
                     if Task.isCancelled {
@@ -100,19 +123,12 @@ final class RealtimeClient {
                             .dropFirst(5)
                             .trimmingCharacters(in: .whitespaces)
 
-                        if value != "ready" {
-                            await MainActor.run {
-                                NotificationCenter.default.post(
-                                    name: .bridgeRealtimeUpdate,
-                                    object: nil
-                                )
-                            }
-                        }
+                        if !value.isEmpty { scheduleRefresh() }
                     }
                 }
-            } catch {
-                try? await Task.sleep(for: .seconds(1))
-            }
+            } catch is CancellationError { return }
+              catch { }
+            if !Task.isCancelled { try? await Task.sleep(for: .seconds(1)) }
         }
     }
 
@@ -122,10 +138,14 @@ final class RealtimeClient {
         while !Task.isCancelled {
             do {
                 let url = URL(
-                    string: "https://5jjltkwg.tail256e07.ts.net/events/messages"
+                    string: APIClient.shared.baseURL.appendingPathComponent("events/messages").absoluteString
                 )!
 
-                let (bytes, _) = try await URLSession.shared.bytes(from: url)
+                let (bytes, response) = try await streamSession.bytes(from: url)
+                guard let http = response as? HTTPURLResponse, http.statusCode == 200,
+                      http.value(forHTTPHeaderField: "Content-Type")?.contains("text/event-stream") == true
+                else { throw URLError(.badServerResponse) }
+                scheduleRefresh()
 
                 for try await line in bytes.lines {
                     if Task.isCancelled {
@@ -157,9 +177,9 @@ final class RealtimeClient {
                         )
                     }
                 }
-            } catch {
-                try? await Task.sleep(for: .seconds(1))
-            }
+            } catch is CancellationError { return }
+              catch { }
+            if !Task.isCancelled { try? await Task.sleep(for: .seconds(1)) }
         }
     }
 }

@@ -8,6 +8,8 @@ struct MessageMediaView: View {
 
     @State private var showViewer = false
     @State private var localURL: URL?
+    @State private var decodedImage: UIImage?
+    @State private var mediaLoadToken = UUID()
     @State private var loadError = false
     @State private var isLoading = false
 
@@ -70,17 +72,28 @@ struct MessageMediaView: View {
                     .buttonStyle(.plain)
 
                 } else {
-                    ProgressView()
-                        .frame(
-                            minWidth: 160,
-                            minHeight: 80
-                        )
+                    pendingMedia
+
                 }
             }
-            .task(id: message.messageID) {
+            .task(id: "\(message.accountID ?? "default"):\(message.messageID):\(message.mediaPath ?? "")") {
                 await loadMedia()
             }
         }
+    }
+
+    @ViewBuilder
+    private var pendingMedia: some View {
+        if ["image", "video", "gif"].contains(message.type),
+           let url = APIClient.shared.mediaPreviewURL(for: message.messageID, accountID: message.accountID) {
+            AsyncImage(url: url) { phase in
+                if let image = phase.image {
+                    image.resizable().scaledToFill().frame(width: 250, height: 170).clipped()
+                        .overlay { ProgressView().padding(10).background(.regularMaterial, in: Circle()) }
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                } else { ProgressView().frame(minWidth: 160, minHeight: 80) }
+            }
+        } else { ProgressView().frame(minWidth: 160, minHeight: 80) }
     }
 
     @ViewBuilder
@@ -89,8 +102,7 @@ struct MessageMediaView: View {
     ) -> some View {
         switch message.type {
         case "image":
-            if let data = try? Data(contentsOf: url),
-               let uiImage = UIImage(data: data) {
+            if let uiImage = decodedImage {
                 Image(uiImage: uiImage)
                     .resizable()
                     .scaledToFill()
@@ -224,18 +236,19 @@ struct MessageMediaView: View {
             return
         }
 
-        guard !isLoading,
-              let remoteURL
+        guard let remoteURL
         else {
             loadError = true
             return
         }
 
+        let token = UUID()
+        mediaLoadToken = token
         isLoading = true
         loadError = false
 
         defer {
-            isLoading = false
+            if mediaLoadToken == token { isLoading = false }
         }
 
         do {
@@ -248,7 +261,14 @@ struct MessageMediaView: View {
                     mimeType: message.mimeType
                 )
 
+            let image = message.type == "image" ? await ChatImageCache.shared.image(at: result) : nil
+            try Task.checkCancellation()
+            guard mediaLoadToken == token else { return }
+            if message.type == "image" && image == nil { throw MediaCache.MediaError.invalidResponse }
+            decodedImage = image
             localURL = result
+        } catch is CancellationError {
+            // Leaving a row must not turn cancellation into a permanent failure.
         } catch {
             print(
                 "[MEDIA] load failed",
@@ -256,7 +276,7 @@ struct MessageMediaView: View {
                 error.localizedDescription
             )
 
-            loadError = true
+            if mediaLoadToken == token { loadError = true }
         }
     }
 }

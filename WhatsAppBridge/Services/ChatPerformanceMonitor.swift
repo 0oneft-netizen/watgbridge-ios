@@ -9,6 +9,10 @@ enum ChatPerformanceMonitor {
             category: "Chat"
         )
 
+    static func synced(changed: Int, reset: Bool, duration: Duration) {
+        logger.debug("Message sync changed=\(changed) reset=\(reset) duration=\(String(describing: duration), privacy: .public)")
+    }
+
     static func loaded(
         count: Int,
         accountID: String,

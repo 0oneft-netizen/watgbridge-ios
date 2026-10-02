@@ -46,6 +46,10 @@ struct ChatView: View {
     @State private var forwardMessage: Message?
     @State private var isSending = false
     @State private var isRefreshingMessages = false
+    @State private var refreshPending = false
+    @State private var messageCursor: Int64?
+    @State private var timelineGeneration = 0
+    @State private var searchTask: Task<Void, Never>?
     @State private var isSendingMedia = false
     @State private var mediaSendProgress = 0.0
 
@@ -142,28 +146,27 @@ struct ChatView: View {
             prompt: "Search messages"
         )
         .onChange(of: searchText) {
-            Task {
-                let normalizedSearch =
-                    searchText.trimmingCharacters(
-                        in: .whitespacesAndNewlines
-                    )
-
-                if normalizedSearch.isEmpty {
-                    await loadMessages()
-                } else {
-                    do {
-                        messages = try await APIClient.shared
-                            .searchMessages(
-                    chatJID: conversation.jid,
-                    query: normalizedSearch,
-                    accountID:
-                        conversation.accountID ?? "default"
-                )
-                    } catch {
+            timelineGeneration += 1
+            searchTask?.cancel()
+            searchTask = Task { @MainActor in
+                let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+                do {
+                    try await Task.sleep(for: .milliseconds(220))
+                    if query.isEmpty {
+                        messageCursor = nil
+                        await loadMessages()
+                    } else {
+                        let found = try await APIClient.shared.searchMessages(
+                            chatJID: conversation.jid, query: query,
+                            accountID: conversation.accountID ?? "default")
+                        try Task.checkCancellation()
+                        guard searchText.trimmingCharacters(in: .whitespacesAndNewlines) == query else { return }
+                        messages = found
                     }
-                }
+                } catch is CancellationError {} catch { errorMessage = error.localizedDescription }
             }
         }
+        .onDisappear { searchTask?.cancel() }
         .sheet(
             isPresented: $showConversationInfo
         ) {
@@ -826,30 +829,8 @@ struct ChatView: View {
         }
     }
 
-    private func loadProductionMessages()
-        async {
-
-        let accountID =
-            conversation.accountID
-            ?? "default"
-
-        do {
-            let latest =
-                try await APIClient.shared
-                    .fetchMessages(
-                        chatJID:
-                            conversation.jid,
-                        accountID:
-                            accountID
-                    )
-
-            await MainActor.run {
-                messages = latest
-            }
-        } catch {
-            // Keep current timeline visible.
-        }
-    }
+    @MainActor
+    private func loadProductionMessages() async { await loadMessages() }
 
 
     private func deleteProductionMessage(
@@ -1215,52 +1196,32 @@ struct ChatView: View {
     }
 
     @MainActor
-    private func loadMessages()
-        async {
-
-        guard !isRefreshingMessages else {
-            return
-        }
-
+    private func loadMessages() async {
+        guard searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        if isRefreshingMessages { refreshPending = true; return }
         isRefreshingMessages = true
-
-        defer {
-            isRefreshingMessages = false
-        }
-
-        if messages.isEmpty {
-            isLoading = true
-        }
-
-        do {
-            let fetched =
-                try await APIClient.shared
-                    .fetchMessages(
-                        chatJID:
-                            conversation.jid,
-                        accountID:
-                            conversation.accountID ?? "default"
-                    )
-
-            messages = fetched
-
-            ChatPerformanceMonitor.loaded(
-                count: messages.count,
-                accountID:
-                    conversation.accountID
-                    ?? "default",
-                chatJID:
-                    conversation.jid
-            )
-
-            errorMessage = nil
-
-        } catch {
-            errorMessage =
-                error.localizedDescription
-        }
-
-        isLoading = false
+        defer { isRefreshingMessages = false; isLoading = false }
+        if messages.isEmpty { isLoading = true }
+        repeat {
+            refreshPending = false
+            let generation = timelineGeneration
+            let clock = ContinuousClock()
+            let start = clock.now
+            do {
+                let batch = try await APIClient.shared.syncMessages(
+                    chatJID: conversation.jid,
+                    accountID: conversation.accountID ?? "default", cursor: messageCursor)
+                try Task.checkCancellation()
+                guard searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+                if generation != timelineGeneration { refreshPending = true; continue }
+                let latest = MessageTimelineMerge.apply(batch, to: messages)
+                if latest != messages { messages = latest }
+                messageCursor = batch.cursor
+                ChatPerformanceMonitor.synced(changed: batch.messages.count, reset: batch.reset, duration: start.duration(to: clock.now))
+                errorMessage = nil
+            } catch is CancellationError { return }
+              catch { errorMessage = error.localizedDescription; return }
+        } while refreshPending && !Task.isCancelled
     }
 
     private func updateChatBottomState() {

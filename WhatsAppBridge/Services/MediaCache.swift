@@ -1,4 +1,5 @@
 import Foundation
+import CryptoKit
 
 actor MediaCache {
     static let shared = MediaCache()
@@ -9,6 +10,23 @@ actor MediaCache {
     }
 
     private let fm = FileManager.default
+    private var inFlight: [String: Task<URL, Error>] = [:]
+    private var activeDownloads = 0
+    private var waiters: [CheckedContinuation<Void, Never>] = []
+    private let session: URLSession = {
+        let config = URLSessionConfiguration.default
+        config.httpMaximumConnectionsPerHost = 4
+        config.timeoutIntervalForRequest = 30
+        config.timeoutIntervalForResource = 180
+        return URLSession(configuration: config)
+    }()
+    private func acquireDownload() async {
+        if activeDownloads < 4 { activeDownloads += 1; return }
+        await withCheckedContinuation { waiters.append($0) }
+    }
+    private func releaseDownload() {
+        if !waiters.isEmpty { waiters.removeFirst().resume() } else { activeDownloads -= 1 }
+    }
 
     private var directory: URL {
         let base = fm.urls(
@@ -36,11 +54,8 @@ actor MediaCache {
             remoteURL: remoteURL
         )
 
-        let safeID = messageID.replacingOccurrences(
-            of: "/",
-            with: "_"
-        )
-
+        // The full URL includes account_id, isolating identical WA IDs across accounts.
+        let safeID = SHA256.hash(data: Data(remoteURL.absoluteString.utf8)).map { String(format: "%02x", $0) }.joined()
         var destination = directory
             .appendingPathComponent(safeID)
 
@@ -58,36 +73,34 @@ actor MediaCache {
             return destination
         }
 
-        let (temporaryURL, response) =
-            try await URLSession.shared.download(
-                from: remoteURL
-            )
+        try Task.checkCancellation()
+        let key = destination.path
+        if let task = inFlight[key] {
+            let result = try await task.value
+            try Task.checkCancellation()
+            return result
+        }
+        let target = destination
+        let task = Task { try await download(remoteURL: remoteURL, destination: target) }
+        inFlight[key] = task
+        defer { inFlight[key] = nil }
+        let result = try await task.value
+        try Task.checkCancellation()
+        return result
+    }
 
+    private func download(remoteURL: URL, destination: URL) async throws -> URL {
+        await acquireDownload()
+        defer { releaseDownload() }
+        let (temporaryURL, response) = try await session.download(from: remoteURL)
+        defer { try? fm.removeItem(at: temporaryURL) }
         guard let http = response as? HTTPURLResponse,
-              (200...299).contains(http.statusCode)
-        else {
-            throw MediaError.invalidResponse
-        }
-
-        let attrs = try fm.attributesOfItem(
-            atPath: temporaryURL.path
-        )
-
-        guard let size = attrs[.size] as? NSNumber,
-              size.int64Value > 0
-        else {
-            throw MediaError.emptyFile
-        }
-
-        if fm.fileExists(atPath: destination.path) {
-            try fm.removeItem(at: destination)
-        }
-
-        try fm.moveItem(
-            at: temporaryURL,
-            to: destination
-        )
-
+              (200...299).contains(http.statusCode) else { throw MediaError.invalidResponse }
+        let attrs = try fm.attributesOfItem(atPath: temporaryURL.path)
+        guard let size = attrs[.size] as? NSNumber, size.int64Value > 0 else { throw MediaError.emptyFile }
+        // Downloads are shared; finishing one warms the cache for all visible views.
+        if fm.fileExists(atPath: destination.path) { return destination }
+        try fm.moveItem(at: temporaryURL, to: destination)
         return destination
     }
 
@@ -162,6 +175,7 @@ actor MediaCache {
         mimeType: String?
     ) -> String {
         let lower = ext.lowercased()
+        guard lower.count <= 12, lower.utf8.allSatisfy({ (48...57).contains($0) || (97...122).contains($0) }) else { return "bin" }
 
         // WhatsMeow may produce .f4v while the actual
         // response is video/mp4. AVFoundation is happier

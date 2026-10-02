@@ -483,6 +483,7 @@ final class APIClient {
         replyTo: Message,
         accountID: String = "default"
     ) async throws {
+        guard (replyTo.accountID ?? "default") == accountID, replyTo.chatJID == chatJID else { throw URLError(.badURL) }
 
         let url =
             baseURL.appendingPathComponent(
