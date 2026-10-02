@@ -14,6 +14,7 @@ struct Message: Identifiable, Codable, Equatable {
     let fromMe: Bool
     let createdAt: Int64
 
+    let campaignReferral: CampaignReferral?
     let campaignImageURL: String?
 
     let mediaPath: String?
@@ -40,6 +41,7 @@ struct Message: Identifiable, Codable, Equatable {
         case fromMe = "from_me"
         case createdAt = "created_at"
 
+        case campaignReferral = "campaign_referral"
         case campaignImageURL = "campaign_image_url"
 
         case mediaPath = "media_path"
@@ -53,4 +55,24 @@ struct Message: Identifiable, Codable, Equatable {
         case deletedLocal = "deleted_local"
         case deliveryState = "delivery_state"
     }
+}
+
+// Field names match WhatsApp protobuf JSON.
+struct CampaignReferral: Codable, Equatable {
+    let title: String?
+    let body: String?
+    let sourceApp: String?
+    let sourceType: String?
+    let sourceID: String?
+    let sourceURL: String?
+    let originalImageURL: String?
+    let thumbnailURL: String?
+    let thumbnail: String?
+    let mediaURL: String?
+    let adPreviewURL: String?
+    let wtwaWebsiteURL: String?
+    let ctwaClid: String?
+    let ref: String?
+    let showAdAttribution: Bool?
+    let renderLargerThumbnail: Bool?
 }

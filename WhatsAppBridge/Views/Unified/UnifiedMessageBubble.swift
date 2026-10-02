@@ -213,6 +213,17 @@ struct UnifiedMessageBubble: View {
             alignment: .leading,
             spacing: 5
         ) {
+
+            if message.campaignReferral != nil ||
+               !(message.campaignImageURL ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                CampaignReferralCard(
+                    referral: message.campaignReferral,
+                    legacyImageURL: message.campaignImageURL,
+                    textColor: messageTextColor,
+                    metadataColor: metadataColor
+                )
+            }
+
             if message.mediaPath != nil ||
                 [
                     "image",
@@ -229,41 +240,6 @@ struct UnifiedMessageBubble: View {
 
                 MessageMediaView(
                     message: message
-                )
-            }
-
-            if let campaignImageURL = message.campaignImageURL,
-               let url = URL(string: campaignImageURL),
-               !campaignImageURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                AsyncImage(url: url) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .scaledToFill()
-                            .frame(
-                                maxWidth: 280,
-                                maxHeight: 220
-                            )
-                            .clipShape(
-                                RoundedRectangle(cornerRadius: 9)
-                            )
-                            .clipped()
-
-                    case .failure:
-                        EmptyView()
-
-                    case .empty:
-                        ProgressView()
-                            .frame(width: 80, height: 80)
-
-                    @unknown default:
-                        EmptyView()
-                    }
-                }
-                .frame(
-                    maxWidth: 280,
-                    maxHeight: 220
                 )
             }
 
@@ -311,5 +287,126 @@ struct UnifiedMessageBubble: View {
         )
         .font(.subheadline.italic())
         .foregroundStyle(.secondary)
+    }
+}
+
+private struct CampaignReferralCard: View {
+    let referral: CampaignReferral?
+    let legacyImageURL: String?
+    let textColor: Color
+    let metadataColor: Color
+
+    private func clean(_ value: String?) -> String? {
+        guard let value else { return nil }
+        let text = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return text.isEmpty ? nil : text
+    }
+
+    private func webURL(_ value: String?) -> URL? {
+        guard let text = clean(value), let url = URL(string: text),
+              let scheme = url.scheme?.lowercased(),
+              ["https", "http"].contains(scheme),
+              let host = url.host, !host.isEmpty else { return nil }
+        return url
+    }
+
+    private var imageURL: URL? {
+        webURL(referral?.originalImageURL)
+            ?? webURL(referral?.thumbnailURL)
+            ?? webURL(legacyImageURL)
+    }
+
+    private var thumbnailImage: UIImage? {
+        guard let encoded = clean(referral?.thumbnail),
+              let data = Data(base64Encoded: encoded) else { return nil }
+        return UIImage(data: data)
+    }
+
+    private var destination: URL? {
+        webURL(referral?.sourceURL)
+            ?? webURL(referral?.adPreviewURL)
+            ?? webURL(referral?.wtwaWebsiteURL)
+    }
+
+    private var sourceLabel: String {
+        let isAd = referral?.showAdAttribution == true
+            || clean(referral?.sourceType)?.lowercased() == "ad"
+        let prefix = isAd ? "מודעה" : "מקור ההודעה"
+        switch clean(referral?.sourceApp)?.lowercased() {
+        case "facebook": return "\(prefix) · Facebook"
+        case "instagram": return "\(prefix) · Instagram"
+        case "tiktok": return "\(prefix) · TikTok"
+        default: return prefix
+        }
+    }
+
+    private func picture(_ image: Image) -> some View {
+        image.resizable()
+            .scaledToFill()
+            .frame(maxWidth: .infinity)
+            .frame(height: 160)
+            .clipped()
+            .clipShape(RoundedRectangle(cornerRadius: 7))
+    }
+
+    @ViewBuilder
+    private var localThumbnail: some View {
+        if let image = thumbnailImage {
+            picture(Image(uiImage: image))
+        }
+    }
+
+    @ViewBuilder
+    private var artwork: some View {
+        if let url = imageURL {
+            AsyncImage(url: url) { phase in
+                switch phase {
+                case .success(let image): picture(image)
+                case .failure: localThumbnail
+                case .empty:
+                    if thumbnailImage != nil {
+                        localThumbnail
+                    } else {
+                        ProgressView()
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 80)
+                    }
+                @unknown default: localThumbnail
+                }
+            }
+        } else {
+            localThumbnail
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            artwork
+            Label(sourceLabel, systemImage: "megaphone")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(metadataColor)
+            if let title = clean(referral?.title) {
+                Text(title).font(.subheadline.weight(.semibold))
+            }
+            if let body = clean(referral?.body) {
+                Text(body).font(.caption)
+            }
+            if let destination {
+                Link(destination: destination) {
+                    Label("הצגת הפרטים", systemImage: "arrow.up.right.square")
+                        .font(.caption.weight(.semibold))
+                }
+                .tint(ChatDesign.accent)
+            }
+        }
+        .foregroundStyle(textColor)
+        .padding(8)
+        .frame(maxWidth: 280, alignment: .leading)
+        .background(ChatDesign.subtleFill.opacity(0.45))
+        .clipShape(RoundedRectangle(cornerRadius: 9))
+        .overlay {
+            RoundedRectangle(cornerRadius: 9)
+                .stroke(ChatDesign.separator.opacity(0.5), lineWidth: 0.5)
+        }
     }
 }
