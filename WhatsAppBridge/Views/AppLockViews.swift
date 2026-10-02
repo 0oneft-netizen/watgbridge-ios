@@ -2,6 +2,7 @@ import SwiftUI
 
 struct AppLockSettingsView: View {
     @ObservedObject private var lock = AppLockStore.shared
+    @State private var timeout: AppLockTimeout = .immediate
     @State private var mode: AppLockMode = .pin
     @State private var current = ""
     @State private var secret = ""
@@ -15,6 +16,25 @@ struct AppLockSettingsView: View {
                 LabeledContent("נעילת האפליקציה", value: lock.enabled ? "פעילה" : "כבויה")
                 if lock.enabled { entry("הקוד הקיים", text: $current, mode: lock.mode) }
             }
+            Section("נעילה אוטומטית") {
+                Picker("זמן הנעילה", selection: $timeout) {
+                    ForEach(AppLockTimeout.allCases) { value in Text(value.title).tag(value) }
+                }
+                Text("הזמן נספר מרגע שעוזבים את האפליקציה. התוכן מוסתר מיד בתצוגת האפליקציות האחרונות. אחרי סגירה מלאה, תמיד נדרש קוד.")
+                    .font(.footnote).foregroundStyle(.secondary)
+                if lock.enabled {
+                    LabeledContent("הזמן השמור", value: lock.timeout.title)
+                    Button("שמור זמן נעילה") {
+                        Task {
+                            do {
+                                try await lock.setTimeout(timeout, current: current)
+                                clear(); message = "זמן הנעילה נשמר."
+                            } catch { message = error.localizedDescription }
+                        }
+                    }
+                    .disabled(lock.busy || current.isEmpty || timeout == lock.timeout)
+                }
+            }
             Section(lock.enabled ? "שינוי הקוד" : "הגדרת קוד") {
                 Picker("סוג הקוד", selection: $mode) {
                     ForEach(AppLockMode.allCases) { value in Text(value.title).tag(value) }
@@ -25,8 +45,8 @@ struct AppLockSettingsView: View {
                 Button(lock.enabled ? "שמור קוד חדש" : "הפעל נעילה") {
                     Task {
                         do {
-                            try await lock.configure(mode: mode, secret: secret, current: current)
-                            clear(); message = "הקוד נשמר. האפליקציה תינעל כשתעזוב אותה."
+                            try await lock.configure(mode: mode, secret: secret, current: current, timeout: timeout)
+                            clear(); message = "הקוד נשמר. זמן הנעילה: \(lock.timeout.title)."
                         } catch { message = error.localizedDescription }
                     }
                 }
@@ -48,7 +68,8 @@ struct AppLockSettingsView: View {
         }
         .navigationTitle("נעילת אפליקציה")
         .tint(ChatDesign.accent)
-        .onAppear { mode = lock.mode }
+        .onAppear { mode = lock.mode; timeout = lock.timeout }
+        .onChange(of: lock.timeout) { _, value in timeout = value }
         .onChange(of: mode) { _, _ in secret = ""; confirmation = ""; message = nil }
         .onChange(of: lock.foreground) { _, active in if !active { clear() } }
         .onDisappear { clear() }

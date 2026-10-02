@@ -12,19 +12,7 @@ private struct AppLockRecord: Codable {
     let rounds: UInt32
     var failures: Int
     var retryAfter: Date
-}
-
-enum AppLockMode: String, Codable, CaseIterable, Identifiable {
-    case pin, password
-    var id: String { rawValue }
-    var title: String { self == .pin ? "קוד מספרי" : "סיסמה עם אותיות ומספרים" }
-    func validate(_ value: String) -> Bool {
-        if self == .pin {
-            return (6...12).contains(value.count) && value.utf8.allSatisfy { (48...57).contains($0) }
-        }
-        return (8...128).contains(value.count) && value.unicodeScalars.contains { CharacterSet.letters.contains($0) }
-    }
-    var hint: String { self == .pin ? "6–12 ספרות" : "8–128 תווים, כולל אות אחת לפחות; אפשר לשלב מספרים וסימנים" }
+    var timeoutSeconds: Int? // Missing in existing credentials: immediate lock.
 }
 
 private enum AppLockCrypto {
@@ -70,12 +58,14 @@ final class AppLockStore: ObservableObject {
     static let shared = AppLockStore()
     @Published private(set) var enabled = false
     @Published private(set) var locked = true
+    @Published private(set) var timeout: AppLockTimeout = .immediate
     @Published private(set) var mode: AppLockMode = .pin
     @Published private(set) var busy = false
     @Published private(set) var storageError: String?
     @Published private(set) var retryAfter = Date.distantPast
     private var record: AppLockRecord?
     @Published private(set) var foreground = false
+    private var gracePeriod = AppLockGracePeriod()
     private var active = false
     private var epoch = 0
     private let rounds: UInt32 = 600_000
@@ -100,8 +90,9 @@ final class AppLockStore: ObservableObject {
             guard status == errSecSuccess, let data = result as? Data else { throw AppLockFailure.storage }
             let value = try JSONDecoder().decode(AppLockRecord.self, from: data)
             guard value.version == 1, value.salt.count == 32, value.verifier.count == 32,
-                  value.rounds == rounds, value.failures >= 0, value.failures <= 20 else { throw AppLockFailure.storage }
-            record = value; enabled = true; mode = value.mode; retryAfter = value.retryAfter; storageError = nil
+                  value.rounds == rounds, value.failures >= 0, value.failures <= 20,
+                  AppLockTimeout(rawValue: value.timeoutSeconds ?? 0) != nil else { throw AppLockFailure.storage }
+            record = value; enabled = true; timeout = AppLockTimeout(rawValue: value.timeoutSeconds ?? 0) ?? .immediate; mode = value.mode; retryAfter = value.retryAfter; storageError = nil
         } catch {
             enabled = true; locked = true; storageError = AppLockFailure.storage.localizedDescription
         }
@@ -116,15 +107,28 @@ final class AppLockStore: ObservableObject {
             item[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
             guard SecItemAdd(item as CFDictionary, nil) == errSecSuccess else { throw AppLockFailure.storage }
         } else if status != errSecSuccess { throw AppLockFailure.storage }
-        record = value; mode = value.mode; retryAfter = value.retryAfter; enabled = true; storageError = nil
+        record = value; timeout = AppLockTimeout(rawValue: value.timeoutSeconds ?? 0) ?? .immediate; mode = value.mode; retryAfter = value.retryAfter; enabled = true; storageError = nil
     }
     func activity(_ isActive: Bool) {
+        let wasActive = active
         active = isActive
         foreground = isActive
-        if !isActive { epoch += 1; if enabled { locked = true } }
-        else if storageError != nil { reload() }
+        if !isActive {
+            if wasActive { epoch += 1 }
+            if enabled && !locked {
+                gracePeriod.leave(at: ContinuousClock.now)
+                if timeout == .immediate { locked = true }
+            }
+        } else {
+            if storageError != nil { reload() }
+            if enabled && gracePeriod.returnRequiresLock(at: ContinuousClock.now, timeout: timeout) {
+                locked = true
+            }
+        }
     }
-    func lockNow() { if enabled { epoch += 1; locked = true } }
+    func lockNow() {
+        if enabled { epoch += 1; gracePeriod.clear(); locked = true }
+    }
     func retryStorage() { reload() }
 
     private func verify(_ secret: String) async throws {
@@ -158,7 +162,7 @@ final class AppLockStore: ObservableObject {
         guard active, epoch == token else { throw AppLockFailure.changed }
         locked = false
     }
-    func configure(mode newMode: AppLockMode, secret: String, current: String) async throws {
+    func configure(mode newMode: AppLockMode, secret: String, current: String, timeout newTimeout: AppLockTimeout) async throws {
         guard !busy else { throw AppLockFailure.changed }
         guard active, !locked, storageError == nil else { throw AppLockFailure.changed }
         guard newMode.validate(secret), secret.utf8.count <= 1024 else { throw AppLockFailure.invalid }
@@ -174,7 +178,17 @@ final class AppLockStore: ObservableObject {
         }.value
         guard active, epoch == token, !locked else { throw AppLockFailure.changed }
         try persist(AppLockRecord(version: 1, mode: newMode, salt: salt, verifier: hash,
-                                  rounds: rounds, failures: 0, retryAfter: .distantPast))
+                                  rounds: rounds, failures: 0, retryAfter: .distantPast, timeoutSeconds: newTimeout.rawValue))
+    }
+    func setTimeout(_ newTimeout: AppLockTimeout, current: String) async throws {
+        guard !busy, enabled, active, !locked, storageError == nil else { throw AppLockFailure.changed }
+        busy = true; defer { busy = false }
+        let token = epoch
+        try await verify(current)
+        guard active, epoch == token, !locked, var next = record else { throw AppLockFailure.changed }
+        next.timeoutSeconds = newTimeout.rawValue
+        try persist(next)
+        gracePeriod.clear()
     }
     func disable(current: String) async throws {
         guard !busy else { throw AppLockFailure.changed }
@@ -185,5 +199,6 @@ final class AppLockStore: ObservableObject {
         guard active, epoch == token, !locked else { throw AppLockFailure.changed }
         guard SecItemDelete(query as CFDictionary) == errSecSuccess else { throw AppLockFailure.storage }
         record = nil; enabled = false; locked = false; storageError = nil; retryAfter = .distantPast
+        timeout = .immediate; gracePeriod.clear()
     }
 }

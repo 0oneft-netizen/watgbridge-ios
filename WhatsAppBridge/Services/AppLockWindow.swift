@@ -56,7 +56,7 @@ private final class AppLockWindow {
     }
     private func update() {
         guard let shield else { return }
-        if lock.enabled && lock.locked {
+        if lock.enabled && (lock.locked || !lock.foreground) {
             shield.isHidden = false
             if lock.foreground && !shield.isKeyWindow { shield.makeKeyAndVisible() }
         } else {
