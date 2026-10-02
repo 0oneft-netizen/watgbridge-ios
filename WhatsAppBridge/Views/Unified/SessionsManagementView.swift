@@ -5,6 +5,14 @@ struct SessionsManagementView: View {
     private var directory =
         SessionDirectory.shared
 
+    @State private var pendingDelete:
+        SessionIdentity?
+
+    @State private var deleteError:
+        String?
+
+    @State private var isDeleting = false
+
     var body: some View {
         List {
             Section {
@@ -114,6 +122,37 @@ struct SessionsManagementView: View {
                         } label: {
                             sessionRow(session)
                         }
+                        .swipeActions(
+                            edge: .trailing,
+                            allowsFullSwipe: false
+                        ) {
+                            if session.id != "default" {
+                                Button(
+                                    role: .destructive
+                                ) {
+                                    pendingDelete = session
+                                } label: {
+                                    Label(
+                                        "Delete",
+                                        systemImage: "trash"
+                                    )
+                                }
+                            }
+                        }
+                        .contextMenu {
+                            if session.id != "default" {
+                                Button(
+                                    role: .destructive
+                                ) {
+                                    pendingDelete = session
+                                } label: {
+                                    Label(
+                                        "Delete Session",
+                                        systemImage: "trash"
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -125,6 +164,105 @@ struct SessionsManagementView: View {
         }
         .refreshable {
             await directory.refresh()
+        }
+        .confirmationDialog(
+            "Delete this session?",
+            isPresented:
+                Binding(
+                    get: {
+                        pendingDelete != nil
+                    },
+                    set: { presented in
+                        if !presented && !isDeleting {
+                            pendingDelete = nil
+                        }
+                    }
+                ),
+            titleVisibility: .visible
+        ) {
+            if let session = pendingDelete,
+               session.id != "default" {
+                Button(
+                    "Delete Session and Local History",
+                    role: .destructive
+                ) {
+                    Task {
+                        await deleteSession(session)
+                    }
+                }
+            }
+
+            Button(
+                "Cancel",
+                role: .cancel
+            ) {
+                pendingDelete = nil
+            }
+        } message: {
+            if let session = pendingDelete {
+                Text(
+                    "This removes \(session.effectiveName) and its local history from this app. Other WhatsApp sessions are not affected."
+                )
+            }
+        }
+        .alert(
+            "Could Not Delete Session",
+            isPresented:
+                Binding(
+                    get: {
+                        deleteError != nil
+                    },
+                    set: { presented in
+                        if !presented {
+                            deleteError = nil
+                        }
+                    }
+                )
+        ) {
+            Button(
+                "OK",
+                role: .cancel
+            ) {
+                deleteError = nil
+            }
+        } message: {
+            Text(deleteError ?? "")
+        }
+    }
+
+    @MainActor
+    private func deleteSession(
+        _ session: SessionIdentity
+    ) async {
+        guard
+            session.id != "default",
+            !isDeleting
+        else {
+            return
+        }
+
+        isDeleting = true
+        deleteError = nil
+
+        defer {
+            isDeleting = false
+        }
+
+        do {
+            try await APIClient.shared
+                .deleteSession(
+                    accountID:
+                        session.id,
+                    deleteHistory:
+                        true
+                )
+
+            pendingDelete = nil
+
+            await directory.refresh()
+        } catch {
+            deleteError =
+                error.localizedDescription
         }
     }
 
