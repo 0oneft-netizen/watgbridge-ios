@@ -89,6 +89,12 @@ struct SettingsView: View {
                 }
 
                 Section("App") {
+                    NavigationLink {
+                        AppLockSettingsView()
+                    } label: {
+                        Label("נעילת אפליקציה", systemImage: "lock.shield")
+                    }
+
                     Toggle(
                         "Haptic Feedback",
                         isOn:

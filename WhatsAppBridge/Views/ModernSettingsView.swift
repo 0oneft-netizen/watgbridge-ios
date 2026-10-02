@@ -212,10 +212,11 @@ NavigationLink {
     private var privacySettings: some View {
         Form {
             Section {
-                Label(
-                    "App Lock",
-                    systemImage: "faceid"
-                )
+                NavigationLink {
+                    AppLockSettingsView()
+                } label: {
+                    Label("נעילת אפליקציה", systemImage: "lock.shield")
+                }
 
                 Label(
                     "Read Receipts",
