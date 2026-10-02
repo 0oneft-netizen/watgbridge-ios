@@ -1,7 +1,10 @@
 import SwiftUI
+import UIKit
 
 struct CustomerInfoView: View {
     let conversation: Conversation
+    @ObservedObject private var customerCRM = CustomerCRMDirectory.shared
+    @State private var showCustomerSave = false
 
     @State private var label = ""
     @State private var note = ""
@@ -54,7 +57,7 @@ struct CustomerInfoView: View {
                     .clipShape(Circle())
 
                     Text(
-                        conversation.displayName
+                        customerCRM.name(for: conversation)
                     )
                     .font(.title2.bold())
 
@@ -67,6 +70,18 @@ struct CustomerInfoView: View {
                     maxWidth: .infinity
                 )
                 .padding(.vertical, 8)
+            }
+
+            Section {
+                Button { showCustomerSave = true } label: {
+                    Label("שמירה / שינוי שם וקבוצות", systemImage: "person.crop.circle.badge.plus")
+                }
+                let phone = ChatIdentity.customerPhone(conversation: conversation)
+                if !phone.isEmpty {
+                    Button { UIPasteboard.general.string = phone } label: {
+                        Label("העתקת המספר האמיתי", systemImage: "doc.on.doc")
+                    }
+                }
             }
 
             Section("Business Status") {
@@ -196,6 +211,7 @@ struct CustomerInfoView: View {
                 .disabled(saving)
             }
         }
+        .sheet(isPresented: $showCustomerSave) { CustomerSaveView(conversation: conversation) }
         .navigationTitle("Customer Info")
         .navigationBarTitleDisplayMode(.inline)
         .task {

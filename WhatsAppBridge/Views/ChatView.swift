@@ -27,6 +27,8 @@ private struct ChatViewportBottomPreferenceKey: PreferenceKey {
 
 struct ChatView: View {
     let conversation: Conversation
+    @ObservedObject private var customerCRM = CustomerCRMDirectory.shared
+    @State private var showCustomerSave = false
 
     @State private var messages: [Message] = []
     @State private var isNearBottom = true
@@ -88,7 +90,7 @@ struct ChatView: View {
                         spacing: 1
                     ) {
                         Text(
-                            conversation.displayName
+                            customerCRM.name(for: conversation)
                         )
                         .font(.headline)
                         .lineLimit(1)
@@ -105,6 +107,11 @@ struct ChatView: View {
             ToolbarItemGroup(
                 placement: .topBarTrailing
             ) {
+                Button { showCustomerSave = true } label: {
+                    Image(systemName: "person.crop.circle.badge.plus")
+                }
+                .accessibilityLabel("שמירה או שינוי שם לקוח")
+
                 Button {
                     isSearching.toggle()
                 } label: {
@@ -125,6 +132,9 @@ struct ChatView: View {
                     )
                 }
             }
+        }
+        .sheet(isPresented: $showCustomerSave) {
+            CustomerSaveView(conversation: conversation)
         }
         .searchable(
             text: $searchText,

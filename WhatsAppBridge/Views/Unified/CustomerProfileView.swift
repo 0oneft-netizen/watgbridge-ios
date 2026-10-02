@@ -4,6 +4,8 @@ import UIKit
 struct CustomerProfileView: View {
     let conversation: Conversation
     let messages: [Message]
+    @ObservedObject private var customerCRM = CustomerCRMDirectory.shared
+    @State private var showCustomerSave = false
 
     @ObservedObject
     private var sessions =
@@ -13,9 +15,7 @@ struct CustomerProfileView: View {
     private var showPhoto = false
 
     private var name: String {
-        ChatIdentity.customerName(
-            conversation: conversation
-        )
+        customerCRM.name(for: conversation)
     }
 
     private var phone: String {
@@ -211,6 +211,12 @@ struct CustomerProfileView: View {
                     messages
             )
 
+            Section {
+                Button { showCustomerSave = true } label: {
+                    Label("שמירה / שינוי שם וקבוצות", systemImage: "person.crop.circle.badge.plus")
+                }
+            }
+
             Section("Contact") {
                 LabeledContent(
                     "Phone",
@@ -239,6 +245,7 @@ struct CustomerProfileView: View {
                 }
             }
         }
+        .sheet(isPresented: $showCustomerSave) { CustomerSaveView(conversation: conversation) }
         .listStyle(.insetGrouped)
         .navigationTitle("Contact Info")
         .navigationBarTitleDisplayMode(

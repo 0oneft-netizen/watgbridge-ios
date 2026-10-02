@@ -2,14 +2,13 @@ import SwiftUI
 
 struct ProductionConversationRow: View {
     let conversation: Conversation
+    @ObservedObject private var customerCRM = CustomerCRMDirectory.shared
 
     @ObservedObject
     private var sessions = SessionDirectory.shared
 
     private var title: String {
-        ChatIdentity.customerName(
-            conversation: conversation
-        )
+        customerCRM.name(for: conversation)
     }
 
     private var sessionName: String {

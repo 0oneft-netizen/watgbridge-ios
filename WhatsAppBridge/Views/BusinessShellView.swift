@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct BusinessShellView: View {
     @State private var selection = 0
@@ -64,6 +65,10 @@ struct BusinessShellView: View {
                     )
                 }
                 .tag(4)
+        }
+        .task { await CustomerCRMDirectory.shared.refresh() }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+            Task { await CustomerCRMDirectory.shared.refresh() }
         }
         .tint(WhatsAppVisualDesign.accent)
         .toolbarBackground(WhatsAppVisualDesign.surface, for: .tabBar)
