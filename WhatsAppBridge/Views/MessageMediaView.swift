@@ -184,16 +184,24 @@ struct MessageMediaView: View {
             }
 
         case "voice":
-            AudioMessageView(
-                url: url,
-                isVoice: true
-            )
+            VStack(alignment: .leading, spacing: 6) {
+                AudioMessageView(url: url, isVoice: true)
+                ShareLink(item: url) {
+                    Label("שמירה לקבצים / שיתוף הקלטה", systemImage: "square.and.arrow.up")
+                        .font(.caption)
+                }
+                .tint(ChatDesign.accent)
+            }
 
         case "audio":
-            AudioMessageView(
-                url: url,
-                isVoice: false
-            )
+            VStack(alignment: .leading, spacing: 6) {
+                AudioMessageView(url: url, isVoice: false)
+                ShareLink(item: url) {
+                    Label("שמירה לקבצים / שיתוף הקלטה", systemImage: "square.and.arrow.up")
+                        .font(.caption)
+                }
+                .tint(ChatDesign.accent)
+            }
 
         case "document":
             DocumentMessageView(message: message)

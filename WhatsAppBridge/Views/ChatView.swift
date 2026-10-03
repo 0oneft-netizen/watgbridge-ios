@@ -27,6 +27,9 @@ private struct ChatViewportBottomPreferenceKey: PreferenceKey {
 
 struct ChatView: View {
     let conversation: Conversation
+    var initialMessageID: String? = nil
+    @State private var focusedContext = false
+    @State private var initialFocusHandled = false
     @ObservedObject private var customerCRM = CustomerCRMDirectory.shared
     @State private var showCustomerSave = false
 
@@ -69,6 +72,16 @@ struct ChatView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            if focusedContext {
+                HStack {
+                    Text("ההודעה שנמצאה וההודעות הסמוכות").font(.caption)
+                    Spacer()
+                    Button("חזרה להודעות האחרונות") {
+                        focusedContext = false; messageCursor = nil
+                        Task { await loadMessages() }
+                    }
+                }.padding(10)
+            }
             content
             composer
         }
@@ -150,6 +163,7 @@ struct ChatView: View {
             searchTask?.cancel()
             searchTask = Task { @MainActor in
                 let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !query.isEmpty { focusedContext = false; initialFocusHandled = true }
                 do {
                     try await Task.sleep(for: .milliseconds(220))
                     if query.isEmpty {
@@ -416,6 +430,7 @@ struct ChatView: View {
                                 )
                             }
                         )
+                        .background(message.messageID == initialMessageID && focusedContext ? ChatDesign.accent.opacity(0.13) : Color.clear)
                         .id(message.id)
                         .padding(
                             .horizontal,
@@ -458,6 +473,11 @@ struct ChatView: View {
                         )
                 }
             )
+            .onAppear {
+                if focusedContext, let target = messages.first(where: { $0.messageID == initialMessageID }) {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { proxy.scrollTo(target.id, anchor: .center) }
+                }
+            }
             .scrollDismissesKeyboard(.interactively)
             .defaultScrollAnchor(.bottom)
             .refreshable {
@@ -480,6 +500,12 @@ struct ChatView: View {
             .onChange(
                 of: messages.last?.id
             ) {
+                if focusedContext {
+                    if let target = messages.first(where: { $0.messageID == initialMessageID }) {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { proxy.scrollTo(target.id, anchor: .center) }
+                    }
+                    return
+                }
                 guard let last = messages.last else {
                     return
                 }
@@ -1197,6 +1223,19 @@ struct ChatView: View {
 
     @MainActor
     private func loadMessages() async {
+        if focusedContext { return }
+        if let id = initialMessageID, !initialFocusHandled {
+            guard !isRefreshingMessages else { return }
+            isRefreshingMessages = true; isLoading = true
+            defer { isRefreshingMessages = false; isLoading = false }
+            do {
+                let found = try await CustomerFeaturesAPI.shared.context(conversation, messageID: id)
+                try Task.checkCancellation()
+                focusedContext = true; initialFocusHandled = true
+                isNearBottom = false; messages = found; errorMessage = nil
+            } catch { errorMessage = error.localizedDescription }
+            return
+        }
         guard searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         if isRefreshingMessages { refreshPending = true; return }
         isRefreshingMessages = true

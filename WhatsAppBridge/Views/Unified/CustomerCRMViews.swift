@@ -180,6 +180,9 @@ struct CustomerGroupDetail: View {
                     if !group.welcomeMessage.isEmpty { Text(group.welcomeMessage).font(.subheadline) }
                     Button("עריכת הקבוצה וההודעה") { editing = group }
                     Button("צירוף לקוח") { addCustomers = true }
+                    NavigationLink { CustomerBroadcastsView(groupID: groupID) } label: {
+                        Label("הודעות תפוצה לקבוצה", systemImage: "paperplane.fill")
+                    }
                 }
             }
             Section("לקוחות · \(members.count)") {

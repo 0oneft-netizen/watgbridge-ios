@@ -84,6 +84,11 @@ struct CustomerInfoView: View {
                 }
             }
 
+            Section {
+                NavigationLink { CustomerContactControls(conversation: conversation) } label: {
+                    Label("חסימה ב־WhatsApp והחרגה מתפוצות", systemImage: "hand.raised")
+                }
+            }
             Section("Business Status") {
                 Picker(
                     "Label",

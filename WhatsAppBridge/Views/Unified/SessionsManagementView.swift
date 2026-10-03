@@ -157,6 +157,13 @@ struct SessionsManagementView: View {
                 }
             }
         }
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                NavigationLink { SessionNetworkDirectoryView() } label: {
+                    Image(systemName: "network")
+                }.accessibilityLabel("חיבור ו־IP לסשנים")
+            }
+        }
         .navigationTitle("WhatsApp Accounts")
         .navigationBarTitleDisplayMode(.large)
         .task {

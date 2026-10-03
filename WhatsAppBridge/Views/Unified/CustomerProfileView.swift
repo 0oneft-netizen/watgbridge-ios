@@ -74,6 +74,11 @@ struct CustomerProfileView: View {
 
     var body: some View {
         List {
+            Section {
+                NavigationLink { CustomerContactControls(conversation: conversation) } label: {
+                    Label("חסימה ב־WhatsApp והחרגה מתפוצות", systemImage: "hand.raised")
+                }
+            }
             profileHeader
 
             Section {

@@ -10,11 +10,13 @@ struct ConversationsView: View {
 
     private var sortedConversations: [Conversation] {
         conversations
-            .filter { $0.archived != true }
+            .filter { !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || $0.archived != true }
             .filter {
                 searchText.isEmpty ||
                 $0.displayName.localizedCaseInsensitiveContains(searchText) ||
-                $0.preview.localizedCaseInsensitiveContains(searchText)
+                $0.preview.localizedCaseInsensitiveContains(searchText) ||
+                CustomerCRMDirectory.shared.name(for: $0).localizedCaseInsensitiveContains(searchText) ||
+                matchesCustomerPhone($0, query: searchText)
             }
             .sorted {
                 let leftPinned = $0.pinned == true
@@ -48,6 +50,9 @@ struct ConversationsView: View {
                     )
                 }
 
+                if !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    CustomerSearchResults(query: searchText.trimmingCharacters(in: .whitespacesAndNewlines))
+                }
                 ForEach(
                     sortedConversations,
                     id: \.compositeID
@@ -188,7 +193,7 @@ struct ConversationsView: View {
             }
             .searchable(
                 text: $searchText,
-                prompt: "Search"
+                prompt: "מילה בהודעה, שם או סוף מספר"
             )
             .refreshable {
                 await loadConversations()
