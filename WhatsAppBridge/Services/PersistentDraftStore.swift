@@ -10,14 +10,16 @@ final class PersistentDraftStore:
     @Published
     private(set)
     var drafts:
-        [String: String]
+        [String: String] = [:]
 
     private let storageKey =
         "watgbridge.chat.drafts.v2"
 
-    private init() {
+    private init() { reloadForUser() }
+    func reloadForUser() {
+        drafts = [:]
         if let data =
-            UserDefaults.standard
+            UserWorkspace.defaults
                 .data(
                     forKey:
                         storageKey
@@ -109,7 +111,7 @@ final class PersistentDraftStore:
             return
         }
 
-        UserDefaults.standard
+        UserWorkspace.defaults
             .set(
                 data,
                 forKey:

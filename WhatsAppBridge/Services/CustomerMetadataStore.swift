@@ -12,10 +12,12 @@ final class CustomerMetadataStore: ObservableObject {
     @Published private(set)
     var values: [String: CustomerMetadata] = [:]
 
-    private let defaults = UserDefaults.standard
+    private var defaults: UserDefaults { UserWorkspace.defaults }
     private let storageKey = "customer.metadata.v1"
 
-    private init() {
+    private init() { reloadForUser() }
+    func reloadForUser() {
+        values = [:]
         guard
             let data = defaults.data(forKey: storageKey),
             let decoded = try? JSONDecoder().decode(

@@ -11,8 +11,7 @@ final class StarredMessageStore:
     private(set)
     var keys = Set<String>()
 
-    private let defaults =
-        UserDefaults.standard
+    private var defaults: UserDefaults { UserWorkspace.defaults }
 
     private let storageKey =
         "starred.message.keys"
@@ -61,4 +60,6 @@ final class StarredMessageStore:
             forKey: storageKey
         )
     }
+    func reloadForUser() { keys = Set(defaults.stringArray(forKey: storageKey) ?? []) }
+
 }

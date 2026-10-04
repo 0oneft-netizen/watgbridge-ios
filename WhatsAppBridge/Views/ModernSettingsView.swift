@@ -13,6 +13,9 @@ struct ModernSettingsView: View {
     var body: some View {
         NavigationStack {
             List {
+                Section("החשבון") {
+                    NavigationLink { UserAccountView() } label: { Label("החשבון שלי", systemImage: "person.crop.circle") }
+                }
                 Section {
 
             NavigationLink {

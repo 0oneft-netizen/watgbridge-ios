@@ -50,7 +50,7 @@ actor AvatarDiskCache {
         jid: String
     ) -> String {
 
-        normalizedAccountID(accountID)
+        UserWorkspace.id + "|" + normalizedAccountID(accountID)
         + "|"
         + jid
     }
@@ -181,7 +181,7 @@ actor AvatarDiskCache {
 
         let route = account.isEmpty ? "default" : account
 
-        let raw = route + "|" + jid
+        let raw = UserWorkspace.id + "|" + route + "|" + jid
 
         return raw
             .replacingOccurrences(of: "/", with: "_")

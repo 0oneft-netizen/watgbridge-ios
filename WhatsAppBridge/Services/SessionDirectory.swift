@@ -11,7 +11,9 @@ final class SessionDirectory: ObservableObject {
     @Published
     private(set) var isLoading = false
 
+    private var generation = 0
     private init() {}
+    func resetForUser() { generation += 1; sessions = [:]; isLoading = false }
 
     func session(
         for accountID: String?
@@ -39,9 +41,10 @@ final class SessionDirectory: ObservableObject {
         }
 
         isLoading = true
+        let current = generation
 
         defer {
-            isLoading = false
+            if generation == current { isLoading = false }
         }
 
         do {
@@ -74,6 +77,7 @@ final class SessionDirectory: ObservableObject {
                     )
             }
 
+            guard current == generation else { return }
             sessions = next
         } catch {
             print(

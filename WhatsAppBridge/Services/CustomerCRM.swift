@@ -122,6 +122,7 @@ final class CustomerCRMDirectory: ObservableObject {
     @Published var lastError: String?
     private var generation = 0
     private init() {}
+    func resetForUser() { generation += 1; state = .empty; isSaving = false; lastError = nil }
     func customer(for conversation: Conversation) -> CRMCustomer? {
         state.customers.first { $0.accountID == (conversation.accountID ?? "default") && $0.jid == conversation.jid }
     }
@@ -146,8 +147,11 @@ final class CustomerCRMDirectory: ObservableObject {
         guard !isSaving else { throw CRMError(message: "שמירה אחרת עדיין מתבצעת") }
         isSaving = true
         generation += 1
-        defer { isSaving = false }
-        state = try await CustomerCRMAPI.shared.request(path, method: method, body: body, query: query)
+        let current = generation
+        defer { if current == generation { isSaving = false } }
+        let result = try await CustomerCRMAPI.shared.request(path, method: method, body: body, query: query)
+        guard current == generation else { throw CancellationError() }
+        state = result
         lastError = nil
         NotificationCenter.default.post(name: .bridgeRealtimeUpdate, object: nil)
     }

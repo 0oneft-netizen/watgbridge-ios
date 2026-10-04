@@ -21,8 +21,7 @@ final class QuickReplyStore:
     private(set)
     var replies: [QuickReply] = []
 
-    private let defaults =
-        UserDefaults.standard
+    private var defaults: UserDefaults { UserWorkspace.defaults }
 
     private let key =
         "business.quick.replies.v1"
@@ -129,4 +128,6 @@ final class QuickReplyStore:
 
         replies = decoded
     }
+    func reloadForUser() { replies = []; restore() }
+
 }

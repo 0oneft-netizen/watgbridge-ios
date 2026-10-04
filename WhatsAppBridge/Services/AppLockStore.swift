@@ -72,7 +72,7 @@ final class AppLockStore: ObservableObject {
     private var query: [String: Any] {
         [kSecClass as String: kSecClassGenericPassword,
          kSecAttrService as String: (Bundle.main.bundleIdentifier ?? "com.watgbridge.ios") + ".app-lock.v1",
-         kSecAttrAccount as String: "credential"]
+         kSecAttrAccount as String: UserWorkspace.id == "owner" ? "credential" : "credential." + UserWorkspace.id]
     }
     private init() { reload() }
 
@@ -130,6 +130,7 @@ final class AppLockStore: ObservableObject {
         if enabled { epoch += 1; gracePeriod.clear(); locked = true }
     }
     func retryStorage() { reload() }
+    func changeUser() { epoch += 1; busy = false; record = nil; enabled = false; locked = true; retryAfter = .distantPast; gracePeriod.clear(); reload(); if enabled { locked = true } }
 
     private func verify(_ secret: String) async throws {
         guard let original = record, storageError == nil else { throw AppLockFailure.storage }

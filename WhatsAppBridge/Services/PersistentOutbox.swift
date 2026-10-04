@@ -24,8 +24,7 @@ final class PersistentOutbox:
     private(set)
     var items: [OutboxTextMessage] = []
 
-    private let defaults =
-        UserDefaults.standard
+    private var defaults: UserDefaults { UserWorkspace.defaults }
 
     private let storageKey =
         "persistent.outbox.v1"
@@ -148,4 +147,6 @@ final class PersistentOutbox:
 
         items = decoded
     }
+    func reloadForUser() { items = []; restore() }
+
 }

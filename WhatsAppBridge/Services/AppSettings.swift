@@ -9,7 +9,7 @@ enum AppSettings {
     static let hapticsEnabled = "hapticsEnabled"
 
     static func registerDefaults() {
-        UserDefaults.standard.register(defaults: [
+        UserWorkspace.defaults.register(defaults: [
             notificationsEnabled: true,
             notificationPreview: true,
             notificationSound: true,
@@ -19,22 +19,22 @@ enum AppSettings {
     }
 
     static var notifications: Bool {
-        UserDefaults.standard.bool(forKey: notificationsEnabled)
+        UserWorkspace.defaults.bool(forKey: notificationsEnabled)
     }
 
     static var previews: Bool {
-        UserDefaults.standard.bool(forKey: notificationPreview)
+        UserWorkspace.defaults.bool(forKey: notificationPreview)
     }
 
     static var sound: Bool {
-        UserDefaults.standard.bool(forKey: notificationSound)
+        UserWorkspace.defaults.bool(forKey: notificationSound)
     }
 
     static var badge: Bool {
-        UserDefaults.standard.bool(forKey: badgeEnabled)
+        UserWorkspace.defaults.bool(forKey: badgeEnabled)
     }
 
     static var haptics: Bool {
-        UserDefaults.standard.bool(forKey: hapticsEnabled)
+        UserWorkspace.defaults.bool(forKey: hapticsEnabled)
     }
 }

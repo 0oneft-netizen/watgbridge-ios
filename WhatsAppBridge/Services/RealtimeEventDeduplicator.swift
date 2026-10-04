@@ -18,7 +18,7 @@ actor RealtimeEventDeduplicator {
         cleanup()
 
         let key =
-            accountID
+            UserWorkspace.id + "|" + accountID
             + "|"
             + chatJID
             + "|"

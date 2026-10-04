@@ -16,8 +16,7 @@ final class ComposerStateStore {
     static let shared =
         ComposerStateStore()
 
-    private let defaults =
-        UserDefaults.standard
+    private var defaults: UserDefaults { UserWorkspace.defaults }
 
     private let prefix =
         "composer.state."

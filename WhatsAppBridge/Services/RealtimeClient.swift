@@ -77,6 +77,7 @@ final class RealtimeClient {
     private init() {}
 
     func start() {
+        guard UserWorkspace.id != "signed-out" else { return }
         if updateTask == nil {
             updateTask = Task {
                 await listenForUpdates()
@@ -101,7 +102,8 @@ final class RealtimeClient {
     }
 
     private func listenForUpdates() async {
-        while !Task.isCancelled {
+        let scope = UserWorkspace.id
+        while !Task.isCancelled && UserWorkspace.id == scope && scope != "signed-out" {
             do {
                 let url = URL(
                     string: APIClient.shared.baseURL.appendingPathComponent("events").absoluteString
@@ -114,7 +116,7 @@ final class RealtimeClient {
                 scheduleRefresh()
 
                 for try await line in bytes.lines {
-                    if Task.isCancelled {
+                    if Task.isCancelled || UserWorkspace.id != scope {
                         return
                     }
 
@@ -133,9 +135,10 @@ final class RealtimeClient {
     }
 
     private func listenForMessages() async {
+        let scope = UserWorkspace.id
         let decoder = JSONDecoder()
 
-        while !Task.isCancelled {
+        while !Task.isCancelled && UserWorkspace.id == scope && scope != "signed-out" {
             do {
                 let url = URL(
                     string: APIClient.shared.baseURL.appendingPathComponent("events/messages").absoluteString
@@ -148,7 +151,7 @@ final class RealtimeClient {
                 scheduleRefresh()
 
                 for try await line in bytes.lines {
-                    if Task.isCancelled {
+                    if Task.isCancelled || UserWorkspace.id != scope {
                         return
                     }
 
@@ -171,6 +174,7 @@ final class RealtimeClient {
                     }
 
                     await MainActor.run {
+                        guard !Task.isCancelled, UserWorkspace.id == scope else { return }
                         NotificationCenter.default.post(
                             name: .bridgeIncomingMessage,
                             object: message

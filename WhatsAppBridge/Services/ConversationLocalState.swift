@@ -9,9 +9,11 @@ final class ConversationLocalState: ObservableObject {
     @Published private(set) var archived = Set<String>()
     @Published private(set) var manualUnread = Set<String>()
 
-    private let d = UserDefaults.standard
+    private var d: UserDefaults { UserWorkspace.defaults }
 
-    private init() {
+    private init() { reloadForUser() }
+    func reloadForUser() {
+
         pinned = load("conversation.pinned")
         muted = load("conversation.muted")
         archived = load("conversation.archived")

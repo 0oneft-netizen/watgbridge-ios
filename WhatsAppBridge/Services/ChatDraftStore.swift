@@ -4,7 +4,7 @@ import Foundation
 final class ChatDraftStore {
     static let shared = ChatDraftStore()
 
-    private let defaults = UserDefaults.standard
+    private var defaults: UserDefaults { UserWorkspace.defaults }
     private let prefix = "chat.draft."
 
     private func key(

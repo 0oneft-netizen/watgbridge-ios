@@ -26,6 +26,9 @@ struct SettingsView: View {
         NavigationStack {
             List {
                 accountSection
+                Section("החשבון") {
+                    NavigationLink { UserAccountView() } label: { Label("החשבון שלי", systemImage: "person.crop.circle") }
+                }
 
                 Section {
                     NavigationLink {

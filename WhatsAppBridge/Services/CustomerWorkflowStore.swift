@@ -73,8 +73,7 @@ final class CustomerWorkflowStore:
         [String: CustomerWorkflowData] =
             [:]
 
-    private let defaults =
-        UserDefaults.standard
+    private var defaults: UserDefaults { UserWorkspace.defaults }
 
     private let storageKey =
         "customer.workflow.v1"
@@ -182,4 +181,6 @@ final class CustomerWorkflowStore:
 
         values = decoded
     }
+    func reloadForUser() { values = [:]; restore() }
+
 }

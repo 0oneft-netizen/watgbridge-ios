@@ -33,4 +33,6 @@ final class ChatScrollStore {
                 route.storageKey
         )
     }
+    func reloadForUser() { positions = [:] }
+
 }

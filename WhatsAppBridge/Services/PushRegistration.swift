@@ -7,7 +7,7 @@ final class PushRegistration {
 
     func register(token: String) async {
         guard let url = URL(
-            string: "https://5jjltkwg.tail256e07.ts.net/push/register"
+            string: UserWorkspace.baseURL.appendingPathComponent("push/register").absoluteString
         ) else {
             return
         }

@@ -29,6 +29,7 @@ final class WhatsAppCallSession: ObservableObject {
     private var sending: Task<Void, Never>?
     private var observer: NSObjectProtocol?
     private var routeObserver: NSObjectProtocol?
+    private var accessObserver: NSObjectProtocol?
     private var outbox: [URLSessionWebSocketTask.Message] = []
     private var lastReceived = Date()
     private var began = false
@@ -49,6 +50,7 @@ final class WhatsAppCallSession: ObservableObject {
     func start(_ destination: WhatsAppCallDestination) {
         guard !began else { return }; began = true
         wantsVideo = destination.video; speaker = destination.video
+        accessObserver = NotificationCenter.default.addObserver(forName: .userAccessEnded, object: nil, queue: .main) { [weak self] _ in Task { @MainActor in self?.end(message: "החשבון התנתק.") } }
         observer = NotificationCenter.default.addObserver(forName: AVAudioSession.interruptionNotification, object: nil, queue: .main) { [weak self] notification in
             let type = notification.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt
             if type == AVAudioSession.InterruptionType.began.rawValue {
@@ -78,6 +80,7 @@ final class WhatsAppCallSession: ObservableObject {
                 url.queryItems = [URLQueryItem(name: "account_id", value: destination.accountID), URLQueryItem(name: "chat_jid", value: destination.chatJID)]
                 guard let endpoint = url.url else { throw URLError(.badURL) }
                 let configuration = URLSessionConfiguration.ephemeral
+                configuration.httpCookieStorage = .shared
                 configuration.timeoutIntervalForRequest = 20
                 configuration.timeoutIntervalForResource = 14400
                 let network = URLSession(configuration: configuration)
@@ -199,5 +202,6 @@ final class WhatsAppCallSession: ObservableObject {
         networkSession?.invalidateAndCancel(); networkSession = nil
         if let observer { NotificationCenter.default.removeObserver(observer); self.observer = nil }
         if let routeObserver { NotificationCenter.default.removeObserver(routeObserver); self.routeObserver = nil }
+        if let accessObserver { NotificationCenter.default.removeObserver(accessObserver); self.accessObserver = nil }
     }
 }

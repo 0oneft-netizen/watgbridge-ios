@@ -3,8 +3,7 @@ import Foundation
 final class AccountAPI {
     static let shared = AccountAPI()
 
-    private let base =
-        "https://5jjltkwg.tail256e07.ts.net"
+    private var base: String { UserWorkspace.baseURL.absoluteString }
 
     private init() {}
 

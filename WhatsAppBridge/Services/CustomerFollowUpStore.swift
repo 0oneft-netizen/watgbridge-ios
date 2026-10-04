@@ -22,8 +22,7 @@ final class CustomerFollowUpStore:
         [String: CustomerFollowUp] =
             [:]
 
-    private let defaults =
-        UserDefaults.standard
+    private var defaults: UserDefaults { UserWorkspace.defaults }
 
     private let storageKey =
         "customer.followups.v1"
@@ -159,4 +158,6 @@ final class CustomerFollowUpStore:
 
         values = decoded
     }
+    func reloadForUser() { values = [:]; restore() }
+
 }

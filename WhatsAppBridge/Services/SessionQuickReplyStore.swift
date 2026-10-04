@@ -23,8 +23,7 @@ final class SessionQuickReplyStore:
     var values:
         [SessionQuickReply] = []
 
-    private let defaults =
-        UserDefaults.standard
+    private var defaults: UserDefaults { UserWorkspace.defaults }
 
     private let key =
         "session.quick.replies.v1"
@@ -127,4 +126,6 @@ final class SessionQuickReplyStore:
 
         values = decoded
     }
+    func reloadForUser() { values = []; restore() }
+
 }

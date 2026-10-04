@@ -3,8 +3,7 @@ import Foundation
 final class BusinessAPI {
     static let shared = BusinessAPI()
 
-    private let base =
-        "https://5jjltkwg.tail256e07.ts.net"
+    private var base: String { UserWorkspace.baseURL.absoluteString }
 
     private init() {}
 

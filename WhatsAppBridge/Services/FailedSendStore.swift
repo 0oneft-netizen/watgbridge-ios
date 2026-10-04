@@ -70,4 +70,6 @@ final class FailedSendStore:
                 chatJID
         }
     }
+    func reloadForUser() { items = [] }
+
 }

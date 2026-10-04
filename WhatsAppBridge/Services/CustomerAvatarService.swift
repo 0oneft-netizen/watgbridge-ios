@@ -24,7 +24,8 @@ actor CustomerAvatarService {
     func image(
         jid: String
     ) async -> UIImage? {
-        let key = jid as NSString
+        let scope = UserWorkspace.id
+        let key = (scope + "|" + jid) as NSString
 
         if let cached =
             cache.object(forKey: key) {
@@ -58,6 +59,7 @@ actor CustomerAvatarService {
                 return nil
             }
 
+            guard scope == UserWorkspace.id, !Task.isCancelled else { return nil }
             cache.setObject(
                 image,
                 forKey: key

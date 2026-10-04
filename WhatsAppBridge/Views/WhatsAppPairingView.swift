@@ -237,7 +237,7 @@ struct WhatsAppPairingView: View {
             var components =
                 URLComponents(
                     string:
-                        "https://5jjltkwg.tail256e07.ts.net/accounts/qr"
+                        UserWorkspace.baseURL.appendingPathComponent("accounts/qr").absoluteString
                 )!
 
             components.queryItems = [

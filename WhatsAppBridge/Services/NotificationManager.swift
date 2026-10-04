@@ -159,6 +159,7 @@ final class NotificationManager:
             "\(message.account_id)|\(message.chat_jid)"
 
         content.userInfo = [
+            "app_user_id": UserWorkspace.id,
             "account_id":
                 message.account_id,
             "chat_jid":
@@ -209,6 +210,7 @@ final class NotificationManager:
         willPresent notification:
             UNNotification
     ) async -> UNNotificationPresentationOptions {
+        guard UserWorkspace.ownsNotification(notification.request.content.userInfo) else { return [] }
         var options:
             UNNotificationPresentationOptions =
                 [.banner, .list]
@@ -234,6 +236,7 @@ final class NotificationManager:
                 .request
                 .content
                 .userInfo
+        guard UserWorkspace.ownsNotification(info) else { return }
 
         guard
             let accountID =
