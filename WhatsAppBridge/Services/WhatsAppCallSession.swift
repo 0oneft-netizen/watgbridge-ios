@@ -73,7 +73,9 @@ final class WhatsAppCallSession: ObservableObject {
             guard !Task.isCancelled, !finished else { return }
             guard permitted else { end(message: "צריך לאפשר גישה למיקרופון בהגדרות האייפון כדי לבצע שיחה."); return }
             do {
-                try await audio.start(speaker: speaker) { [weak self] packet in
+                try await audio.start(speaker: speaker, onFailure: { [weak self] in
+                    Task { @MainActor in self?.end(message: "מנוע השמע באייפון נעצר ולא ניתן להפעילו מחדש. נסה לחייג שוב.") }
+                }) { [weak self] packet in
                     Task { @MainActor in self?.sendMicrophone(packet) }
                 }
                 guard !finished, !Task.isCancelled else { audio.stop(); return }

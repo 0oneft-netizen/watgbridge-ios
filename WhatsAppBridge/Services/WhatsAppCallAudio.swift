@@ -43,59 +43,137 @@ final class WhatsAppCallAudio {
     private var tapped = false
     private var attached = false
     private var onFrame: ((Data) -> Void)?
+    private var onFailure: (() -> Void)?
+    private var configurationObserver: NSObjectProtocol?
+    private var watchdog: DispatchSourceTimer?
+    private var recoveryTimes: [Date] = []
+    private var speakerEnabled = false
 
-    func start(speaker: Bool, onFrame: @escaping (Data) -> Void) async throws {
+    func start(speaker: Bool, onFailure: (() -> Void)? = nil, onFrame: @escaping (Data) -> Void) async throws {
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             queue.async {
                 do {
-                    let session = AVAudioSession.sharedInstance()
-                    try session.setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetooth])
-                    try session.setPreferredSampleRate(48000)
-                    try session.setPreferredIOBufferDuration(0.02)
-                    try session.setActive(true)
-                    try session.overrideOutputAudioPort(speaker ? .speaker : .none)
-                    // Enable Apple's echo cancellation before starting the engine.
-                    try self.engine.inputNode.setVoiceProcessingEnabled(true)
-                    let inputFormat = self.engine.inputNode.outputFormat(forBus: 0)
-                    guard inputFormat.sampleRate > 0, inputFormat.channelCount > 0,
-                          let converter = AVAudioConverter(from: inputFormat, to: self.format) else {
-                        throw URLError(.cannotDecodeContentData)
-                    }
-                    self.converter = converter
+                    self.speakerEnabled = speaker
                     self.onFrame = onFrame
-                    self.inputRate = inputFormat.sampleRate
-                    self.engine.attach(self.captureMixer)
-                    self.engine.attach(self.player)
-                    self.attached = true
-                    self.engine.connect(self.player, to: self.engine.mainMixerNode, fromBus: 0, toBus: 0, format: self.format)
-                    self.engine.connect(self.engine.inputNode, to: self.captureMixer, format: inputFormat)
-                    self.captureMixer.outputVolume = 0
-                    self.engine.connect(self.captureMixer, to: self.engine.mainMixerNode, fromBus: 0, toBus: 1, format: inputFormat)
-                    // Tap input before the muted mixer: playback never contains the local microphone.
-                    self.engine.inputNode.installTap(onBus: 0, bufferSize: 1024, format: inputFormat) { [weak self] input, _ in
-                        guard let self,
-                              let copy = AVAudioPCMBuffer(pcmFormat: input.format, frameCapacity: input.frameLength) else { return }
-                        copy.frameLength = input.frameLength
-                        let source = UnsafeMutableAudioBufferListPointer(UnsafeMutablePointer(mutating: input.audioBufferList))
-                        let destination = UnsafeMutableAudioBufferListPointer(copy.mutableAudioBufferList)
-                        for index in 0..<min(source.count, destination.count) {
-                            if let from = source[index].mData, let to = destination[index].mData {
-                                memcpy(to, from, Int(min(source[index].mDataByteSize, destination[index].mDataByteSize)))
-                            }
-                        }
-                        self.queue.async { self.capture(copy) }
-                    }
-                    self.tapped = true
+                    self.onFailure = onFailure
+                    try self.activateSession()
+                    try self.buildGraph()
                     self.running = true
                     self.engine.prepare()
                     try self.engine.start()
                     self.player.play()
+                    self.observeEngine()
                     continuation.resume()
                 } catch {
                     self.cleanup()
                     continuation.resume(throwing: error)
                 }
             }
+        }
+    }
+
+    private func activateSession() throws {
+        let session = AVAudioSession.sharedInstance()
+        try session.setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetooth])
+        try session.setPreferredSampleRate(48000)
+        try session.setPreferredIOBufferDuration(0.02)
+        try session.setActive(true)
+        try session.overrideOutputAudioPort(speakerEnabled ? .speaker : .none)
+    }
+
+    private func buildGraph() throws {
+        // Enable Apple's echo cancellation before starting the engine.
+        if !engine.inputNode.isVoiceProcessingEnabled { try engine.inputNode.setVoiceProcessingEnabled(true) }
+        let inputFormat = engine.inputNode.outputFormat(forBus: 0)
+        guard inputFormat.sampleRate > 0, inputFormat.channelCount > 0,
+              let converter = AVAudioConverter(from: inputFormat, to: format) else {
+            throw URLError(.cannotDecodeContentData)
+        }
+        self.converter = converter
+        inputRate = inputFormat.sampleRate
+        engine.attach(captureMixer)
+        engine.attach(player)
+        attached = true
+        engine.connect(player, to: engine.mainMixerNode, fromBus: 0, toBus: 0, format: format)
+        engine.connect(engine.inputNode, to: captureMixer, format: inputFormat)
+        captureMixer.outputVolume = 0
+        engine.connect(captureMixer, to: engine.mainMixerNode, fromBus: 0, toBus: 1, format: inputFormat)
+        // Tap input before the muted mixer: playback never contains the local microphone.
+        let captureGeneration = generation
+        engine.inputNode.installTap(onBus: 0, bufferSize: 1024, format: inputFormat) { [weak self] input, _ in
+            guard let self,
+                  let copy = AVAudioPCMBuffer(pcmFormat: input.format, frameCapacity: input.frameLength) else { return }
+            copy.frameLength = input.frameLength
+            let source = UnsafeMutableAudioBufferListPointer(UnsafeMutablePointer(mutating: input.audioBufferList))
+            let destination = UnsafeMutableAudioBufferListPointer(copy.mutableAudioBufferList)
+            for index in 0..<min(source.count, destination.count) {
+                if let from = source[index].mData, let to = destination[index].mData {
+                    memcpy(to, from, Int(min(source[index].mDataByteSize, destination[index].mDataByteSize)))
+                }
+            }
+            self.queue.async {
+                guard self.generation == captureGeneration else { return }
+                self.capture(copy)
+            }
+        }
+        tapped = true
+    }
+
+    private func observeEngine() {
+        configurationObserver = NotificationCenter.default.addObserver(
+            forName: .AVAudioEngineConfigurationChange, object: engine, queue: nil
+        ) { [weak self] _ in
+            guard let self else { return }
+            // Do not restart the engine inside its configuration notification.
+            self.queue.asyncAfter(deadline: .now() + 0.15) { [weak self] in
+                self?.recoverStoppedEngine()
+            }
+        }
+        let timer = DispatchSource.makeTimerSource(queue: queue)
+        timer.schedule(deadline: .now() + 0.5, repeating: 1.0)
+        timer.setEventHandler { [weak self] in self?.recoverStoppedEngine() }
+        watchdog = timer
+        timer.resume()
+    }
+
+    private func discardGraph() {
+        engine.stop()
+        if tapped { engine.inputNode.removeTap(onBus: 0); tapped = false }
+        player.stop()
+        if attached {
+            engine.disconnectNodeOutput(engine.inputNode)
+            engine.detach(player)
+            engine.detach(captureMixer)
+            attached = false
+        }
+        converter = nil
+        samples.removeAll(keepingCapacity: true)
+        playbackPending = 0
+        generation += 1
+    }
+
+    private func recoverStoppedEngine() {
+        guard running, !engine.isRunning else { return }
+        let now = Date()
+        recoveryTimes.removeAll { now.timeIntervalSince($0) > 30 }
+        guard recoveryTimes.count < 3 else {
+            let failure = onFailure
+            cleanup()
+            failure?()
+            return
+        }
+        recoveryTimes.append(now)
+        discardGraph()
+        do {
+            try activateSession()
+            try buildGraph()
+            engine.prepare()
+            try engine.start()
+            player.play()
+        } catch {
+            let failure = onFailure
+            cleanup()
+            failure?()
         }
     }
 
@@ -192,23 +270,23 @@ final class WhatsAppCallAudio {
     }
     func setSpeaker(_ value: Bool, onError: @escaping () -> Void) {
         queue.async {
-            do { try AVAudioSession.sharedInstance().overrideOutputAudioPort(value ? .speaker : .none) }
+            do {
+                try AVAudioSession.sharedInstance().overrideOutputAudioPort(value ? .speaker : .none)
+                self.speakerEnabled = value
+                self.recoverStoppedEngine()
+            }
             catch { onError() }
         }
     }
     func stop() { queue.async { self.cleanup() } }
     private func cleanup() {
-        running = false; transmitting = false; onFrame = nil
-        engine.stop()
-        if tapped { engine.inputNode.removeTap(onBus: 0); tapped = false }
-        player.stop()
-        if attached {
-            engine.disconnectNodeOutput(engine.inputNode)
-            engine.detach(player)
-            engine.detach(captureMixer)
-            attached = false
+        running = false; transmitting = false; onFrame = nil; onFailure = nil
+        watchdog?.cancel(); watchdog = nil
+        if let configurationObserver {
+            NotificationCenter.default.removeObserver(configurationObserver)
+            self.configurationObserver = nil
         }
-        converter = nil; samples.removeAll(); playbackPending = 0; generation += 1
+        discardGraph()
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
 }
