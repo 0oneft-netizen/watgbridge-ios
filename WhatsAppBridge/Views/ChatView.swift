@@ -32,6 +32,7 @@ struct ChatView: View {
     @State private var initialFocusHandled = false
     @ObservedObject private var customerCRM = CustomerCRMDirectory.shared
     @State private var showCustomerSave = false
+    @State private var outgoingCall: WhatsAppCallDestination?
 
     @State private var messages: [Message] = []
     @State private var isNearBottom = true
@@ -136,19 +137,38 @@ struct ChatView: View {
                 }
 
                 Button {
+                    outgoingCall = WhatsAppCallDestination(
+                        accountID: conversation.accountID ?? "default",
+                        chatJID: conversation.jid,
+                        name: customerCRM.name(for: conversation),
+                        video: true
+                    )
                 } label: {
                     Image(
                         systemName: "video"
                     )
                 }
+                .disabled(!conversation.jid.hasSuffix("@s.whatsapp.net") && !conversation.jid.hasSuffix("@lid"))
+                .accessibilityLabel("שיחת וידאו עם מצלמה מקומית חסומה")
 
                 Button {
+                    outgoingCall = WhatsAppCallDestination(
+                        accountID: conversation.accountID ?? "default",
+                        chatJID: conversation.jid,
+                        name: customerCRM.name(for: conversation),
+                        video: false
+                    )
                 } label: {
                     Image(
                         systemName: "phone"
                     )
                 }
+                .disabled(!conversation.jid.hasSuffix("@s.whatsapp.net") && !conversation.jid.hasSuffix("@lid"))
+                .accessibilityLabel("שיחת WhatsApp קולית")
             }
+        }
+        .fullScreenCover(item: $outgoingCall) { destination in
+            OutgoingWhatsAppCallView(destination: destination)
         }
         .sheet(isPresented: $showCustomerSave) {
             CustomerSaveView(conversation: conversation)
