@@ -28,7 +28,7 @@ struct UserAccessView: View {
                         .textContentType(activation ? .newPassword : .password)
                     if activation {
                         SecureField("אימות סיסמה", text: $confirmation).textContentType(.newPassword)
-                        Text("שם משתמש: 3–32 אותיות באנגלית, מספרים או הסימנים . _ -\nסיסמת חשבון: לפחות 12 תווים. קוד נעילת האפליקציה מוגדר בנפרד.")
+                        Text("שם משתמש: 3–32 אותיות באנגלית, מספרים או הסימנים . _ -\nסיסמת חשבון: לפחות 6 תווים. קוד נעילת האפליקציה מוגדר בנפרד.")
                             .font(.caption).foregroundStyle(.secondary)
                     }
                     Button(activation ? "יצירת החשבון" : "התחברות") {

@@ -25,7 +25,7 @@ enum UserAccessError: LocalizedError {
         case .rejected: return "שם המשתמש, הסיסמה או קוד ההפעלה אינם תקינים."
         case .unavailable: return "לא ניתן להתחבר לשרת. בדוק את החיבור ואת Tailscale ונסה שוב."
         case .storage: return "לא ניתן לשמור את ההתחברות באחסון המאובטח."
-        case .password: return "סיסמת החשבון צריכה להכיל לפחות 12 תווים ועד 72 בתים."
+        case .password: return "סיסמת החשבון צריכה להכיל לפחות 6 תווים ועד 72 בתים."
         }
     }
 }
@@ -119,7 +119,7 @@ final class UserAccessStore: ObservableObject {
     }
     func signIn(username: String, password: String, code: String? = nil) async throws {
         guard !busy else { return }
-        if code != nil && (password.count < 12 || password.utf8.count > 72) { throw UserAccessError.password }
+        if code != nil && (password.count < 6 || password.utf8.count > 72) { throw UserAccessError.password }
         busy = true; defer { busy = false }
         var body = ["username": username, "password": password]
         if let code { body["code"] = code }
