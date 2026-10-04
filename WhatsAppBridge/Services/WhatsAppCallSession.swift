@@ -26,6 +26,9 @@ final class WhatsAppCallSession: ObservableObject {
     private var startup: Task<Void, Never>?
     private var receiver: Task<Void, Never>?
     private var heartbeat: Task<Void, Never>?
+    private var audioDiagnostics: Task<Void, Never>?
+    private var diagnosticsSupported = false
+    private var microphoneSent = 0
     private var sending: Task<Void, Never>?
     private var observer: NSObjectProtocol?
     private var routeObserver: NSObjectProtocol?
@@ -113,6 +116,27 @@ final class WhatsAppCallSession: ObservableObject {
                         self.end(message: text)
                     }
                 }
+                // Only send aggregate diagnostics when this server explicitly supports them.
+                audioDiagnostics = Task { [weak self] in
+                    for _ in 0..<12 {
+                        do { try await Task.sleep(nanoseconds: 5_000_000_000) } catch { return }
+                        guard let self, !self.finished, !Task.isCancelled else { return }
+                        if self.diagnosticsSupported {
+                            let meter = await self.audio.metrics()
+                            guard !self.finished, !Task.isCancelled else { return }
+                            self.enqueueControl(["type": "audio_health", "health": [
+                                "state": self.state, "running": meter.running,
+                                "transmitting": meter.transmitting, "muted": meter.muted,
+                                "taps": meter.taps, "converted": meter.converted,
+                                "conversion_errors": meter.conversionErrors,
+                                "produced": meter.produced, "sent": self.microphoneSent,
+                                "received": meter.received, "played": meter.played,
+                                "capture_peak": meter.capturePeak, "receive_peak": meter.receivePeak,
+                                "input_rate": meter.inputRate
+                            ]])
+                        }
+                    }
+                }
                 heartbeat = Task { [weak self] in
                     while !Task.isCancelled {
                         try? await Task.sleep(nanoseconds: 10_000_000_000)
@@ -132,6 +156,7 @@ final class WhatsAppCallSession: ObservableObject {
               let next = object["state"] as? String else {
             end(message: "השרת אינו תואם למדיניות חסימת המצלמה."); return
         }
+        if object["audio_diagnostics"] as? Bool == true { diagnosticsSupported = true }
         if next == "heartbeat" { return }
         if next == "ended" || next == "error" {
             let reason = (object["reason"] as? String) ?? ""
@@ -174,6 +199,7 @@ final class WhatsAppCallSession: ObservableObject {
                 while !self.outbox.isEmpty, !self.finished, !Task.isCancelled {
                     let next = self.outbox.removeFirst()
                     try await socket.send(next)
+                    if case .data(let packet) = next, packet.first == 1 { self.microphoneSent += 1 }
                 }
             } catch { if !self.finished { self.end(message: "שליחת הקול הופסקה בגלל ניתוק בחיבור.") } }
             self.sending = nil
@@ -195,7 +221,7 @@ final class WhatsAppCallSession: ObservableObject {
     private func end(message: String?) {
         guard !finished else { return }
         finished = true; state = "ended"; errorText = message
-        startup?.cancel(); receiver?.cancel(); heartbeat?.cancel(); sending?.cancel()
+        startup?.cancel(); receiver?.cancel(); heartbeat?.cancel(); audioDiagnostics?.cancel(); sending?.cancel()
         outbox.removeAll(); audio.stop(); video.stop()
         // Closing the owning websocket always hangs up on the server, including errors.
         socket?.cancel(with: .normalClosure, reason: nil); socket = nil
