@@ -159,6 +159,10 @@ final class WhatsAppCallSession: ObservableObject {
             end(message: "השרת אינו תואם למדיניות חסימת המצלמה."); return
         }
         if object["audio_diagnostics"] as? Bool == true { diagnosticsSupported = true }
+        if wantsVideo, let turns = object["video_orientation"] as? Int,
+           (0...3).contains(turns) {
+            video.setOrientation(turns)
+        }
         if next == "heartbeat" { return }
         if next == "ended" || next == "error" {
             let reason = (object["reason"] as? String) ?? ""

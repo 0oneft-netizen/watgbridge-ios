@@ -11,12 +11,35 @@ final class WhatsAppReceiveVideo {
     private var pps: Data?
     private var format: CMVideoFormatDescription?
     private var needsKeyframe = true
+    private var displayBounds: CGRect = .zero
+    private var orientation = 0
 
     init() {
-        layer.videoGravity = .resizeAspect
+        layer.videoGravity = .resizeAspectFill
         layer.backgroundColor = UIColor.black.cgColor
     }
+    func setDisplayBounds(_ bounds: CGRect) {
+        displayBounds = bounds
+        layoutVideo()
+    }
+    func setOrientation(_ turns: Int) {
+        guard (0...3).contains(turns) else { return }
+        orientation = turns
+        layoutVideo()
+    }
+    private func layoutVideo() {
+        let rotated = orientation % 2 != 0
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        layer.bounds = CGRect(origin: .zero, size: rotated
+            ? CGSize(width: displayBounds.height, height: displayBounds.width)
+            : displayBounds.size)
+        layer.position = CGPoint(x: displayBounds.midX, y: displayBounds.midY)
+        layer.setAffineTransform(CGAffineTransform(rotationAngle: CGFloat(orientation) * .pi / 2))
+        CATransaction.commit()
+    }
     func stop() {
+        orientation = 0; layoutVideo()
         layer.flushAndRemoveImage(); sps = nil; pps = nil; format = nil; needsKeyframe = true
     }
     func receive(_ data: Data) -> Bool {

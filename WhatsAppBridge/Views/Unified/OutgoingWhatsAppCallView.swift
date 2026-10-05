@@ -10,6 +10,13 @@ struct OutgoingWhatsAppCallView: View {
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
+            if destination.video {
+                CallReceivedVideoView(renderer: call.video)
+                    .ignoresSafeArea()
+                LinearGradient(colors: [.black.opacity(0.7), .clear, .clear, .black.opacity(0.8)],
+                               startPoint: .top, endPoint: .bottom)
+                    .ignoresSafeArea().allowsHitTesting(false)
+            }
             VStack(spacing: 22) {
                 VStack(spacing: 8) {
                     Text(destination.name).font(.title2.weight(.semibold))
@@ -24,23 +31,19 @@ struct OutgoingWhatsAppCallView: View {
                         }
                     }
                 }
+                Spacer()
                 if destination.video {
-                    ZStack {
-                        CallReceivedVideoView(renderer: call.video)
-                        if !call.receivedVideo {
-                            VStack(spacing: 12) {
-                                Image(systemName: "video").font(.largeTitle)
-                                Text(call.finished ? "השיחה הסתיימה" : "ממתין לווידאו מהלקוח")
-                                    .font(.subheadline)
-                            }.foregroundStyle(.white.opacity(0.75))
-                        }
+                    if !call.receivedVideo {
+                        VStack(spacing: 12) {
+                            Image(systemName: "video").font(.largeTitle)
+                            Text(call.finished ? "השיחה הסתיימה" : "ממתין לווידאו מהלקוח")
+                                .font(.subheadline)
+                        }.foregroundStyle(.white.opacity(0.75))
                     }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .clipShape(RoundedRectangle(cornerRadius: 18))
+                    Spacer()
                     Label("המצלמה שלך חסומה · מתקבל וידאו מהלקוח בלבד", systemImage: "video.slash.fill")
                         .font(.caption).multilineTextAlignment(.center)
                 } else {
-                    Spacer()
                     Image(systemName: "person.crop.circle.fill")
                         .font(.system(size: 100)).foregroundStyle(.white.opacity(0.6))
                     Spacer()
@@ -99,8 +102,9 @@ private final class ReceivedVideoSurface: UIView {
         self.renderer = renderer
         super.init(frame: .zero)
         backgroundColor = .black
+        clipsToBounds = true
         layer.addSublayer(renderer.layer)
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-    override func layoutSubviews() { super.layoutSubviews(); renderer.layer.frame = bounds }
+    override func layoutSubviews() { super.layoutSubviews(); renderer.setDisplayBounds(bounds) }
 }
