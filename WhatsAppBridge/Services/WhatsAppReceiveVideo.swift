@@ -35,7 +35,7 @@ final class WhatsAppReceiveVideo {
             ? CGSize(width: displayBounds.height, height: displayBounds.width)
             : displayBounds.size)
         layer.position = CGPoint(x: displayBounds.midX, y: displayBounds.midY)
-        layer.setAffineTransform(CGAffineTransform(rotationAngle: CGFloat(orientation) * .pi / 2))
+        layer.setAffineTransform(CGAffineTransform(rotationAngle: -CGFloat(orientation) * .pi / 2))
         CATransaction.commit()
     }
     func stop() {
