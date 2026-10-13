@@ -5,7 +5,7 @@
 static NSArray *WBGMethods(Class cls) {
     unsigned int count=0; Method *methods=class_copyMethodList(cls,&count);
     NSMutableArray *rows=[NSMutableArray new];
-    for (unsigned int i=0; i<count && i<180; i++) {
+    for (unsigned int i=0; i<count; i++) {
         const char *types=method_getTypeEncoding(methods[i]);
         [rows addObject:@{@"selector":NSStringFromSelector(method_getName(methods[i])),
                          @"encoding":types ? @(types) : @""}];
@@ -17,28 +17,48 @@ static NSDictionary *WBGNativeSchema(void) {
     NSMutableArray<NSString *> *names=[NSMutableArray new];
     for (unsigned int i=0; i<count; i++) {
         NSString *n=@(class_getName(classes[i]));
-        if ([n containsString:@"ChatViewController"] || [n containsString:@"ChatMessagesProvider"] ||
-            [n containsString:@"ChatSessionCell"] || [n isEqual:@"WAChatSession"] ||
-            [n isEqual:@"WAMessage"] || [n isEqual:@"ChatManager"] || [n isEqual:@"WAChatStorage"])
+        if ([n hasPrefix:@"WAChat"] || [n hasPrefix:@"WAMessage"] ||
+            [n containsString:@".WAChatMessages"] || [n containsString:@".WAChatSessionCellState"] ||
+            [n isEqual:@"ChatManager"] || [n isEqual:@"WAContextMain"] || [n isEqual:@"WAScopedObjectContainer"])
             [names addObject:n];
     }
     free(classes); [names sortUsingSelector:@selector(compare:)];
-    NSMutableOrderedSet<NSString *> *chosen=[NSMutableOrderedSet orderedSetWithArray:@[@"ChatViewController",@"ChatManager",@"WAChatSession",@"WAMessage",@"WAChatStorage",@"ChatSessionCell"]];
-    [chosen addObjectsFromArray:names];
+    NSMutableOrderedSet<NSString *> *chosen=[NSMutableOrderedSet orderedSetWithArray:@[
+      @"WAChatViewController",@"WAChatMessagesVCStrict.WAChatMessagesViewController",@"WAChatMessagesViewController",
+      @"WAChatViewControllerProvider",@"WAChatSession",@"WAMutableChatSession",@"WAMessage",@"WAMutableMessage",
+      @"WAChatStorageManagedObject",@"WAChatStorageContext",@"WAChatStorage",@"WAContextMain",@"WAUserContext",
+      @"WAScopedObjectContainer",@"WAChatSessionManager",@"WAChatMessagesController",@"WAChatSessionCell",
+      @"WAChatSessionCellState.WAChatSessionCellState",@"WAChatBar",@"WAChatListViewController",@"ChatManager"]];
+    // Follow each target's actual base classes, including Swift module names.
+    for (NSString *name in chosen.array) {
+        Class cls=objc_getClass(name.UTF8String);
+        for (int depth=0; cls && depth<8; depth++,cls=class_getSuperclass(cls)) {
+            NSString *base=@(class_getName(cls));
+            if ([base isEqual:@"NSObject"] || [base isEqual:@"UIViewController"] ||
+                [base isEqual:@"UITableViewCell"] || [base isEqual:@"UIView"]) break;
+            [chosen addObject:base];
+        }
+    }
     NSMutableArray *descriptions=[NSMutableArray new];
     for (NSString *name in chosen) {
-        if (descriptions.count>=64) break;
         Class cls=objc_getClass(name.UTF8String); if (!cls) continue;
         NSMutableArray *properties=[NSMutableArray new]; unsigned int n=0;
         objc_property_t *items=class_copyPropertyList(cls,&n);
-        for (unsigned int i=0; i<n && i<120; i++) {
+        for (unsigned int i=0; i<n; i++) {
             const char *attrs=property_getAttributes(items[i]);
             [properties addObject:@{@"name":@(property_getName(items[i])),@"attributes":attrs ? @(attrs) : @""}];
         }
         free(items);
+        unsigned int ivarCount=0; Ivar *ivars=class_copyIvarList(cls,&ivarCount);
+        NSMutableArray *fields=[NSMutableArray new];
+        for (unsigned int i=0; i<ivarCount; i++) {
+            const char *field=ivar_getName(ivars[i]), *type=ivar_getTypeEncoding(ivars[i]);
+            [fields addObject:@{@"name":field ? @(field) : @"",@"encoding":type ? @(type) : @""}];
+        }
+        free(ivars);
         Class superClass=class_getSuperclass(cls);
         [descriptions addObject:@{@"class":name,@"superclass":superClass ? @(class_getName(superClass)) : @"",
-            @"instance_methods":WBGMethods(cls),@"class_methods":WBGMethods(object_getClass(cls)),@"properties":properties}];
+            @"instance_methods":WBGMethods(cls),@"class_methods":WBGMethods(object_getClass(cls)),@"properties":properties,@"ivar_declarations":fields}];
     }
     NSMutableArray *protocols=[NSMutableArray new];
     for (NSString *name in @[@"ChatViewControllerChatMessagesProviding",@"ChatViewControllerContentSendProviding",
@@ -50,16 +70,16 @@ static NSDictionary *WBGNativeSchema(void) {
         if (p) {
             for (int required=0; required<2; required++) for (int instance=0; instance<2; instance++) {
                 unsigned int n=0; struct objc_method_description *list=protocol_copyMethodDescriptionList(p,required,instance,&n);
-                for (unsigned int i=0; i<n && i<180; i++) if (list[i].name)
+                for (unsigned int i=0; i<n; i++) if (list[i].name)
                     [methods addObject:@{@"selector":NSStringFromSelector(list[i].name),@"encoding":list[i].types ? @(list[i].types) : @"",@"required":@(required),@"instance":@(instance)}];
                 free(list);
             }
         }
         [protocols addObject:@{@"protocol":name,@"available":@(p!=nil),@"methods":methods}];
     }
-    return @{@"schema_version":@1,@"kind":@"runtime_structure_only",@"app_version":[NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"] ?: @"",
+    return @{@"schema_version":@2,@"kind":@"runtime_structure_only",@"complete_target_methods":@YES,@"app_version":[NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"] ?: @"",
         @"bundle_id":NSBundle.mainBundle.bundleIdentifier ?: @"",@"ios_version":UIDevice.currentDevice.systemVersion,
-        @"matching_class_count":@(names.count),@"classes":descriptions,@"protocols":protocols};
+        @"matching_class_count":@(names.count),@"matching_class_names":names,@"classes":descriptions,@"protocols":protocols};
 }
 
 // Uses public UIKit surfaces only; never replaces WhatsApp's database or methods.
@@ -127,7 +147,11 @@ static NSDictionary *WBGNativeSchema(void) {
             NSData *data=[NSJSONSerialization dataWithJSONObject:WBGNativeSchema() options:NSJSONWritingPrettyPrinted error:nil];
             NSString *name=[NSString stringWithFormat:@"WhatsApp-native-map-%@.json",NSUUID.UUID.UUIDString];
             NSURL *url=[NSURL fileURLWithPath:[NSTemporaryDirectory() stringByAppendingPathComponent:name]];
-            if (!data || data.length>4*1024*1024 || ![data writeToURL:url options:NSDataWritingAtomic|NSDataWritingFileProtectionComplete error:nil]) return;
+            if (!data || data.length>12*1024*1024 || ![data writeToURL:url options:NSDataWritingAtomic|NSDataWritingFileProtectionComplete error:nil]) {
+                UIAlertController *error=[UIAlertController alertControllerWithTitle:@"לא ניתן ליצור דוח" message:@"המיפוי לא נשמר. דווח על השגיאה; אין צורך להזין מספר טלפון." preferredStyle:UIAlertControllerStyleAlert];
+                [error addAction:[UIAlertAction actionWithTitle:@"אישור" style:UIAlertActionStyleDefault handler:nil]];
+                [vc presentViewController:error animated:YES completion:nil]; return;
+            }
             UIActivityViewController *share=[[UIActivityViewController alloc] initWithActivityItems:@[url] applicationActivities:nil];
             share.popoverPresentationController.sourceView=gesture.view;
             share.popoverPresentationController.sourceRect=gesture.view.bounds;
