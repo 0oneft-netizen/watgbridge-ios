@@ -10,14 +10,27 @@
         _buttons = [NSMapTable weakToStrongObjectsMapTable];
         [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(attach) name:UIApplicationDidBecomeActiveNotification object:nil];
         [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(attach) name:UISceneDidActivateNotification object:nil];
+        [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(attach) name:UIWindowDidBecomeKeyNotification object:nil];
+        [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(attach) name:UIWindowDidBecomeVisibleNotification object:nil];
     }
     return self;
 }
 - (void)attach {
+    if (!NSThread.isMainThread) { dispatch_async(dispatch_get_main_queue(), ^{ [self attach]; }); return; }
+    NSMutableOrderedSet<UIWindow *> *windows = [NSMutableOrderedSet new];
     for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
         if (![scene isKindOfClass:UIWindowScene.class] || scene.activationState != UISceneActivationStateForegroundActive) continue;
-        for (UIWindow *window in ((UIWindowScene *)scene).windows) {
-            if (!window.isKeyWindow || !window.rootViewController || [self.buttons objectForKey:window]) continue;
+        [windows addObjectsFromArray:((UIWindowScene *)scene).windows];
+    }
+    // WhatsApp 26.38.74 has no UIApplicationSceneManifest; support its legacy windows.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    [windows addObjectsFromArray:UIApplication.sharedApplication.windows];
+#pragma clang diagnostic pop
+        for (UIWindow *window in windows) {
+            if (window.hidden || window.windowLevel != UIWindowLevelNormal || !window.rootViewController) continue;
+            UIButton *existing = [self.buttons objectForKey:window];
+            if (existing) { [window bringSubviewToFront:existing]; continue; }
             UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
             [button setTitle:@"הלקוחות שלי" forState:UIControlStateNormal];
             button.backgroundColor = UIColor.systemGreenColor;
@@ -29,7 +42,6 @@
               [button.bottomAnchor constraintEqualToAnchor:window.safeAreaLayoutGuide.bottomAnchor constant:-76],
               [button.widthAnchor constraintEqualToConstant:132], [button.heightAnchor constraintEqualToConstant:38]]];
         }
-    }
 }
 - (void)open:(UIButton *)sender {
     UIViewController *vc = sender.window.rootViewController;
@@ -45,8 +57,16 @@ __attribute__((constructor)) static void WBGStart(void) {
         NSString *bundle = NSBundle.mainBundle.bundleIdentifier;
         NSSet *allowed = [NSSet setWithArray:@[@"net.whatsapp.WhatsAppSMB",@"net.whatsapp.WhatsApp",@"com.fouadraheb.watusiSMB",@"com.fouadraheb.watusi"]];
         // An untested host release must not silently activate this addon.
-        if (![allowed containsObject:bundle] || ![[NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"] isEqual:@"26.38.74"]) return;
+        BOOL host = [allowed containsObject:bundle];
+        // Sideloadly can rewrite the bundle ID. Keep host identity/version checks.
+        NSString *executable = [NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleExecutable"];
+        NSString *watusi = [NSBundle.mainBundle.bundlePath stringByAppendingPathComponent:@"Watusi.dylib"];
+        host = host || ([executable isEqual:@"WhatsApp"] && [NSFileManager.defaultManager fileExistsAtPath:watusi]);
+        if (!host || ![[NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"] isEqual:@"26.38.74"]) return;
         static WBGLauncher *launcher; launcher = [WBGLauncher new];
         [launcher attach];
+        for (NSNumber *seconds in @[@1,@3,@6]) {
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(seconds.doubleValue * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{ [launcher attach]; });
+        }
     });
 }
