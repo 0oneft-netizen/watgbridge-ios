@@ -1,6 +1,14 @@
 import SwiftUI
 
 struct ConversationsView: View {
+    @Environment(\.scenePhase) private var scenePhase
+    @ObservedObject private var sessions = SessionDirectory.shared
+    @State private var chatFilter: BusinessChatFilter = .all
+    @State private var selectedAccountID: String?
+    @State private var isRefreshing = false
+    @State private var refreshAgain = false
+    @State private var loadError: String?
+    @State private var didLoad = false
     @State private var conversations: [Conversation] = []
     @State private var searchText = ""
     @State private var showSettings = false
@@ -10,6 +18,8 @@ struct ConversationsView: View {
 
     private var sortedConversations: [Conversation] {
         conversations
+            .filter { selectedAccountID == nil || ($0.accountID ?? "default") == selectedAccountID }
+            .filter { !searchText.isEmpty || chatFilter.includes($0) }
             .filter { !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || $0.archived != true }
             .filter {
                 searchText.isEmpty ||
@@ -41,11 +51,28 @@ struct ConversationsView: View {
     var body: some View {
         NavigationStack {
             List {
+                filterBar
+                    .listRowSeparator(.hidden)
+                    .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 10, trailing: 16))
+                if let loadError {
+                    Button { Task { await loadConversations() } } label: {
+                        Label(loadError + " · נסה שוב", systemImage: "wifi.exclamationmark")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+                if !didLoad && conversations.isEmpty {
+                    HStack { Spacer(); ProgressView("טוען צ׳אטים…"); Spacer() }
+                        .listRowSeparator(.hidden)
+                } else if sortedConversations.isEmpty && searchText.isEmpty {
+                    ContentUnavailableView(chatFilter == .unread ? "אין הודעות שלא נקראו" : "אין צ׳אטים להצגה",
+                        systemImage: "bubble.left.and.bubble.right")
+                        .listRowSeparator(.hidden)
+                }
                 NavigationLink {
                     ArchivedConversationsView()
                 } label: {
                     Label(
-                        "Archived",
+                        "צ׳אטים בארכיון",
                         systemImage: "archivebox"
                     )
                 }
@@ -163,20 +190,23 @@ struct ConversationsView: View {
             }
             .listStyle(.plain)
             .modifier(WhatsAppListStyle())
-            .navigationTitle("Chats")
+            .navigationTitle("צ׳אטים")
             .toolbar {
                 ToolbarItem(
                     placement: .topBarTrailing
                 ) {
-                    Button {
-                        Haptics.selection()
-                        showSettings = true
-                    } label: {
-                        Image(
-                            systemName: "gearshape"
-                        )
-                        .foregroundStyle(WhatsAppVisualDesign.accent)
-                    }
+                    Menu {
+                        NavigationLink { SessionsManagementView() } label: {
+                            Label("חיבור וניהול WhatsApp", systemImage: "qrcode")
+                        }
+                        Button { showSettings = true } label: {
+                            Label("הגדרות", systemImage: "gearshape")
+                        }
+                        Button { Task { await loadConversations() } } label: {
+                            Label("רענון", systemImage: "arrow.clockwise")
+                        }
+                    } label: { Image(systemName: "ellipsis.circle") }
+
                 }
             }
             .sheet(
@@ -209,7 +239,17 @@ struct ConversationsView: View {
                         .registerForPushNotifications()
                 }
 
+                async let directoryRefresh: Void = sessions.refresh()
                 await loadConversations()
+                await directoryRefresh
+            }
+            .task(id: scenePhase) {
+                guard scenePhase == .active else { return }
+                await loadConversations()
+                while !Task.isCancelled {
+                    do { try await Task.sleep(for: .seconds(15)) } catch { return }
+                    await loadConversations()
+                }
             }
             .onReceive(
             backgroundRefreshPublisher
@@ -336,33 +376,65 @@ struct ConversationsView: View {
         }
     }
 
-    private func loadConversations(
-        notifyForNewMessages: Bool = false
-    ) async {
-        do {
-            let updated =
-                try await APIClient.shared
-                    .fetchConversations()
-
-            // Incoming-message notifications are emitted
-            // by the realtime message stream. Do not duplicate
-            // them here when the conversation list refreshes.
-
-            conversations = updated
-
-            let unreadTotal =
-                conversations.reduce(0) {
-                    $0 + $1.unread
+    private var filterBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(BusinessChatFilter.allCases) { filter in
+                    Button { chatFilter = filter } label: {
+                        Text(filter.title).font(.subheadline.weight(.medium))
+                            .padding(.horizontal, 15).padding(.vertical, 8)
+                            .background(chatFilter == filter ? WhatsAppVisualDesign.accent.opacity(0.15) : WhatsAppVisualDesign.background, in: Capsule())
+                            .foregroundStyle(chatFilter == filter ? WhatsAppVisualDesign.accent : WhatsAppVisualDesign.secondaryText)
+                    }.buttonStyle(.plain)
                 }
-
-            await NotificationManager.shared
-                .setBadgeCount(
-                    unreadTotal
-                )
-
-        } catch {
+                Menu {
+                    Button("כל החשבונות") { selectedAccountID = nil }
+                    ForEach(sessions.sessions.keys.sorted(), id: \.self) { id in
+                        Button(sessions.name(for: id)) { selectedAccountID = id }
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Text(selectedAccountID.map { sessions.name(for: $0) } ?? "חשבונות")
+                        Image(systemName: "chevron.down").font(.caption2)
+                    }.font(.subheadline.weight(.medium))
+                        .padding(.horizontal, 12).padding(.vertical, 8)
+                        .background(WhatsAppVisualDesign.background, in: Capsule())
+                }
+            }
         }
     }
+
+    @MainActor
+    private func loadConversations(notifyForNewMessages: Bool = false) async {
+        if isRefreshing {
+            refreshAgain = true
+            while isRefreshing {
+                do { try await Task.sleep(for: .milliseconds(50)) } catch { return }
+            }
+            return
+        }
+        let scope = UserWorkspace.id
+        guard scope != "signed-out" else { return }
+        isRefreshing = true
+        defer { isRefreshing = false }
+        repeat {
+            refreshAgain = false
+            do {
+                let updated = try await APIClient.shared.fetchConversations()
+                try Task.checkCancellation()
+                guard UserWorkspace.id == scope else { return }
+                conversations = updated
+                didLoad = true; loadError = nil
+                await NotificationManager.shared.setBadgeCount(updated.reduce(0) { $0 + max(0, $1.unread) })
+            } catch is CancellationError { return }
+              catch {
+                guard UserWorkspace.id == scope else { return }
+                loadError = "לא ניתן לעדכן כרגע"
+                return
+            }
+        } while refreshAgain && !Task.isCancelled && UserWorkspace.id == scope
+    }
+
 }
 
 private struct ConversationRow: View {

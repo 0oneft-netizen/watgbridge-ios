@@ -135,14 +135,10 @@ struct ProductionConversationRow: View {
         }
         .padding(
             .vertical,
-            12
+            9
         )
         .contentShape(Rectangle())
-        .task {
-            if sessions.sessions.isEmpty {
-                await sessions.refresh()
-            }
-        }
+
     }
 
     private var avatar: some View {
@@ -164,8 +160,8 @@ struct ProductionConversationRow: View {
             }
         }
         .frame(
-            width: 52,
-            height: 52
+            width: 58,
+            height: 58
         )
         .clipShape(Circle())
         .overlay(Circle().stroke(WhatsAppVisualDesign.border, lineWidth: 1))
@@ -193,7 +189,7 @@ struct ProductionConversationRow: View {
         }
 
         if calendar.isDateInYesterday(date) {
-            return "Yesterday"
+            return "אתמול"
         }
 
         let days =

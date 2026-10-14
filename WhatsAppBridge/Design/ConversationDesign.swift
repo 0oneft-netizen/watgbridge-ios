@@ -7,7 +7,7 @@ enum ConversationDesign {
     static let messageSpacing: CGFloat = 2
     static let groupSpacing: CGFloat = 8
 
-    static let horizontalInset: CGFloat = 10
+    static let horizontalInset: CGFloat = 0
     static let bubbleHorizontalPadding: CGFloat = 11
     static let bubbleVerticalPadding: CGFloat = 7
 

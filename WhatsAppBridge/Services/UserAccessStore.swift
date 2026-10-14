@@ -132,6 +132,7 @@ final class UserAccessStore: ObservableObject {
     }
     private func enter(_ identity: AppUserIdentity) async {
         if user?.id != identity.id {
+            ChatSnapshotStore.shared.clear()
             RealtimeClient.shared.stop()
             UserWorkspace.select(identity.id)
             UserLocalStores.reload()
@@ -153,6 +154,7 @@ final class UserAccessStore: ObservableObject {
     }
     private func leave() async {
         epoch += 1
+        ChatSnapshotStore.shared.clear()
         RealtimeClient.shared.stop()
         NotificationCenter.default.post(name: .userAccessEnded, object: nil)
         user = nil; credential = nil

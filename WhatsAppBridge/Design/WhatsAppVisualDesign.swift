@@ -13,16 +13,16 @@ enum WhatsAppVisualDesign {
             uiColor(traits.userInterfaceStyle == .dark ? dark : light)
         })
     }
-    static let brand = adaptive(0x008C6A, 0x21C063)
-    static let accent = adaptive(0x008C6A, 0x21C063)
-    static let background = adaptive(0xF2F2F7, 0x101010)
-    static let surface = adaptive(0xFFFFFF, 0x171717)
+    static let brand = adaptive(0x008069, 0x25D366)
+    static let accent = adaptive(0x008069, 0x25D366)
+    static let background = adaptive(0xF2F2F7, 0x0B141A)
+    static let surface = adaptive(0xFFFFFF, 0x111B21)
     static let primaryText = adaptive(0x111111, 0xFFFFFF)
     static let secondaryText = adaptive(0x636366, 0xAEAEB2)
     static let mutedText = adaptive(0x8E8E93, 0x98989D)
     static let border = adaptive(0xD1D1D6, 0x38383A)
     static let incoming = surface
-    static let outgoing = adaptive(0xD0FDCF, 0x144D37)
+    static let outgoing = adaptive(0xD9FDD3, 0x005C4B)
     static let outgoingText = adaptive(0x111111, 0xFFFFFF)
     static let bubbleRadius: CGFloat = 16
 

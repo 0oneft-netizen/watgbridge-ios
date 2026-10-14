@@ -59,6 +59,13 @@ struct UnifiedMessageBubble: View {
                 alignment: .leading,
                 spacing: 4
             ) {
+                if !message.fromMe, let accountName, !accountName.isEmpty {
+                    Text(accountName)
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(WhatsAppVisualDesign.accent)
+                        .lineLimit(1)
+                }
+
                 if let quotedText,
                    !quotedText.isEmpty {
                     quotedMessage(quotedText)
@@ -205,7 +212,7 @@ struct UnifiedMessageBubble: View {
                 Spacer(minLength: 45)
             }
         }
-        .padding(.horizontal, 8)
+        .environment(\.layoutDirection, .leftToRight)
         .padding(.vertical, 2)
     }
 
@@ -221,8 +228,8 @@ struct UnifiedMessageBubble: View {
                 CampaignReferralCard(
                     referral: message.campaignReferral,
                     legacyImageURL: message.campaignImageURL,
-                    textColor: message.fromMe ? AppVisualDesign.outgoingText : Color.primary,
-                    metadataColor: message.fromMe ? AppVisualDesign.outgoingMetadata : Color.secondary
+                    textColor: messageTextColor,
+                    metadataColor: metadataColor
                 )
             }
 

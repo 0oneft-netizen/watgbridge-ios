@@ -22,6 +22,8 @@ struct SettingsView: View {
     @ObservedObject
     private var sessions = SessionDirectory.shared
 
+    @ObservedObject private var access = UserAccessStore.shared
+
     var body: some View {
         NavigationStack {
             List {
@@ -36,7 +38,7 @@ struct SettingsView: View {
                     } label: {
                         settingsRow(
                             icon: "iphone.gen3",
-                            title: "WhatsApp Accounts",
+                            title: "חשבונות WhatsApp",
                             subtitle:
                                 sessionSummary,
                             tint:
@@ -51,23 +53,23 @@ struct SettingsView: View {
                             icon:
                                 "text.bubble.fill",
                             title:
-                                "Quick Replies",
+                                "תשובות מהירות",
                             subtitle:
-                                "Saved business responses",
+                                "תשובות עסקיות שמורות",
                             tint: .blue
                         )
                     }
                 }
 
-                Section("Notifications") {
+                Section("התראות") {
                     Toggle(
-                        "Notifications",
+                        "התראות",
                         isOn:
                             $notificationsEnabled
                     )
 
                     Toggle(
-                        "Show Message Preview",
+                        "תצוגה מקדימה של הודעות",
                         isOn:
                             $notificationPreview
                     )
@@ -76,7 +78,7 @@ struct SettingsView: View {
                     )
 
                     Toggle(
-                        "Sounds",
+                        "צלילים",
                         isOn:
                             $notificationSound
                     )
@@ -85,13 +87,13 @@ struct SettingsView: View {
                     )
 
                     Toggle(
-                        "Badge",
+                        "מונה הודעות",
                         isOn:
                             $badgeEnabled
                     )
                 }
 
-                Section("App") {
+                Section("אפליקציה") {
                     NavigationLink {
                         AppLockSettingsView()
                     } label: {
@@ -99,7 +101,7 @@ struct SettingsView: View {
                     }
 
                     Toggle(
-                        "Haptic Feedback",
+                        "רטט",
                         isOn:
                             $hapticsEnabled
                     )
@@ -111,42 +113,36 @@ struct SettingsView: View {
                             icon:
                                 "bell.badge.fill",
                             title:
-                                "Notification Diagnostics",
+                                "בדיקת התראות",
                             subtitle:
-                                "Delivery and registration status",
+                                "מצב הרשמה וקבלת התראות",
                             tint: .orange
                         )
                     }
                 }
 
-                Section("Connection") {
-                    LabeledContent(
-                        "Server",
-                        value: "Connected"
-                    )
-
-                    LabeledContent(
-                        "Realtime",
-                        value: "Enabled"
-                    )
+                Section("אחסון") {
+                    NavigationLink { StorageManagementView() } label: {
+                        settingsRow(icon: "internaldrive", title: "אחסון ומדיה", subtitle: "ניהול קבצים שהורדו", tint: .green)
+                    }
                 }
 
-                Section("About") {
+                Section("אודות") {
                     LabeledContent(
-                        "App",
+                        "אפליקציה",
                         value:
                             "WhatsApp Bridge"
                     )
 
                     LabeledContent(
-                        "Version",
+                        "גרסה",
                         value: version
                     )
                 }
             }
             .listStyle(.insetGrouped)
             .modifier(WhatsAppListStyle())
-            .navigationTitle("Settings")
+            .navigationTitle("הגדרות")
             .navigationBarTitleDisplayMode(
                 .large
             )
@@ -174,7 +170,7 @@ struct SettingsView: View {
 
                     Image(
                         systemName:
-                            "message.fill"
+                            "person.fill"
                     )
                     .font(
                         .system(
@@ -195,7 +191,7 @@ struct SettingsView: View {
                     alignment: .leading,
                     spacing: 4
                 ) {
-                    Text("Messaging Bridge")
+                    Text(access.user?.username ?? "החשבון שלי")
                         .font(
                             .title3
                                 .weight(.semibold)

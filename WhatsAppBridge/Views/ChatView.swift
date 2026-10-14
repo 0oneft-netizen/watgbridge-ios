@@ -26,6 +26,9 @@ private struct ChatViewportBottomPreferenceKey: PreferenceKey {
 }
 
 struct ChatView: View {
+    @Environment(\.scenePhase) private var scenePhase
+    @ObservedObject private var sessions = SessionDirectory.shared
+    @State private var workspaceScope = UserWorkspace.id
     let conversation: Conversation
     var initialMessageID: String? = nil
     @State private var focusedContext = false
@@ -113,7 +116,7 @@ struct ChatView: View {
                         .font(.headline)
                         .lineLimit(1)
 
-                        Text("WhatsApp")
+                        Text(sessions.name(for: conversation.accountID))
                             .font(.caption2)
                             .foregroundStyle(
                                 .secondary
@@ -125,16 +128,17 @@ struct ChatView: View {
             ToolbarItemGroup(
                 placement: .topBarTrailing
             ) {
-                Button { showCustomerSave = true } label: {
-                    Image(systemName: "person.crop.circle.badge.plus")
-                }
-                .accessibilityLabel("שמירה או שינוי שם לקוח")
-
-                Button {
-                    isSearching.toggle()
-                } label: {
-                    Image(systemName: "magnifyingglass")
-                }
+                Menu {
+                    Button { showCustomerSave = true } label: {
+                        Label("שמירה או שינוי שם לקוח", systemImage: "person.crop.circle.badge.plus")
+                    }
+                    Button { isSearching.toggle() } label: {
+                        Label("חיפוש בשיחה", systemImage: "magnifyingglass")
+                    }
+                    Button { showConversationInfo = true } label: {
+                        Label("פרטי איש קשר", systemImage: "info.circle")
+                    }
+                } label: { Image(systemName: "ellipsis") }
 
                 Button {
                     outgoingCall = WhatsAppCallDestination(
@@ -264,15 +268,27 @@ struct ChatView: View {
             }
         }
         .task {
-            try? await APIClient.shared
-                .markRead(
-                    chatJID:
-                        conversation.jid,
-                    accountID:
-                        conversation.accountID ?? "default"
-                )
-
+            let scope = UserWorkspace.id
+            workspaceScope = scope
+            if initialMessageID == nil,
+               let cached = ChatSnapshotStore.shared.snapshot(workspace: scope,
+                   account: conversation.accountID ?? "default", chat: conversation.jid) {
+                messages = cached.messages; messageCursor = cached.cursor; isLoading = false
+            }
             await loadMessages()
+            guard UserWorkspace.id == scope, !Task.isCancelled else { return }
+            try? await APIClient.shared.markRead(chatJID: conversation.jid,
+                accountID: conversation.accountID ?? "default")
+        }
+        .task(id: scenePhase) {
+            guard scenePhase == .active else { return }
+            RealtimeClient.shared.start()
+            // Fallback only while this chat is visible and the app is in the foreground.
+            while !Task.isCancelled {
+                do { try await Task.sleep(for: .seconds(8)) } catch { return }
+                guard UserWorkspace.id == workspaceScope else { return }
+                await loadMessages()
+            }
         }
         .alert(
             "Send Failed",
@@ -466,8 +482,8 @@ struct ChatView: View {
 }
                 }
 
-                .padding(.horizontal, 8)
-                .padding(.vertical, 12)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 10)
 
                 GeometryReader { geometry in
                     Color.clear
@@ -633,6 +649,8 @@ struct ChatView: View {
 
             ProductionComposerView(
                 text: $messageText,
+                isSending: isSending || isSendingMedia,
+                isRecording: recorder.isRecording,
                 replyingTo: replyToMessage,
                 onCancelReply: {
                     replyToMessage = nil
@@ -1243,6 +1261,8 @@ struct ChatView: View {
 
     @MainActor
     private func loadMessages() async {
+        let scope = workspaceScope
+        guard UserWorkspace.id == scope, scope != "signed-out" else { return }
         if focusedContext { return }
         if let id = initialMessageID, !initialFocusHandled {
             guard !isRefreshingMessages else { return }
@@ -1251,6 +1271,7 @@ struct ChatView: View {
             do {
                 let found = try await CustomerFeaturesAPI.shared.context(conversation, messageID: id)
                 try Task.checkCancellation()
+                guard UserWorkspace.id == scope else { return }
                 focusedContext = true; initialFocusHandled = true
                 isNearBottom = false; messages = found; errorMessage = nil
             } catch { errorMessage = error.localizedDescription }
@@ -1273,9 +1294,12 @@ struct ChatView: View {
                 try Task.checkCancellation()
                 guard searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
                 if generation != timelineGeneration { refreshPending = true; continue }
+                guard UserWorkspace.id == scope else { return }
                 let latest = MessageTimelineMerge.apply(batch, to: messages)
                 if latest != messages { messages = latest }
                 messageCursor = batch.cursor
+                ChatSnapshotStore.shared.save(workspace: scope, account: conversation.accountID ?? "default",
+                    chat: conversation.jid, messages: messages, cursor: batch.cursor)
                 ChatPerformanceMonitor.synced(changed: batch.messages.count, reset: batch.reset, duration: start.duration(to: clock.now))
                 errorMessage = nil
             } catch is CancellationError { return }

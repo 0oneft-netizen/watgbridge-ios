@@ -62,7 +62,7 @@ struct CustomersView: View {
                 }
             }
             .modifier(WhatsAppListStyle())
-            .navigationTitle("Customers")
+            .navigationTitle("לקוחות")
             .searchable(text: $searchText, prompt: "חיפוש לקוחות וקבוצות")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {

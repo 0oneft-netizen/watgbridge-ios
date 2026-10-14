@@ -9,7 +9,7 @@ struct BusinessShellView: View {
             ConversationsView()
                 .tabItem {
                     Label(
-                        "Chats",
+                        "צ׳אטים",
                         systemImage:
                             selection == 0
                             ? "message.fill"
@@ -21,7 +21,7 @@ struct BusinessShellView: View {
             CustomersView()
                 .tabItem {
                     Label(
-                        "Customers",
+                        "לקוחות",
                         systemImage:
                             selection == 1
                             ? "person.2.fill"
@@ -33,7 +33,7 @@ struct BusinessShellView: View {
             CatalogView()
                 .tabItem {
                     Label(
-                        "Catalog",
+                        "קטלוג",
                         systemImage:
                             selection == 2
                             ? "bag.fill"
@@ -45,7 +45,7 @@ struct BusinessShellView: View {
             BusinessToolsView()
                 .tabItem {
                     Label(
-                        "Business",
+                        "כלים",
                         systemImage:
                             selection == 3
                             ? "briefcase.fill"
@@ -57,7 +57,7 @@ struct BusinessShellView: View {
             SettingsView()
                 .tabItem {
                     Label(
-                        "Settings",
+                        "הגדרות",
                         systemImage:
                             selection == 4
                             ? "gearshape.fill"
@@ -68,6 +68,8 @@ struct BusinessShellView: View {
         }
         .task { await CustomerCRMDirectory.shared.refresh() }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+            RealtimeClient.shared.stop()
+            RealtimeClient.shared.start()
             Task { await CustomerCRMDirectory.shared.refresh() }
         }
         .tint(WhatsAppVisualDesign.accent)

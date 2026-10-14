@@ -4,6 +4,8 @@ import UIKit
 struct ProductionComposerView: View {
     @Binding
     var text: String
+    var isSending: Bool = false
+    var isRecording: Bool = false
 
     let replyingTo: Message?
 
@@ -47,8 +49,8 @@ struct ProductionComposerView: View {
                             WhatsAppVisualDesign.accent
                         )
                         .frame(
-                            width: 34,
-                            height: 38
+                            width: 38,
+                            height: 44
                         )
                 }
 
@@ -57,12 +59,13 @@ struct ProductionComposerView: View {
                     spacing: 8
                 ) {
                     TextField(
-                        "Message",
+                        "הודעה",
                         text: $text,
                         axis: .vertical
                     )
                     .lineLimit(1...6)
                     .submitLabel(.send)
+                    .onSubmit { if hasText { onSend() } }
                     .font(.system(size: 17))
                     .focused($isFocused)
                     .foregroundStyle(.primary)
@@ -104,17 +107,15 @@ struct ProductionComposerView: View {
                 }
 
                 Button {
-                    if hasText {
-                        onSend()
-                    }
+                    if isRecording { onVoice() } else if hasText { onSend() } else { onVoice() }
                 } label: {
                     ZStack {
                         Circle()
-                            .fill(WhatsAppVisualDesign.brand)
+                            .fill(isRecording ? Color.red : WhatsAppVisualDesign.brand)
 
                         Image(
                             systemName:
-                                hasText
+                                isRecording ? "stop.fill" : hasText
                                 ? "arrow.up"
                                 : "mic.fill"
                         )
@@ -127,27 +128,14 @@ struct ProductionComposerView: View {
                         .foregroundStyle(.white)
                     }
                     .frame(
-                        width: 36,
-                        height: 36
+                        width: 42,
+                        height: 42
                     )
                 }
-                .simultaneousGesture(
-                    LongPressGesture(
-                        minimumDuration: 0.45,
-                        maximumDistance: 18
-                    )
-                    .onEnded { _ in
-                        guard !hasText else { return }
+                .buttonStyle(.plain)
+                .disabled(isSending)
+                .accessibilityLabel(hasText ? "שליחת הודעה" : "התחלה או סיום הקלטה")
 
-                        let generator =
-                            UIImpactFeedbackGenerator(
-                                style: .medium
-                            )
-                        generator.impactOccurred()
-
-                        onVoice()
-                    }
-                )
             }
             .padding(.horizontal, 12)
             .padding(.top, 6)

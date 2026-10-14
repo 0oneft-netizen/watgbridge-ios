@@ -83,12 +83,6 @@ struct ProductionMessageBubble: View {
 
     var body: some View {
         HStack {
-            if message.fromMe {
-                Spacer(
-                    minLength: 46
-                )
-            }
-
             VStack(
                 alignment:
                     message.fromMe
@@ -189,16 +183,7 @@ struct ProductionMessageBubble: View {
                 }
             )
 
-            if !message.fromMe {
-                Spacer(
-                    minLength: 46
-                )
-            }
-        }
-        .task {
-            if sessions.sessions.isEmpty {
-                await sessions.refresh()
-            }
+
         }
     }
 }
