@@ -20,7 +20,11 @@ jobs:
         run: bash Tests/run-business-refresh.sh
 
       - name: Verify automation server contracts
+        if: hashFiles('Tests/run-customer-automation.sh') != ''
         run: bash Tests/run-customer-automation.sh
+
+      - name: Verify ULTRA-SAP voice effects and icon
+        run: bash Tests/run-ultra-voice.sh
 
       - name: Generate Xcode project
         run: xcodegen generate

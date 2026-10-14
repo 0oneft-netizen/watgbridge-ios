@@ -6,6 +6,7 @@ struct OutgoingWhatsAppCallView: View {
     let destination: WhatsAppCallDestination
     @StateObject private var call = WhatsAppCallSession()
     @Environment(\.dismiss) private var dismiss
+    @State private var voicePreset = UltraVoiceSettings.selected
 
     var body: some View {
         ZStack {
@@ -23,6 +24,10 @@ struct OutgoingWhatsAppCallView: View {
                     Text(SessionDirectory.shared.name(for: destination.accountID))
                         .font(.caption).foregroundStyle(.white.opacity(0.7))
                     Text(call.statusText).font(.subheadline)
+                    if voicePreset != .natural {
+                        Label("אפקט קול: \(voicePreset.title)", systemImage: "waveform")
+                            .font(.caption).foregroundStyle(.white.opacity(0.8))
+                    }
                     if let connected = call.connectedAt, !call.finished {
                         TimelineView(.periodic(from: connected, by: 1)) { timeline in
                             let seconds = max(0, Int(timeline.date.timeIntervalSince(connected)))
@@ -74,7 +79,7 @@ struct OutgoingWhatsAppCallView: View {
         }
         .foregroundStyle(.white)
         .interactiveDismissDisabled(!call.finished)
-        .task { call.start(destination) }
+        .task { voicePreset = UltraVoiceSettings.selected; call.start(destination) }
         .onDisappear { call.hangup() }
     }
     private func control(_ icon: String, title: String, selected: Bool, action: @escaping () -> Void) -> some View {

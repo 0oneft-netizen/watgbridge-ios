@@ -61,6 +61,12 @@ struct SettingsView: View {
                     }
                 }
 
+                Section("ULTRA-SAP Voice") {
+                    NavigationLink { UltraVoiceSettingsView() } label: {
+                        Label("אפקטים לקול בשיחה", systemImage: "waveform")
+                    }
+                }
+
                 Section("התראות") {
                     Toggle(
                         "התראות",
@@ -131,7 +137,7 @@ struct SettingsView: View {
                     LabeledContent(
                         "אפליקציה",
                         value:
-                            "WhatsApp Bridge"
+                            "ULTRA-SAP"
                     )
 
                     LabeledContent(

@@ -38,6 +38,12 @@ NavigationLink {
                     }
                 }
 
+                Section("ULTRA-SAP Voice") {
+                    NavigationLink { UltraVoiceSettingsView() } label: {
+                        Label("אפקטים לקול בשיחה", systemImage: "waveform")
+                    }
+                }
+
                 Section {
                     NavigationLink {
                         notificationSettings
@@ -97,7 +103,7 @@ NavigationLink {
                         Spacer()
 
                         VStack(spacing: 5) {
-                            Text("WhatsApp Bridge")
+                            Text("ULTRA-SAP")
                                 .font(
                                     .footnote.weight(
                                         .semibold

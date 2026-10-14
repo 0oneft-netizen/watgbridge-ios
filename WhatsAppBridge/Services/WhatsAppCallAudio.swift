@@ -48,11 +48,29 @@ final class WhatsAppCallAudio {
     private var watchdog: DispatchSourceTimer?
     private var recoveryTimes: [Date] = []
     private var speakerEnabled = false
+    private let lease = UUID()
+    private var ownsLease = false
+    private var voiceEffect = UltraVoiceDSP(preset: .natural)
+    // Bound queued capture work so a delayed audio queue cannot build seconds of lag.
+    private let captureGate = NSLock()
+    private var captureQueued = 0
 
-    func start(speaker: Bool, onFailure: (() -> Void)? = nil, onFrame: @escaping (Data) -> Void) async throws {
+    private func reserveCapture() -> Bool {
+        captureGate.lock(); defer { captureGate.unlock() }
+        guard captureQueued < 4 else { return false }
+        captureQueued += 1; return true
+    }
+    private func releaseCapture() {
+        captureGate.lock(); captureQueued = max(0, captureQueued - 1); captureGate.unlock()
+    }
+
+    func start(speaker: Bool, effect: UltraVoicePreset = UltraVoiceSettings.selected, onFailure: (() -> Void)? = nil, onFrame: @escaping (Data) -> Void) async throws {
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             queue.async {
                 do {
+                    guard !self.running, UltraAudioLease.acquire(self.lease) else { throw UltraVoiceError.busy }
+                    self.ownsLease = true
+                    self.voiceEffect = UltraVoiceDSP(preset: effect)
                     self.speakerEnabled = speaker
                     self.onFrame = onFrame
                     self.onFailure = onFailure
@@ -101,8 +119,10 @@ final class WhatsAppCallAudio {
         // Tap input before the muted mixer: playback never contains the local microphone.
         let captureGeneration = generation
         engine.inputNode.installTap(onBus: 0, bufferSize: 1024, format: inputFormat) { [weak self] input, _ in
-            guard let self,
-                  let copy = AVAudioPCMBuffer(pcmFormat: input.format, frameCapacity: input.frameLength) else { return }
+            guard let self, self.reserveCapture() else { return }
+            guard let copy = AVAudioPCMBuffer(pcmFormat: input.format, frameCapacity: input.frameLength) else {
+                self.releaseCapture(); return
+            }
             copy.frameLength = input.frameLength
             let source = UnsafeMutableAudioBufferListPointer(UnsafeMutablePointer(mutating: input.audioBufferList))
             let destination = UnsafeMutableAudioBufferListPointer(copy.mutableAudioBufferList)
@@ -112,6 +132,7 @@ final class WhatsAppCallAudio {
                 }
             }
             self.queue.async {
+                defer { self.releaseCapture() }
                 guard self.generation == captureGeneration else { return }
                 self.capture(copy)
             }
@@ -200,7 +221,9 @@ final class WhatsAppCallAudio {
             if value.isFinite { capturePeak = max(capturePeak, min(1, abs(value))) }
         }
         guard transmitting else { samples.removeAll(keepingCapacity: true); return }
-        samples.append(contentsOf: UnsafeBufferPointer(start: values, count: Int(output.frameLength)))
+        for index in 0..<Int(output.frameLength) {
+            samples.append(voiceEffect.process(values[index]))
+        }
         while samples.count >= 960 {
             var packet = Data([1])
             packet.reserveCapacity(1921)
@@ -279,6 +302,11 @@ final class WhatsAppCallAudio {
         }
     }
     func stop() { queue.async { self.cleanup() } }
+    func stopAndWait() async {
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            queue.async { self.cleanup(); continuation.resume() }
+        }
+    }
     private func cleanup() {
         running = false; transmitting = false; onFrame = nil; onFailure = nil
         watchdog?.cancel(); watchdog = nil
@@ -287,6 +315,9 @@ final class WhatsAppCallAudio {
             self.configurationObserver = nil
         }
         discardGraph()
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        if ownsLease {
+            try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+            _ = UltraAudioLease.release(lease); ownsLease = false
+        }
     }
 }
