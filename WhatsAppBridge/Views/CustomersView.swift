@@ -25,6 +25,11 @@ struct CustomersView: View {
     var body: some View {
         NavigationStack {
             List {
+                Section {
+                    NavigationLink { CustomerAutomationCenter() } label: {
+                        Label("תפוצות לכל הצ׳אטים ואוטומציה", systemImage: "paperplane")
+                    }
+                }
                 if let message = error ?? crm.lastError {
                     Section {
                         Text(message).foregroundStyle(.red)

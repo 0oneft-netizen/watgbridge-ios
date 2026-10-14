@@ -17,6 +17,18 @@ struct BusinessToolsView: View {
                     }
                 }
 
+                Section("תפוצות ואוטומציה") {
+                    NavigationLink { CustomerAutomationCenter() } label: {
+                        Label("מרכז תפוצות ו־AI", systemImage: "paperplane.fill")
+                    }
+                    NavigationLink { AutomationAudienceView(source: "stale") } label: {
+                        Label("לקוחות שלא דיברו לאחרונה", systemImage: "clock.arrow.circlepath")
+                    }
+                    NavigationLink { CustomerAutomationSettingsView() } label: {
+                        Label("מענה AI ללקוח חדש", systemImage: "sparkles")
+                    }
+                }
+
                 Section("Messaging") {
                     NavigationLink {
                         QuickRepliesView()

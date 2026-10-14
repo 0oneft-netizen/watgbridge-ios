@@ -19,6 +19,9 @@ jobs:
       - name: Verify message timeline and user isolation
         run: bash Tests/run-business-refresh.sh
 
+      - name: Verify automation server contracts
+        run: bash Tests/run-customer-automation.sh
+
       - name: Generate Xcode project
         run: xcodegen generate
 
