@@ -92,7 +92,12 @@ struct UltraPhotoEditor: View {
         let points = mark.points.map { CGPoint(x: $0.x * size.width, y: $0.y * size.height) }
         guard let first = points.first else { return }
         if mark.mode == "text" {
-            context.draw(Text(mark.text).font(.system(size: max(14, size.width * 0.045), weight: .bold)).foregroundColor(.white).shadow(color: .black, radius: 2), at: first, anchor: .topLeading)
+            let label: Text = Text(mark.text)
+                .font(.system(size: max(14, size.width * 0.045), weight: .bold))
+                .foregroundColor(.white)
+            var textContext = context
+            textContext.addFilter(.shadow(color: .black, radius: 2))
+            textContext.draw(label, at: first, anchor: .topLeading)
         } else if mark.mode == "blur", let last = points.last {
             let rect = CGRect(x: min(first.x, last.x), y: min(first.y, last.y), width: abs(first.x - last.x), height: abs(first.y - last.y))
             context.fill(Path(rect), with: .color(.gray.opacity(0.85)))
