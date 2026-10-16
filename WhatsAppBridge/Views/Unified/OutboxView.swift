@@ -7,6 +7,10 @@ struct OutboxView: View {
 
     var body: some View {
         List {
+            Section {
+                NavigationLink { UltraOutboxView() } label: { Label("תור השליחה החדש ובדיקת קבלה", systemImage: "tray.and.arrow.up") }
+                if !store.items.isEmpty { Text("למטה מוצגות רשומות מהתור הישן. הן אינן מועברות אוטומטית כדי למנוע שליחה כפולה.").font(.caption).foregroundStyle(.secondary) }
+            }
             if store.items.isEmpty {
                 ContentUnavailableView(
                     "Outbox Empty",

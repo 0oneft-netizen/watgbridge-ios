@@ -29,6 +29,10 @@ struct BusinessToolsView: View {
                     }
                 }
 
+                Section("ULTRA-SAP מדיה ושליחה") {
+                    NavigationLink { UltraMediaLibrary() } label: { Label("גלריה מכל המספרים", systemImage: "photo.on.rectangle") }
+                    NavigationLink { UltraOutboxView() } label: { Label("תור שליחה ובדיקת מצב", systemImage: "tray.and.arrow.up") }
+                }
                 Section("Messaging") {
                     NavigationLink {
                         QuickRepliesView()

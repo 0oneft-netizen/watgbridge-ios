@@ -31,6 +31,15 @@ struct ChatView: View {
     @State private var workspaceScope = UserWorkspace.id
     let conversation: Conversation
     var initialMessageID: String? = nil
+    @State private var requestedMessageID: String?
+    private var focusMessageID: String? { requestedMessageID ?? initialMessageID }
+    @State private var ultraRecents = false
+    @State private var ultraTools = false
+    @State private var ultraMedia: Message?
+    @State private var ultraDestination: Conversation?
+    @State private var autoTranslate = false
+    @State private var translating = false
+    @ObservedObject private var ultraQueue = UltraSendQueue.shared
     @State private var focusedContext = false
     @State private var initialFocusHandled = false
     @ObservedObject private var customerCRM = CustomerCRMDirectory.shared
@@ -62,6 +71,8 @@ struct ChatView: View {
 
     @State private var selectedPhotoItems: [PhotosPickerItem] = []
 
+    @State private var cameraDrafts: [UltraMediaDraft] = []
+    @State private var showCameraReview = false
     @State private var showPhotos = false
     @State private var showCamera = false
     @State private var showFiles = false
@@ -128,7 +139,10 @@ struct ChatView: View {
             ToolbarItemGroup(
                 placement: .topBarTrailing
             ) {
+                Button { ultraRecents = true } label: { Image(systemName: "rectangle.stack") }
+                    .accessibilityLabel("מעבר מהיר בין צ׳אטים")
                 Menu {
+                    Button { ultraTools = true } label: { Label("כלים, גלריה ותרגום", systemImage: "slider.horizontal.3") }
                     Button { showCustomerSave = true } label: {
                         Label("שמירה או שינוי שם לקוח", systemImage: "person.crop.circle.badge.plus")
                     }
@@ -171,6 +185,23 @@ struct ChatView: View {
                 .accessibilityLabel("שיחת WhatsApp קולית")
             }
         }
+        .environment(\.ultraOpenMedia, { message in ultraMedia = message })
+        .sheet(isPresented: $ultraRecents) {
+            UltraRecentChats(current: conversation) { chat in ultraDestination = chat }
+        }
+        .sheet(isPresented: $ultraTools) {
+            UltraChatPanel(conversation: conversation, messages: messages, autoTranslate: $autoTranslate, draftText: messageText,
+                onDraft: { messageText = $0 }, onChat: { ultraDestination = $0 }, onMessage: { jumpTo($0) })
+        }
+        .fullScreenCover(item: $ultraMedia) { message in
+            UltraGalleryView(initial: message, conversation: conversation, onShow: { jumpTo($0) })
+        }
+        .navigationDestination(item: $ultraDestination) { chat in ChatView(conversation: chat) }
+        .onChange(of: autoTranslate) { _, enabled in
+            UserWorkspace.defaults.set(enabled, forKey: "ultra.translate.auto." + conversation.id)
+            if enabled { Task { await translateIncoming() } }
+        }
+        .onChange(of: messages.last?.id) { _, _ in if autoTranslate { Task { await translateIncoming() } } }
         .fullScreenCover(item: $outgoingCall) { destination in
             OutgoingWhatsAppCallView(destination: destination)
         }
@@ -270,12 +301,15 @@ struct ChatView: View {
         .task {
             let scope = UserWorkspace.id
             workspaceScope = scope
-            if initialMessageID == nil,
+            UltraChatStore.shared.visit(conversation)
+            autoTranslate = UserWorkspace.defaults.bool(forKey: "ultra.translate.auto." + conversation.id)
+            if focusMessageID == nil,
                let cached = ChatSnapshotStore.shared.snapshot(workspace: scope,
                    account: conversation.accountID ?? "default", chat: conversation.jid) {
                 messages = cached.messages; messageCursor = cached.cursor; isLoading = false
             }
             await loadMessages()
+            if autoTranslate { await translateIncoming() }
             guard UserWorkspace.id == scope, !Task.isCancelled else { return }
             try? await APIClient.shared.markRead(chatJID: conversation.jid,
                 accountID: conversation.accountID ?? "default")
@@ -291,7 +325,7 @@ struct ChatView: View {
             }
         }
         .alert(
-            "Send Failed",
+            "עדכון בשיחה",
             isPresented: Binding(
                 get: {
                     errorMessage != nil &&
@@ -328,41 +362,34 @@ struct ChatView: View {
                 showMediaPreview = true
             }
         }
-        .sheet(
-            isPresented: $showMediaPreview
-        ) {
-            MediaSendPreview(
-                items: selectedPhotoItems,
-                caption: $mediaCaption,
-                onCancel: {
-                    selectedPhotoItems = []
-                    mediaCaption = ""
-                    showMediaPreview = false
-                },
-                onSend: {
-                    showMediaPreview = false
-                    Task {
-                        await sendSelectedMediaItems()
-                    }
-                }
-            )
+        .sheet(isPresented: $showMediaPreview, onDismiss: { selectedPhotoItems = [] }) {
+            UltraMediaComposer(items: selectedPhotoItems, conversation: conversation) {
+                selectedPhotoItems = []; mediaCaption = ""; showMediaPreview = false
+                Task { await loadMessages() }
+            }
         }
+
         .sheet(
             isPresented: $showCamera
         ) {
             CameraPicker(
                 onImage: { image in
                     Task {
-                        await sendCameraImage(image)
+                        await prepareCamera(image: image, video: nil)
                     }
                 },
                 onVideo: { url in
                     Task {
-                        await sendCameraVideo(url)
+                        await prepareCamera(image: nil, video: url)
                     }
                 }
             )
             .ignoresSafeArea()
+        }
+        .sheet(isPresented: $showCameraReview, onDismiss: { cameraDrafts = [] }) {
+            UltraMediaComposer(items: [], seeded: cameraDrafts, conversation: conversation) {
+                showCameraReview = false; Task { await loadMessages() }
+            }
         }
         .fileImporter(
             isPresented: $showFiles,
@@ -466,7 +493,7 @@ struct ChatView: View {
                                 )
                             }
                         )
-                        .background(message.messageID == initialMessageID && focusedContext ? ChatDesign.accent.opacity(0.13) : Color.clear)
+                        .background(message.messageID == focusMessageID && focusedContext ? ChatDesign.accent.opacity(0.13) : Color.clear)
                         .id(message.id)
                         .padding(
                             .horizontal,
@@ -510,7 +537,12 @@ struct ChatView: View {
                 }
             )
             .onAppear {
-                if focusedContext, let target = messages.first(where: { $0.messageID == initialMessageID }) {
+                if focusedContext, let target = messages.first(where: { $0.messageID == focusMessageID }) {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { proxy.scrollTo(target.id, anchor: .center) }
+                }
+            }
+            .onChange(of: focusedContext) { _, focused in
+                if focused, let target = messages.first(where: { $0.messageID == focusMessageID }) {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { proxy.scrollTo(target.id, anchor: .center) }
                 }
             }
@@ -537,7 +569,7 @@ struct ChatView: View {
                 of: messages.last?.id
             ) {
                 if focusedContext {
-                    if let target = messages.first(where: { $0.messageID == initialMessageID }) {
+                    if let target = messages.first(where: { $0.messageID == focusMessageID }) {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { proxy.scrollTo(target.id, anchor: .center) }
                     }
                     return
@@ -643,6 +675,14 @@ struct ChatView: View {
 
     private var composer: some View {
         VStack(spacing: 0) {
+            UltraLinkPreview(text: messageText)
+            let pending = ultraQueue.items.filter { $0.account == (conversation.accountID ?? "default") && $0.chat == conversation.jid && $0.state != "sent" }
+            if !pending.isEmpty {
+                Button { ultraTools = true } label: {
+                    Label("\(pending.count) הודעות בתור · פתח כלים לבדיקת שליחה", systemImage: "tray.and.arrow.up")
+                        .font(.caption).padding(8)
+                }
+            }
             if recorder.isRecording {
                 recordingBar
             }
@@ -1264,7 +1304,7 @@ struct ChatView: View {
         let scope = workspaceScope
         guard UserWorkspace.id == scope, scope != "signed-out" else { return }
         if focusedContext { return }
-        if let id = initialMessageID, !initialFocusHandled {
+        if let id = focusMessageID, !initialFocusHandled {
             guard !isRefreshingMessages else { return }
             isRefreshingMessages = true; isLoading = true
             defer { isRefreshingMessages = false; isLoading = false }
@@ -1305,6 +1345,39 @@ struct ChatView: View {
             } catch is CancellationError { return }
               catch { errorMessage = error.localizedDescription; return }
         } while refreshPending && !Task.isCancelled
+    }
+
+    @MainActor private func prepareCamera(image: UIImage?, video: URL?) async {
+        let scope = UserWorkspace.id
+        do {
+            let url: URL
+            if let image {
+                url = UltraMediaEditing.temporary("jpg")
+                guard let data = image.jpegData(compressionQuality: 0.96) else { throw URLError(.cannotCreateFile) }
+                try data.write(to: url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+            } else if let video {
+                url = UltraMediaEditing.temporary(video.pathExtension.isEmpty ? "mov" : video.pathExtension)
+                try FileManager.default.copyItem(at: video, to: url)
+            } else { return }
+            guard scope == UserWorkspace.id else { try? FileManager.default.removeItem(at: url); return }
+            cameraDrafts = [.init(original: url, current: url, isVideo: video != nil, originalName: "camera." + url.pathExtension, originalMime: video == nil ? "image/jpeg" : "video/quicktime")]
+            showCamera = false
+            try await Task.sleep(for: .milliseconds(350))
+            guard scope == UserWorkspace.id else { try? FileManager.default.removeItem(at: url); cameraDrafts = []; return }
+            showCameraReview = true
+        } catch { errorMessage = error.localizedDescription }
+    }
+
+    private func jumpTo(_ message: Message) {
+        requestedMessageID = message.messageID; initialFocusHandled = false
+        focusedContext = false; messageCursor = nil; ultraTools = false
+        Task { await loadMessages() }
+    }
+    @MainActor private func translateIncoming() async {
+        guard autoTranslate, !translating, UserWorkspace.id == workspaceScope else { return }; translating = true; defer { translating = false }
+        let pending = messages.filter { !$0.fromMe && !$0.text.isEmpty && $0.deletedRemote != true && UltraChatStore.shared.translation($0) == nil }.suffix(12)
+        do { try await UltraChatStore.shared.translate(Array(pending), target: "he") }
+        catch { errorMessage = "התרגום לא הושלם: " + error.localizedDescription }
     }
 
     private func updateChatBottomState() {

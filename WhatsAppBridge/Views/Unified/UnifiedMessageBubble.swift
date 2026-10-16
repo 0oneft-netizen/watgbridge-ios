@@ -2,6 +2,9 @@ import SwiftUI
 import UIKit
 
 struct UnifiedMessageBubble: View {
+    @ObservedObject private var ultraStore = UltraChatStore.shared
+    @State private var ultraForward = false
+    @State private var ultraTranslationError: String?
     let message: Message
     let senderName: String
     let accountName: String?
@@ -80,6 +83,7 @@ struct UnifiedMessageBubble: View {
                 HStack(spacing: 4) {
                     Spacer(minLength: 0)
 
+                    if ultraStore.pinned(message) { Image(systemName: "pin.fill").font(.caption2).foregroundStyle(metadataColor) }
                     Text(timestamp)
                         .font(.system(size: 10))
                         .foregroundStyle(metadataColor)
@@ -133,6 +137,14 @@ struct UnifiedMessageBubble: View {
             }
             .shadow(color: .black.opacity(0.05), radius: 1, y: 1)
             .contextMenu {
+                if !MessageMediaPolicy.isViewOnce(message) && message.deletedRemote != true {
+                    Button { ultraStore.togglePin(message) } label: { Label(ultraStore.pinned(message) ? "בטל נעיצה אישית" : "נעיצה אישית", systemImage: "pin") }
+                    Button { ultraForward = true } label: { Label("העבר למספר צ׳אטים", systemImage: "arrowshape.turn.up.right") }
+                    if !message.text.isEmpty {
+                        Button { Task { do { try await ultraStore.translate([message], target: "he") } catch { ultraTranslationError = error.localizedDescription } } } label: { Label("תרגם לעברית (OpenAI)", systemImage: "character.bubble") }
+                    }
+                }
+
                 if MessageActionPolicy
                     .mayReply(message) {
 
@@ -214,6 +226,10 @@ struct UnifiedMessageBubble: View {
         }
         .environment(\.layoutDirection, .leftToRight)
         .padding(.vertical, 2)
+        .sheet(isPresented: $ultraForward) { ForwardMessageView(message: message) }
+        .alert("תרגום", isPresented: Binding(get: { ultraTranslationError != nil }, set: { if !$0 { ultraTranslationError = nil } })) {
+            Button("אישור", role: .cancel) {}
+        } message: { Text(ultraTranslationError ?? "") }
     }
 
     @ViewBuilder
@@ -252,6 +268,10 @@ struct UnifiedMessageBubble: View {
                 )
             }
 
+            if let translated = ultraStore.translation(message) {
+                Text(translated).font(.body).foregroundStyle(ChatDesign.accent).textSelection(.enabled)
+                Text("מקור:").font(.caption2).foregroundStyle(metadataColor)
+            }
             if !message.text.isEmpty {
                 Text(message.text)
                     .font(.system(size: 17))

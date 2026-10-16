@@ -5,12 +5,15 @@ struct OutboxBadge: View {
     private var outbox =
         PersistentOutbox.shared
 
+    @ObservedObject private var ultraQueue = UltraSendQueue.shared
+    private var total: Int { outbox.items.count + ultraQueue.items.filter { $0.state != "sent" }.count }
+
     var body: some View {
-        if !outbox.items.isEmpty {
+        if total > 0 {
             Text(
-                outbox.items.count > 99
+                total > 99
                 ? "99+"
-                : "\(outbox.items.count)"
+                : "\(total)"
             )
             .font(
                 .caption2.bold()

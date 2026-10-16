@@ -4,6 +4,8 @@ import Foundation
 enum UserLocalStores {
     static func reload() {
         AppSettings.registerDefaults()
+        UltraChatStore.shared.reload()
+        UltraSendQueue.shared.reload()
         PersistentOutbox.shared.reloadForUser()
         SessionQuickReplyStore.shared.reloadForUser()
         CustomerFollowUpStore.shared.reloadForUser()

@@ -3,6 +3,7 @@ import UIKit
 
 struct BusinessShellView: View {
     @State private var selection = 0
+    @Environment(\.scenePhase) private var ultraScenePhase
 
     var body: some View {
         TabView(selection: $selection) {
@@ -67,6 +68,13 @@ struct BusinessShellView: View {
                 .tag(4)
         }
         .task { await CustomerCRMDirectory.shared.refresh() }
+        .task(id: ultraScenePhase) {
+            guard ultraScenePhase == .active else { return }
+            while !Task.isCancelled {
+                UltraSendQueue.shared.kick()
+                do { try await Task.sleep(for: .seconds(12)) } catch { return }
+            }
+        }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
             RealtimeClient.shared.stop()
             RealtimeClient.shared.start()

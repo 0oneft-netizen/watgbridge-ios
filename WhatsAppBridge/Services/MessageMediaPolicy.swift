@@ -12,6 +12,7 @@ enum MessageMediaPolicy {
             )
 
         return type == "view_once"
+            || type.hasPrefix("view_once_")
             || type == "view_once_image"
             || type == "view_once_video"
             || type.contains("viewonce")

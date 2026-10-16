@@ -62,12 +62,7 @@ final class APIClient {
 
         request.httpBody = try JSONEncoder().encode(payload)
 
-        let (_, response) = try await URLSession.shared.data(for: request)
-
-        guard let http = response as? HTTPURLResponse,
-              (200...299).contains(http.statusCode) else {
-            throw URLError(.badServerResponse)
-        }
+        try await UltraSendQueue.shared.submit(request, route: "/send", account: accountID, chat: chatJID, summary: text)
     }
 
 
@@ -268,50 +263,7 @@ final class APIClient {
 
         request.httpBody = body
 
-        let (responseData, response) =
-            try await URLSession.shared
-                .data(for: request)
-
-        guard let http =
-                response as? HTTPURLResponse
-        else {
-            throw NSError(
-                domain: "MediaSend",
-                code: -1,
-                userInfo: [
-                    NSLocalizedDescriptionKey:
-                        "Invalid server response"
-                ]
-            )
-        }
-
-        guard (200...299)
-                .contains(http.statusCode)
-        else {
-            let serverMessage =
-                String(
-                    data: responseData,
-                    encoding: .utf8
-                )?
-                .trimmingCharacters(
-                    in:
-                        .whitespacesAndNewlines
-                )
-
-            let detail =
-                (serverMessage?.isEmpty == false)
-                ? serverMessage!
-                : "HTTP \(http.statusCode)"
-
-            throw NSError(
-                domain: "MediaSend",
-                code: http.statusCode,
-                userInfo: [
-                    NSLocalizedDescriptionKey:
-                        detail
-                ]
-            )
-        }
+        try await UltraSendQueue.shared.submit(request, route: "/send-media-v2", account: accountID, chat: chatJID, summary: caption.isEmpty ? filename : caption)
     }
 
 
@@ -518,21 +470,7 @@ final class APIClient {
                 ]
             )
 
-        let (_, response) =
-            try await URLSession.shared.data(
-                for: request
-            )
-
-        guard let http =
-                response as? HTTPURLResponse,
-              (200...299).contains(
-                http.statusCode
-              )
-        else {
-            throw URLError(
-                .badServerResponse
-            )
-        }
+        try await UltraSendQueue.shared.submit(request, route: "/send-reply", account: accountID, chat: chatJID, summary: text)
     }
 
     func deleteForEveryone(
@@ -687,6 +625,7 @@ extension APIClient {
         _ message: Message,
         to conversation: Conversation
     ) async throws {
+        let scope = UserWorkspace.id
         guard MessageMediaPolicy.mayShare(message),
               let sourceURL = mediaURL(
                 for: message.messageID,
@@ -709,13 +648,14 @@ extension APIClient {
         let type: String
         switch message.type {
         case "image": type = "image"
-        case "video", "gif": type = "video"
+        case "video", "gif", "video_note", "ptv": type = "video"
         case "voice": type = "voice"
         case "audio": type = "audio"
         case "document": type = "document"
         default: throw URLError(.unsupportedURL)
         }
 
+        guard scope == UserWorkspace.id else { throw CancellationError() }
         try await sendMedia(
             chatJID: conversation.jid,
             type: type,

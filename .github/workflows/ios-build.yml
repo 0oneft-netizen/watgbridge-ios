@@ -26,6 +26,9 @@ jobs:
       - name: Verify ULTRA-SAP voice effects and icon
         run: bash Tests/run-ultra-voice.sh
 
+      - name: Verify ULTRA-SAP media translation and queue contracts
+        run: bash Tests/run-ultra-suite.sh
+
       - name: Generate Xcode project
         run: xcodegen generate
 

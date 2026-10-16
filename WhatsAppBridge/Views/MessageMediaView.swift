@@ -5,6 +5,7 @@ import UIKit
 
 struct MessageMediaView: View {
     let message: Message
+    @Environment(\.ultraOpenMedia) private var openUltraMedia
 
     @State private var showViewer = false
     @State private var localURL: URL?
@@ -118,7 +119,7 @@ struct MessageMediaView: View {
                     )
                     .contentShape(Rectangle())
                     .onTapGesture {
-                        showViewer = true
+                        if let openUltraMedia { openUltraMedia(message) } else { showViewer = true }
                     }
                     .fullScreenCover(
                         isPresented: $showViewer
@@ -163,7 +164,7 @@ struct MessageMediaView: View {
             )
             .contentShape(Rectangle())
             .onTapGesture {
-                showViewer = true
+                if let openUltraMedia { openUltraMedia(message) } else { showViewer = true }
             }
             .fullScreenCover(
                 isPresented: $showViewer
@@ -177,10 +178,10 @@ struct MessageMediaView: View {
 
         case "video_note", "ptv":
             WhatsAppRoundVideoNote(url: url) {
-                showViewer = true
+                if let openUltraMedia { openUltraMedia(message) } else { showViewer = true }
             }
             .fullScreenCover(isPresented: $showViewer) {
-                MediaViewer(message: message, url: url, kind: .video)
+                NavigationStack { UltraVideoPlayer(url: url).toolbar { ToolbarItem(placement: .topBarLeading) { Button("סגירה") { showViewer = false } } } }
             }
 
         case "voice", "audio":
