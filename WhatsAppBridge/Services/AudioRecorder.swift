@@ -8,6 +8,10 @@ final class AudioRecorder: NSObject, ObservableObject {
 
     private var recorder: AVAudioRecorder?
     private var timer: Timer?
+    private let audioLease = UUID()
+    private var ownsAudio = false
+    private var starting = false
+    private var generation = 0
 
     private var recordingURL: URL {
         FileManager.default.temporaryDirectory
@@ -23,10 +27,17 @@ final class AudioRecorder: NSObject, ObservableObject {
     }
 
     func start() async throws {
+        guard !isRecording, !starting else { return }
+        starting = true; let token = generation; let scope = UserWorkspace.id
+        defer { starting = false }
         guard await requestPermission() else {
             throw RecorderError.permissionDenied
         }
-
+        guard generation == token, UserWorkspace.id == scope else { throw CancellationError() }
+        guard UltraAudioLease.acquire(audioLease) else { throw UltraVoiceError.busy }
+        ownsAudio = true
+        var startedURL: URL?
+        do {
         let session = AVAudioSession.sharedInstance()
 
         try session.setCategory(
@@ -41,6 +52,7 @@ final class AudioRecorder: NSObject, ObservableObject {
         try session.setActive(true)
 
         let url = recordingURL
+        startedURL = url
 
         let settings: [String: Any] = [
             AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
@@ -56,7 +68,7 @@ final class AudioRecorder: NSObject, ObservableObject {
         )
 
         recorder?.prepareToRecord()
-        recorder?.record()
+        guard recorder?.record() == true else { throw URLError(.cannotCreateFile) }
 
         elapsed = 0
         isRecording = true
@@ -71,6 +83,12 @@ final class AudioRecorder: NSObject, ObservableObject {
                 self?.elapsed =
                     self?.recorder?.currentTime ?? 0
             }
+        }
+        } catch {
+            recorder?.stop(); recorder = nil
+            if let startedURL { try? FileManager.default.removeItem(at: startedURL) }
+            if ownsAudio { _ = UltraAudioLease.release(audioLease); ownsAudio = false; try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation) }
+            throw error
         }
     }
 
@@ -90,13 +108,16 @@ final class AudioRecorder: NSObject, ObservableObject {
 
         self.recorder = nil
 
-        try? AVAudioSession.sharedInstance()
-            .setActive(false)
+        if ownsAudio {
+            _ = UltraAudioLease.release(audioLease); ownsAudio = false
+            try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        }
 
         return url
     }
 
     func cancel() {
+        generation += 1
         let url = stop()
 
         if let url {

@@ -7,6 +7,7 @@ swiftc -swift-version 5 -parse-as-library -target "$(uname -m)-apple-macosx13.0"
   WhatsAppBridge/Models/Message.swift \
   WhatsAppBridge/Models/Conversation.swift \
   WhatsAppBridge/Services/MessageMediaPolicy.swift \
+  WhatsAppBridge/Services/UltraLanguagePolicy.swift \
   WhatsAppBridge/Services/UltraSuite.swift \
   Tests/UltraSuiteContracts.swift \
   -o "$TASK_SUITE_TEST_DIR/ultra-suite-tests"

@@ -74,10 +74,11 @@ struct UltraRecentChat: Codable, Identifiable {
         if pinned(message) { pins.removeAll { Self.key($0) == Self.key(message) } } else { pins.append(message); pins = Array(pins.suffix(100)) }
         save(pins, "ultra.pins.v1")
     }
-    func translation(_ message: Message, target: String = "he") -> String? { translations[target + "|" + Self.key(message)] }
+    func translation(_ message: Message, target: String = "he") -> String? { if UltraLanguagePolicy.skipHebrew(message.text, target: target) { return nil }; return translations[target + "|" + Self.key(message)] }
     func translate(_ messages: [Message], target: String) async throws {
         let user = UserWorkspace.id
-        let items = messages.filter { !$0.text.isEmpty && $0.deletedRemote != true && !MessageMediaPolicy.isViewOnce($0) }.prefix(20)
+        for message in messages where UltraLanguagePolicy.skipHebrew(message.text, target: target) { translations[target + "|" + Self.key(message)] = message.text }
+        let items = messages.filter { !$0.text.isEmpty && $0.deletedRemote != true && !MessageMediaPolicy.isViewOnce($0) && !UltraLanguagePolicy.skipHebrew($0.text, target: target) }.prefix(20)
         guard !items.isEmpty else { return }
         let keyMap = Dictionary(uniqueKeysWithValues: items.map { message -> (String, String) in
             let internalKey = Self.key(message)

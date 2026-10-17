@@ -74,9 +74,11 @@ struct UltraMessageSelection: View {
 }
 struct UltraOutgoingTranslation: View {
     let text: String
+    var conversation: Conversation? = nil
     let onUse: (String) -> Void
     @Environment(\.dismiss) private var dismiss
     @State private var target = "en"
+    @State private var workspace = UserWorkspace.id
     @State private var translated = ""
     @State private var busy = false
     @State private var error: String?
@@ -84,9 +86,14 @@ struct UltraOutgoingTranslation: View {
         NavigationStack {
             Form {
                 Section("המקור") { Text(text).textSelection(.enabled) }
-                Picker("שפת הלקוח", selection: $target) { ForEach(UltraSuiteAPI.languages, id: \.0) { Text($0.1).tag($0.0) } }
+                Picker("שפת הלקוח", selection: Binding(get: { target }, set: { code in
+                    target = code
+                    guard UserWorkspace.id == workspace, let conversation else { return }
+                    Task { do { var p = try await UltraPreferenceStore.shared.load(conversation); p.language = code; p.manual = true; try await UltraPreferenceStore.shared.save(p, chat: conversation) } catch { self.error = "לא ניתן לשמור את שפת הלקוח." } }
+                })) { ForEach(UltraSuiteAPI.languages, id: \.0) { Text($0.1).tag($0.0) } }
                 Text("הטקסט יישלח ל־OpenAI באמצעות המפתח של המשתמש שלך. ייתכן חיוב שימוש.").font(.caption)
                 Button("תרגם לתצוגה מקדימה") { Task {
+                    guard UserWorkspace.id == workspace else { return }
                     busy = true; translated = ""; defer { busy = false }
                     do { translated = try await UltraSuiteAPI.translate([.init(key: "draft", text: text)], target: target).first?.text ?? "" } catch { self.error = error.localizedDescription }
                 } }.disabled(busy || text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
@@ -96,7 +103,8 @@ struct UltraOutgoingTranslation: View {
                     Button("השתמש בטיוטה — ללא שליחה") { onUse(translated); dismiss() }
                 }
                 if let error { Text(error).foregroundStyle(.red) }
-            }.onChange(of: target) { _, _ in translated = "" }
+            }.task { if let conversation { _ = try? await UltraPreferenceStore.shared.load(conversation); let language = UltraPreferenceStore.shared.language(conversation); if !language.isEmpty { target = language } } }
+            .onChange(of: target) { _, _ in translated = "" }
             .navigationTitle("תרגום לפני שליחה").toolbar { ToolbarItem(placement: .topBarLeading) { Button("ביטול") { dismiss() } } }
         }
     }
@@ -173,6 +181,8 @@ struct UltraChatPanel: View {
     let onChat: (Conversation) -> Void
     let onMessage: (Message) -> Void
     @Environment(\.dismiss) private var dismiss
+    @State private var workspace = UserWorkspace.id
+    @State private var preferenceError: String?
     var body: some View {
         NavigationStack {
             List {
@@ -183,9 +193,15 @@ struct UltraChatPanel: View {
                     NavigationLink { UltraMessageSelection(messages: messages) } label: { Label("בחירה מרובה: העברה ותרגום", systemImage: "checkmark.circle") }
                 }
                 Section("תרגום") {
-                    Toggle("תרגם הודעות נכנסות לעברית", isOn: $autoTranslate)
+                    NavigationLink { UltraChatPreferenceView(conversation: conversation, onAutoChange: { autoTranslate = $0 }) } label: { Label("שפת לקוח קבועה והשתקה מתוזמנת", systemImage: "globe") }
+                    Toggle("תרגם הודעות נכנסות לעברית", isOn: Binding(get: { autoTranslate }, set: { enabled in
+                        autoTranslate = enabled
+                        let scope = workspace
+                        Task { guard UserWorkspace.id == scope else { return }; do { var p = try await UltraPreferenceStore.shared.load(conversation); guard UserWorkspace.id == scope else { return }; p.autoTranslate = enabled; try await UltraPreferenceStore.shared.save(p, chat: conversation); preferenceError = nil } catch { preferenceError = "העדפת התרגום לא נשמרה בשרת. בדוק את החיבור ונסה שוב." } }
+                    }))
+                    if let preferenceError { Text(preferenceError).font(.caption).foregroundStyle(.orange) }
                     Text("בהפעלה, עד 12 הודעות טקסט נכנסות אחרונות וחדשות יישלחו ל־OpenAI באמצעות המפתח של המשתמש. התרגום מופיע לצד המקור וייתכן חיוב לפי שימוש. ההגדרה היא לשיחה הזאת בלבד.").font(.caption).foregroundStyle(.secondary)
-                    NavigationLink { UltraOutgoingTranslation(text: draftText) { text in onDraft(text); dismiss() } } label: { Label("תרגם את הטיוטה לפני שליחה", systemImage: "character.bubble") }.disabled(draftText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    NavigationLink { UltraOutgoingTranslation(text: draftText, conversation: conversation) { text in onDraft(text); dismiss() } } label: { Label("תרגם את הטיוטה לפני שליחה", systemImage: "character.bubble") }.disabled(draftText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
                 NavigationLink { UltraOutboxView() } label: { Label("תור שליחה ובדיקת ניסיונות", systemImage: "tray.and.arrow.up") }
             }.navigationTitle("כלים לצ׳אט").toolbar { ToolbarItem(placement: .topBarLeading) { Button("סגירה") { dismiss() } } }

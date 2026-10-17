@@ -66,6 +66,7 @@ struct BusinessToolsView: View {
                 }
 
                 Section("Customers") {
+                    NavigationLink { UltraCustomerMatchesView() } label: { Label("חפש לקוח בכל החשבונות", systemImage: "magnifyingglass") }
                     NavigationLink {
                         CustomersView()
                     } label: {

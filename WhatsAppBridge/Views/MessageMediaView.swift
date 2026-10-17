@@ -255,7 +255,8 @@ struct MessageMediaView: View {
                     messageID:
                         "\(message.accountID ?? "default")_\(message.messageID)",
                     fileName: message.fileName,
-                    mimeType: message.mimeType
+                    mimeType: message.mimeType,
+                    chatJID: message.chatJID
                 )
 
             let image = message.type == "image" ? await ChatImageCache.shared.image(at: result) : nil
@@ -500,7 +501,8 @@ private struct ConversationMediaPage: View {
                     messageID:
                         "\(message.accountID ?? "default")_\(message.messageID)",
                     fileName: message.fileName,
-                    mimeType: message.mimeType
+                    mimeType: message.mimeType,
+                    chatJID: message.chatJID
                 )
         } catch {
             loadError = true

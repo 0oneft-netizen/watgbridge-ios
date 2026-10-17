@@ -150,7 +150,7 @@ struct UltraGalleryView: View {
     private func file(_ message: Message) async throws -> URL {
         guard !MessageMediaPolicy.isViewOnce(message), message.deletedRemote != true,
               let remote = APIClient.shared.mediaURL(for: message.messageID, accountID: message.accountID) else { throw URLError(.unsupportedURL) }
-        return try await MediaCache.shared.localURL(remoteURL: remote, messageID: "\(message.accountID ?? "default")_\(message.messageID)", fileName: message.fileName, mimeType: message.mimeType)
+        return try await MediaCache.shared.localURL(remoteURL: remote, messageID: "\(message.accountID ?? "default")_\(message.messageID)", fileName: message.fileName, mimeType: message.mimeType, chatJID: message.chatJID)
     }
     private func prepare() async {
         actionBusy = true; defer { actionBusy = false }; let message = current
@@ -198,7 +198,7 @@ private struct UltraGalleryPage: View {
         .task(id: message.id) {
             guard !MessageMediaPolicy.isViewOnce(message), message.deletedRemote != true, let remote = APIClient.shared.mediaURL(for: message.messageID, accountID: message.accountID) else { return }
             do {
-                let file = try await MediaCache.shared.localURL(remoteURL: remote, messageID: "\(message.accountID ?? "default")_\(message.messageID)", fileName: message.fileName, mimeType: message.mimeType)
+                let file = try await MediaCache.shared.localURL(remoteURL: remote, messageID: "\(message.accountID ?? "default")_\(message.messageID)", fileName: message.fileName, mimeType: message.mimeType, chatJID: message.chatJID)
                 try Task.checkCancellation(); url = file
                 if message.type == "image" { image = await ChatImageCache.shared.image(at: file) }
             } catch is CancellationError { } catch { self.error = error.localizedDescription }

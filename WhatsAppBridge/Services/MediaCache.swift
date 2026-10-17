@@ -10,6 +10,8 @@ actor MediaCache {
     }
 
     private let fm = FileManager.default
+    private let cacheRoot: URL?
+    init(directory: URL? = nil) { cacheRoot = directory }
     private var inFlight: [String: Task<URL, Error>] = [:]
     private var activeDownloads = 0
     private var waiters: [CheckedContinuation<Void, Never>] = []
@@ -29,6 +31,7 @@ actor MediaCache {
     }
 
     private var directory: URL {
+        if let cacheRoot { return cacheRoot }
         let base = fm.urls(
             for: .cachesDirectory,
             in: .userDomainMask
@@ -44,7 +47,8 @@ actor MediaCache {
         remoteURL: URL,
         messageID: String,
         fileName: String?,
-        mimeType: String?
+        mimeType: String?,
+        chatJID: String? = nil
     ) async throws -> URL {
         try ensureDirectory()
 
@@ -63,6 +67,8 @@ actor MediaCache {
             destination =
                 destination.appendingPathExtension(ext)
         }
+
+        defer { if let chatJID { trackStorage(remote: remoteURL, local: destination, chat: chatJID, name: fileName ?? "Media") } }
 
         if fm.fileExists(atPath: destination.path),
            let attrs = try? fm.attributesOfItem(
@@ -191,5 +197,74 @@ actor MediaCache {
         }
 
         return lower
+    }
+}
+
+extension MediaCache {
+    private func storageRecords() -> [String: UltraCacheEntry] {
+        guard let data = try? Data(contentsOf: directory.appendingPathComponent(".ultra-index.json")), data.count < 20 * 1024 * 1024,
+              let decoded = try? JSONDecoder().decode([String: UltraCacheEntry].self, from: data) else { return [:] }
+        return decoded.filter { key, value in key == value.file && value.file == (value.file as NSString).lastPathComponent && !key.hasPrefix(".") }
+    }
+    private func saveStorageRecords(_ records: [String: UltraCacheEntry]) throws {
+        try ensureDirectory(); try JSONEncoder().encode(records).write(to: directory.appendingPathComponent(".ultra-index.json"), options: .atomic)
+    }
+    private func trackStorage(remote: URL, local: URL, chat: String, name: String) {
+        guard fm.fileExists(atPath: local.path), let parts = URLComponents(url: remote, resolvingAgainstBaseURL: false),
+              let account = parts.queryItems?.first(where: { $0.name == "account_id" })?.value,
+              let id = parts.queryItems?.first(where: { $0.name == "id" })?.value else { return }
+        let path = remote.pathComponents
+        guard path.count >= 4, path[1] == "u", path[2] != "signed-out" else { return }
+        var records = storageRecords()
+        if let current = records[local.lastPathComponent], current.workspace == path[2], current.chat == chat { return }
+        records[local.lastPathComponent] = UltraCacheEntry(workspace: path[2], account: account, chat: chat, message: id, file: local.lastPathComponent, name: name, kept: records[local.lastPathComponent]?.kept ?? false)
+        try? saveStorageRecords(records)
+    }
+    func indexStorage(_ items: [UltraStorageItem], workspace: String, server: URL) throws {
+        guard workspace == UserWorkspace.id else { throw CancellationError() }
+        try ensureDirectory()
+        let files = try fm.contentsOfDirectory(at: directory, includingPropertiesForKeys: [.isRegularFileKey, .isSymbolicLinkKey])
+        var lookup: [String: URL] = [:]
+        for file in files where !file.lastPathComponent.hasPrefix(".") {
+            guard let values = try? file.resourceValues(forKeys: [.isRegularFileKey,.isSymbolicLinkKey]), values.isRegularFile == true, values.isSymbolicLink != true else { continue }
+            lookup[file.deletingPathExtension().lastPathComponent] = file
+        }
+        var records = storageRecords()
+        for item in items {
+            var parts = URLComponents(url: server.appendingPathComponent("u").appendingPathComponent(workspace).appendingPathComponent("media"), resolvingAgainstBaseURL: false)!
+            parts.queryItems = [.init(name: "id", value: item.messageID), .init(name: "account_id", value: item.accountID)]
+            guard let url = parts.url else { continue }
+            let hash = SHA256.hash(data: Data(url.absoluteString.utf8)).map { String(format: "%02x", $0) }.joined()
+            guard let file = lookup[hash] else { continue }
+            records[file.lastPathComponent] = UltraCacheEntry(workspace: workspace, account: item.accountID, chat: item.chatJID, message: item.messageID, file: file.lastPathComponent, name: item.fileName.isEmpty ? item.type : item.fileName, kept: records[file.lastPathComponent]?.kept ?? false)
+        }
+        try saveStorageRecords(records)
+    }
+    func storageChats(workspace: String, protectedKeys: Set<String>) -> [UltraCacheChat] {
+        guard workspace == UserWorkspace.id else { return [] }
+        var grouped: [String: [UltraCacheFile]] = [:]
+        for entry in storageRecords().values where entry.workspace == workspace {
+            let file = directory.appendingPathComponent(entry.file)
+            guard let values = try? file.resourceValues(forKeys: [.fileSizeKey,.isRegularFileKey,.isSymbolicLinkKey]), values.isRegularFile == true, values.isSymbolicLink != true else { continue }
+            let item = UltraCacheFile(entry: entry, bytes: Int64(values.fileSize ?? 0), protected: entry.kept || protectedKeys.contains(entry.key))
+            grouped[entry.account + "|" + entry.chat, default: []].append(item)
+        }
+        return grouped.values.compactMap { files in guard let first = files.first else { return nil }; return UltraCacheChat(account: first.entry.account, chat: first.entry.chat, files: files.sorted { $0.bytes > $1.bytes }) }.sorted { $0.bytes > $1.bytes }
+    }
+    func keepStorageFile(_ id: String, workspace: String, kept: Bool) throws {
+        guard UserWorkspace.id == workspace else { throw CancellationError() }
+        var records = storageRecords(); guard var entry = records[id], entry.workspace == workspace else { return }; entry.kept = kept; records[id] = entry; try saveStorageRecords(records)
+    }
+    func cleanStorage(workspace: String, account: String? = nil, chat: String? = nil, protectedKeys: Set<String>, olderThan: Date? = nil) throws -> Int64 {
+        guard UserWorkspace.id == workspace else { throw CancellationError() }
+        var records = storageRecords(); var removed: Int64 = 0
+        for (id, entry) in records where entry.workspace == workspace && (account == nil || entry.account == account) && (chat == nil || entry.chat == chat) {
+            guard !entry.kept, !protectedKeys.contains(entry.key), !inFlight.keys.contains(where: { ($0 as NSString).lastPathComponent == entry.file }) else { continue }
+            let file = directory.appendingPathComponent(entry.file)
+            guard let values = try? file.resourceValues(forKeys: [.fileSizeKey,.isRegularFileKey,.isSymbolicLinkKey,.contentModificationDateKey]), values.isRegularFile == true, values.isSymbolicLink != true else { continue }
+            if let cutoff = olderThan, (values.contentModificationDate ?? Date.distantFuture) >= cutoff { continue }
+            try fm.removeItem(at: file); removed += Int64(values.fileSize ?? 0); records[id] = nil
+        }
+        try saveStorageRecords(records); return removed
     }
 }

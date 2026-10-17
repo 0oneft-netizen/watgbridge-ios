@@ -155,6 +155,8 @@ struct AutomationCampaignComposer: View {
     @State private var busy = false
     @State private var error: String?
     @State private var createdID: Int64?
+    @State private var review: [UltraRecipientCheck]?
+    @State private var scope = UserWorkspace.id
     var body: some View {
         NavigationStack {
             Form {
@@ -174,8 +176,9 @@ struct AutomationCampaignComposer: View {
                     }
                     Text("לפחות \(max(0, members.count - 1) * interval / 60) דקות. התור ממשיך בשרת כשהאפליקציה סגורה.").font(.footnote).foregroundStyle(.secondary)
                 }
+                if let review { UltraRecipientReviewSection(rows: review) }
                 Section {
-                    Button("צור טיוטת תפוצה לבדיקה") { Task { await create() } }
+                    Button(review == nil ? "בדוק כפילויות ומספרים שולחים" : "צור טיוטה עם הנמענים שאושרו") { Task { await create() } }
                         .disabled(busy || loadingImage || (text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && imageData == nil))
                     if busy { ProgressView() }
                     if let error { Text(error).font(.footnote).foregroundStyle(.secondary) }
@@ -207,8 +210,12 @@ struct AutomationCampaignComposer: View {
     @MainActor private func create() async {
         guard !busy else { return }; busy = true; defer { busy = false }
         do {
+            guard UserWorkspace.id == scope else { throw CancellationError() }
+            if review == nil { review = try await UltraCompleteAPI.preflight(members.map(\.id), workspace: scope); return }
+            let allowed = (review ?? []).filter(\.eligible).map(\.key)
+            guard !allowed.isEmpty else { error = "לא נותרו נמענים לאחר הבדיקה."; return }
             var body: [String: Any] = ["request_key": key, "source": source, "account_id": accountID, "stale_hours": hours, "include_groups": includeGroups,
-                "text": text, "interval_seconds": interval, "selected": members.map(\.id)]
+                "text": text, "interval_seconds": interval, "selected": allowed]
             if let imageData { body["image"] = imageData.base64EncodedString(); body["image_mime"] = "image/jpeg" }
             let result: FeatureCreated = try await CustomerAutomationAPI.shared.request("campaigns", method: "POST", body: body)
             createdID = result.id; error = nil

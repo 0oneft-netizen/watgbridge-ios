@@ -85,6 +85,7 @@ struct CustomerInfoView: View {
             }
 
             Section {
+                NavigationLink { UltraChatPreferenceView(conversation: conversation) } label: { Label("שפה, השתקה וחיפוש בכל החשבונות", systemImage: "person.text.rectangle") }
                 NavigationLink { CustomerContactControls(conversation: conversation) } label: {
                     Label("חסימה ב־WhatsApp והחרגה מתפוצות", systemImage: "hand.raised")
                 }

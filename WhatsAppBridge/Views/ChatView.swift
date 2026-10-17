@@ -38,6 +38,7 @@ struct ChatView: View {
     @State private var ultraMedia: Message?
     @State private var ultraDestination: Conversation?
     @State private var autoTranslate = false
+    @State private var voiceDraft: UltraVoiceDraft?
     @State private var translating = false
     @ObservedObject private var ultraQueue = UltraSendQueue.shared
     @State private var focusedContext = false
@@ -198,10 +199,13 @@ struct ChatView: View {
         }
         .navigationDestination(item: $ultraDestination) { chat in ChatView(conversation: chat) }
         .onChange(of: autoTranslate) { _, enabled in
+            guard UserWorkspace.id == workspaceScope else { return }
             UserWorkspace.defaults.set(enabled, forKey: "ultra.translate.auto." + conversation.id)
             if enabled { Task { await translateIncoming() } }
         }
-        .onChange(of: messages.last?.id) { _, _ in if autoTranslate { Task { await translateIncoming() } } }
+        .onChange(of: messages.last?.id) { _, _ in
+            Task { guard UserWorkspace.id == workspaceScope else { return }; await UltraPreferenceStore.shared.observe(messages, chat: conversation); if autoTranslate { await translateIncoming() } }
+        }
         .fullScreenCover(item: $outgoingCall) { destination in
             OutgoingWhatsAppCallView(destination: destination)
         }
@@ -235,7 +239,8 @@ struct ChatView: View {
                 } catch is CancellationError {} catch { errorMessage = error.localizedDescription }
             }
         }
-        .onDisappear { searchTask?.cancel() }
+        .onDisappear { searchTask?.cancel(); recorder.cancel() }
+        .sheet(item: $voiceDraft) { draft in UltraVoiceReviewView(draft: draft) { url in await sendVoice(url: url) } }
         .sheet(
             isPresented: $showConversationInfo
         ) {
@@ -309,10 +314,16 @@ struct ChatView: View {
                 messages = cached.messages; messageCursor = cached.cursor; isLoading = false
             }
             await loadMessages()
-            if autoTranslate { await translateIncoming() }
             guard UserWorkspace.id == scope, !Task.isCancelled else { return }
             try? await APIClient.shared.markRead(chatJID: conversation.jid,
                 accountID: conversation.accountID ?? "default")
+        }
+        .task(id: conversation.id) {
+            let scope = workspaceScope
+            do { let pref = try await UltraPreferenceStore.shared.load(conversation); guard UserWorkspace.id == scope else { return }; autoTranslate = pref.autoTranslate } catch { }
+            guard UserWorkspace.id == scope, !Task.isCancelled else { return }
+            await UltraPreferenceStore.shared.observe(messages, chat: conversation)
+            if autoTranslate { await translateIncoming() }
         }
         .task(id: scenePhase) {
             guard scenePhase == .active else { return }
@@ -817,11 +828,7 @@ struct ChatView: View {
                     return
                 }
 
-                Task {
-                    await sendVoice(
-                        url: url
-                    )
-                }
+                voiceDraft = UltraVoiceDraft(url: url)
             }
         )
     }
@@ -835,7 +842,7 @@ struct ChatView: View {
     private func toggleProductionRecording() {
         if recorder.isRecording {
             guard let url = recorder.stop() else { return }
-            Task { await sendVoice(url: url) }
+            voiceDraft = UltraVoiceDraft(url: url)
         } else {
             Task {
                 do {
@@ -1265,8 +1272,8 @@ struct ChatView: View {
     @MainActor
     private func sendVoice(
         url: URL
-    ) async {
-
+    ) async -> Bool {
+        guard UserWorkspace.id == workspaceScope else { return false }
         defer {
             try? FileManager.default
                 .removeItem(at: url)
@@ -1292,10 +1299,12 @@ struct ChatView: View {
                 )
 
             await loadMessages()
+            return true
 
         } catch {
             errorMessage =
                 error.localizedDescription
+            return false
         }
     }
 

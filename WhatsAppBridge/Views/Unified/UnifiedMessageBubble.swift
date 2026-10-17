@@ -4,6 +4,8 @@ import UIKit
 struct UnifiedMessageBubble: View {
     @ObservedObject private var ultraStore = UltraChatStore.shared
     @State private var ultraForward = false
+    @State private var showReceiptInfo = false
+    @State private var showVoiceTranscript = false
     @State private var ultraTranslationError: String?
     let message: Message
     let senderName: String
@@ -137,9 +139,13 @@ struct UnifiedMessageBubble: View {
             }
             .shadow(color: .black.opacity(0.05), radius: 1, y: 1)
             .contextMenu {
+                Button { showReceiptInfo = true } label: { Label("פרטי הודעה", systemImage: "info.circle") }
                 if !MessageMediaPolicy.isViewOnce(message) && message.deletedRemote != true {
                     Button { ultraStore.togglePin(message) } label: { Label(ultraStore.pinned(message) ? "בטל נעיצה אישית" : "נעיצה אישית", systemImage: "pin") }
                     Button { ultraForward = true } label: { Label("העבר למספר צ׳אטים", systemImage: "arrowshape.turn.up.right") }
+                    if ["voice", "audio"].contains(message.type) {
+                        Button { showVoiceTranscript = true } label: { Label("תמלול ותרגום ההקלטה", systemImage: "waveform.and.mic") }
+                    }
                     if !message.text.isEmpty {
                         Button { Task { do { try await ultraStore.translate([message], target: "he") } catch { ultraTranslationError = error.localizedDescription } } } label: { Label("תרגם לעברית (OpenAI)", systemImage: "character.bubble") }
                     }
@@ -227,6 +233,8 @@ struct UnifiedMessageBubble: View {
         .environment(\.layoutDirection, .leftToRight)
         .padding(.vertical, 2)
         .sheet(isPresented: $ultraForward) { ForwardMessageView(message: message) }
+        .sheet(isPresented: $showReceiptInfo) { MessageReceiptInfoView(message: message) }
+        .sheet(isPresented: $showVoiceTranscript) { UltraVoiceTranscriptView(message: message) }
         .alert("תרגום", isPresented: Binding(get: { ultraTranslationError != nil }, set: { if !$0 { ultraTranslationError = nil } })) {
             Button("אישור", role: .cancel) {}
         } message: { Text(ultraTranslationError ?? "") }

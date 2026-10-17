@@ -63,6 +63,8 @@ struct CustomerBroadcastComposer: View {
     @State private var error: String?
     @State private var createdID: Int64 = 0
     @State private var showCreated = false
+    @State private var review: [UltraRecipientCheck]?
+    @State private var scope = UserWorkspace.id
     private var members: [CRMCustomer] {
         let ids = Set(crm.state.memberships.filter { $0.groupID == groupID }.map(\.customerID))
         return crm.state.customers.filter { ids.contains($0.id) }
@@ -90,10 +92,11 @@ struct CustomerBroadcastComposer: View {
                         }
                     }
                 }
+                if let review { UltraRecipientReviewSection(rows: review) }
                 Section {
                     Text("זמן מינימלי משוער: \(max(0, selected.count - 1) * interval / 60) דקות. תפוצות אחרות וזמן השליחה עשויים להאריך אותו.")
                         .font(.footnote).foregroundStyle(.secondary)
-                    Button("הכן תפוצה לבדיקה") { Task { await prepare() } }
+                    Button(review == nil ? "בדוק נמענים, כפילויות ומספר שולח" : "הכן תפוצה עם הנמענים שאושרו") { Task { await prepare() } }
                         .disabled(busy || selected.isEmpty || text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     if busy { ProgressView() }
                     if let error { Text(error).font(.footnote).foregroundStyle(.secondary) }
@@ -104,12 +107,19 @@ struct CustomerBroadcastComposer: View {
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("סגור") { dismiss() }.disabled(busy) } }
             .navigationDestination(isPresented: $showCreated) { CustomerBroadcastDetail(id: createdID) }
             .task { await crm.refresh() }
+            .onChange(of: selected) { _, _ in review = nil }
         }
     }
     @MainActor private func prepare() async {
         guard !busy else { return }; busy = true; defer { busy = false }
         do {
-            let result: FeatureCreated = try await CustomerFeaturesAPI.shared.request("broadcasts", method: "POST", body: ["request_key": requestKey, "group_id": groupID, "text": text, "interval_seconds": interval, "customer_ids": Array(selected).sorted()])
+            guard UserWorkspace.id == scope else { throw CancellationError() }
+            let chosen = members.filter { selected.contains($0.id) }
+            if review == nil { review = try await UltraCompleteAPI.preflight(chosen.map { $0.accountID + "|" + $0.jid }, workspace: scope); return }
+            let keys = Set((review ?? []).filter(\.eligible).map(\.key))
+            let approved = chosen.filter { keys.contains($0.accountID + "|" + $0.jid) }.map(\.id)
+            guard !approved.isEmpty else { error = "לא נותרו נמענים לאחר הבדיקה."; return }
+            let result: FeatureCreated = try await CustomerFeaturesAPI.shared.request("broadcasts", method: "POST", body: ["request_key": requestKey, "group_id": groupID, "text": text, "interval_seconds": interval, "customer_ids": approved.sorted()])
             createdID = result.id; showCreated = true; error = nil
         } catch { self.error = error.localizedDescription }
     }

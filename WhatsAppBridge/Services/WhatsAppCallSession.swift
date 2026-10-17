@@ -40,7 +40,7 @@ final class WhatsAppCallSession: ObservableObject {
 
     var statusText: String {
         switch state {
-        case "preparing": return "מכין את המיקרופון…"
+        case "preparing": return "בודק את הסשן ושירות השיחות…"
         case "calling": return "מחייג…"
         case "ringing": return "מצלצל אצל הלקוח…"
         case "connecting": return "הלקוח ענה, מחבר קול…"
@@ -66,7 +66,11 @@ final class WhatsAppCallSession: ObservableObject {
                 Task { @MainActor in self?.end(message: "התקן השמע השתנה. אפשר לחייג שוב עם ההתקן החדש.") }
             }
         }
+        let workspace = UserWorkspace.id
         startup = Task {
+            do { try await UltraCompleteAPI.checkCall(account: destination.accountID, workspace: workspace) }
+            catch { if !Task.isCancelled && !finished { end(message: "לא ניתן לחייג: הסשן או שירות השיחות אינם זמינים. רענן את החיבור ונסה שוב.") }; return }
+            guard !Task.isCancelled, !finished, UserWorkspace.id == workspace else { return }
             let permitted = await withCheckedContinuation { continuation in
                 AVAudioSession.sharedInstance().requestRecordPermission { continuation.resume(returning: $0) }
             }

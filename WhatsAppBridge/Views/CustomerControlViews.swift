@@ -25,6 +25,11 @@ struct CustomerContactControls: View {
                 }
             }
             Section {
+                NavigationLink { ContactBlockAccountsView(conversation: conversation) } label: {
+                    Label("חסימה במספר אחד או בכל המספרים שלי", systemImage: "hand.raised.fill")
+                }
+            }
+            Section {
                 if busy { ProgressView() }
                 if let error { Text(error).foregroundStyle(.secondary); Button("רענן מצב מ־WhatsApp") { Task { await load() } }.disabled(busy) }
                 Text("החסימה מתבצעת בוואטסאפ של הסשן הזה. היסטוריית השיחה נשמרת. החרגה מתפוצות אינה משנה הודעות ברוכים הבאים או הודעות ידניות.")

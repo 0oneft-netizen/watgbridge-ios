@@ -85,6 +85,7 @@ final class UserAccessStore: ObservableObject {
     }
     private func request(_ path: String, body: [String: String]? = nil) async throws -> UserAccessResponse {
         var request = URLRequest(url: UserWorkspace.serverURL.appendingPathComponent("auth/" + path), cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 30)
+        request.setValue(UltraCompleteAPI.deviceLabel, forHTTPHeaderField: "X-Ultra-Device")
         if let body {
             request.httpMethod = "POST"
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")

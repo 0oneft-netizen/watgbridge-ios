@@ -1,19 +1,23 @@
 import SwiftUI
 
 struct ModernSettingsView: View {
-    @AppStorage("mediaAutoDownload")
+    @AppStorage("mediaAutoDownload", store: UserWorkspace.defaults)
     private var mediaAutoDownload = true
 
-    @AppStorage("notificationPreview")
+    @AppStorage("notificationPreview", store: UserWorkspace.defaults)
     private var notificationPreview = true
 
-    @AppStorage("saveReceivedMedia")
+    @AppStorage("saveReceivedMedia", store: UserWorkspace.defaults)
     private var saveReceivedMedia = false
 
     var body: some View {
         NavigationStack {
             List {
                 Section("החשבון") {
+                    NavigationLink { UltraLoginDevicesView() } label: { Label("מכשירים מחוברים", systemImage: "desktopcomputer.and.iphone") }
+                    NavigationLink { UltraSettingsBackupView() } label: { Label("גיבוי הגדרות אישי", systemImage: "icloud.and.arrow.up") }
+                    NavigationLink { UltraSessionAlertsView() } label: { Label("התראות ניתוק סשנים", systemImage: "wifi.exclamationmark") }
+                    NavigationLink { UltraStorageView() } label: { Label("אחסון לפי צ׳אט וקבצים שמורים", systemImage: "internaldrive") }
                     NavigationLink { UserAccountView() } label: { Label("החשבון שלי", systemImage: "person.crop.circle") }
                 }
                 Section {
