@@ -126,6 +126,8 @@ struct CustomerBroadcastComposer: View {
 }
 struct CustomerBroadcastDetail: View {
     let id: Int64
+    @State private var scope = UserWorkspace.id
+    @Environment(\.dismiss) private var dismiss
     @State private var campaign: CustomerBroadcast?
     @State private var busy = false
     @State private var error: String?
@@ -141,6 +143,7 @@ struct CustomerBroadcastDetail: View {
                     if c.state == "draft" || c.state == "paused" { Button(c.state == "draft" ? "התחל שליחה" : "המשך שליחה") { pendingAction = "start" }.disabled(busy) }
                     if c.state == "running" { Button("השהה שליחה") { Task { await action("pause") } }.disabled(busy) }
                     if ["draft", "paused", "running"].contains(c.state) { Button("בטל את השליחות שנותרו", role: .destructive) { pendingAction = "cancel" }.disabled(busy) }
+                    if c.state != "running" { Button("מחק תפוצה מהרשימה", role: .destructive) { pendingAction = "delete" }.disabled(busy) }
                     Text("השהיה או ביטול לא מחזירים הודעה שכבר התחילה להישלח. שליחה לא ודאית אינה נשלחת שוב אוטומטית.")
                         .font(.footnote).foregroundStyle(.secondary)
                 }
@@ -149,6 +152,7 @@ struct CustomerBroadcastDetail: View {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(item.name)
                             Text("\(item.accountID) · \(broadcastStatus(item.state))").font(.caption).foregroundStyle(.secondary)
+                            if !item.lastError.isEmpty { Text(item.lastError).font(.caption2).foregroundStyle(.secondary) }
                         }
                     }
                 }
@@ -156,7 +160,7 @@ struct CustomerBroadcastDetail: View {
             if let error { Text(error).font(.footnote).foregroundStyle(.secondary) }
         }
         .navigationTitle("תפוצה")
-        .confirmationDialog(pendingAction == "cancel" ? "לבטל את התפוצה?" : "לשלוח לנמענים שבחרת?", isPresented: Binding(get: { pendingAction != nil }, set: { if !$0 { pendingAction = nil } }), titleVisibility: .visible) {
+        .confirmationDialog(pendingAction == "delete" ? "למחוק את התפוצה הישנה? ההודעות שכבר נשלחו יישארו בצ׳אטים." : pendingAction == "cancel" ? "לבטל את התפוצה?" : "לשלוח לנמענים שבחרת?", isPresented: Binding(get: { pendingAction != nil }, set: { if !$0 { pendingAction = nil } }), titleVisibility: .visible) {
             Button("אישור") { guard let value = pendingAction else { return }; pendingAction = nil; Task { await action(value) } }
         }
         .task {
@@ -167,12 +171,13 @@ struct CustomerBroadcastDetail: View {
         }
     }
     @MainActor private func refresh() async {
+        guard UserWorkspace.id == scope else { return }
         do { let all: [CustomerBroadcast] = try await CustomerFeaturesAPI.shared.request("broadcasts"); campaign = all.first { $0.id == id }; error = nil }
         catch { if !Task.isCancelled { self.error = error.localizedDescription } }
     }
     @MainActor private func action(_ value: String) async {
-        guard !busy else { return }; busy = true; defer { busy = false }
-        do { let _: FeatureAccepted = try await CustomerFeaturesAPI.shared.request("broadcast-action", method: "POST", body: ["id": id, "action": value]); await refresh() }
+        guard !busy, UserWorkspace.id == scope else { return }; busy = true; defer { busy = false }
+        do { let _: FeatureAccepted = try await CustomerFeaturesAPI.shared.request("broadcast-action", method: "POST", body: ["id": id, "action": value]); if value == "delete" { dismiss(); return }; await refresh() }
         catch { self.error = error.localizedDescription }
     }
 }

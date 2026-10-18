@@ -21,6 +21,7 @@ struct CustomerAutomationCenter: View {
                 NavigationLink { AutomationAudienceView(source: "stale") } label: { Label("לקוחות שלא דיברו לאחרונה", systemImage: "clock.arrow.circlepath") }
             }
             Section("מענה ללקוחות חדשים") {
+                NavigationLink { CustomerWelcomeSettingsView() } label: { Label("הודעת פתיחה אוטומטית ללקוח חדש", systemImage: "text.bubble") }
                 NavigationLink { CustomerAutomationSettingsView() } label: { Label("הגדרות אוטומציה ו־AI", systemImage: "slider.horizontal.3") }
                 NavigationLink { CustomerAutomationAIInbox() } label: { Label("תשובות AI ומעקב", systemImage: "sparkles") }
             }
@@ -82,7 +83,7 @@ struct AutomationAudienceView: View {
                 }
                 Button("בחר את כל המוצגים (\(visible.count))") { selected.formUnion(visible.map(\.id)) }.disabled(loading)
                 if !selected.isEmpty { Button("נקה בחירה (\(selected.count))") { selected.removeAll() } }
-                Text("בחירה לפי חשבון: אותו איש קשר בשני חשבונות הוא שני נמענים נפרדים. החשבון שמופיע לידו הוא החשבון שישלח.")
+                Text("לפני היצירה מוצגים המספר השולח וכפילויות. אותו מספר לקוח ייכלל פעם אחת; מוחרגים לא יקבלו את התפוצה.")
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section("צ׳אטים · \(visible.count)") {
@@ -224,6 +225,8 @@ struct AutomationCampaignComposer: View {
 }
 struct AutomationCampaignDetail: View {
     let id: Int64
+    @State private var scope = UserWorkspace.id
+    @Environment(\.dismiss) private var dismiss
     @State private var record: AutomationCampaignRecord?
     @State private var pages: [Int64] = [0]
     @State private var action: String?
@@ -242,6 +245,7 @@ struct AutomationCampaignDetail: View {
                     if record.state == "draft" || record.state == "paused" { Button("התחל / המשך שליחה") { action = "start" }.disabled(busy) }
                     if record.state == "running" { Button("השהה") { Task { await change("pause") } }.disabled(busy) }
                     if ["draft", "running", "paused"].contains(record.state) { Button("בטל את השליחות שנותרו", role: .destructive) { action = "cancel" }.disabled(busy) }
+                    if record.state != "running" { Button("מחק תפוצה מהרשימה", role: .destructive) { action = "delete" }.disabled(busy) }
                     Text("שליחה שכבר התחילה עשויה להסתיים גם לאחר ביטול. שליחה לא ודאית לא נשלחת שוב אוטומטית.").font(.caption).foregroundStyle(.secondary)
                 }
                 Section("נמענים · עמוד \(pages.count)") {
@@ -261,7 +265,7 @@ struct AutomationCampaignDetail: View {
             }
             if let error { Text(error).font(.footnote).foregroundStyle(.secondary) }
         }.navigationTitle("מעקב תפוצה")
-        .confirmationDialog(action == "cancel" ? "לבטל את התפוצה?" : "לשלוח לנמענים שבחרת?", isPresented: Binding(get: { action != nil }, set: { if !$0 { action = nil } }), titleVisibility: .visible) {
+        .confirmationDialog(action == "delete" ? "למחוק את התפוצה הישנה? ההודעות שכבר נשלחו יישארו בצ׳אטים." : action == "cancel" ? "לבטל את התפוצה?" : "לשלוח לנמענים שבחרת?", isPresented: Binding(get: { action != nil }, set: { if !$0 { action = nil } }), titleVisibility: .visible) {
             Button("אישור") { if let action { self.action = nil; Task { await change(action) } } }
         }
         .task(id: scenePhase) {
@@ -270,6 +274,7 @@ struct AutomationCampaignDetail: View {
         }
     }
     @MainActor private func load() async {
+        guard UserWorkspace.id == scope else { return }
         let after = pages.last ?? 0
         do {
             let rows: [AutomationCampaignRecord] = try await CustomerAutomationAPI.shared.request("campaigns", query: [URLQueryItem(name: "id", value: String(id)), URLQueryItem(name: "after", value: String(after))])
@@ -279,8 +284,8 @@ struct AutomationCampaignDetail: View {
         catch is CancellationError {} catch { self.error = error.localizedDescription }
     }
     @MainActor private func change(_ action: String) async {
-        guard !busy else { return }; busy = true; defer { busy = false }
-        do { let _: FeatureAccepted = try await CustomerAutomationAPI.shared.request("campaign-action", method: "POST", body: ["id": id, "action": action]); await load() }
+        guard !busy, UserWorkspace.id == scope else { return }; busy = true; defer { busy = false }
+        do { let _: FeatureAccepted = try await CustomerAutomationAPI.shared.request("campaign-action", method: "POST", body: ["id": id, "action": action]); if action == "delete" { dismiss(); return }; await load() }
         catch is CancellationError {} catch { self.error = error.localizedDescription }
     }
 }

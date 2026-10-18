@@ -154,7 +154,7 @@ import SwiftUI
     private func revoke(_ device: UltraLoginDevice) async {
         guard !busy, !device.current else { return }; busy = true
         do { let _: FeatureAccepted = try await UltraCompleteAPI.request("auth/devices/revoke", workspace: scope, method: "POST", body: ["id": device.id]); busy = false; await load() }
-        catch { busy = false; error = "ביטול הכניסה לא אושר. רענן ובדוק שוב." }
+        catch { busy = false; self.error = "ביטול הכניסה לא אושר. רענן ובדוק שוב." }
     }
 }
 
