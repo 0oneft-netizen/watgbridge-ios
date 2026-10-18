@@ -87,6 +87,11 @@ struct ChatView: View {
     private var recorder = AudioRecorder()
 
     var body: some View {
+        chatCaptureContent
+    }
+
+    // Opaque view boundaries keep each SwiftUI expression small enough to type-check.
+    private var chatLayout: some View {
         VStack(spacing: 0) {
             if focusedContext {
                 HStack {
@@ -101,6 +106,10 @@ struct ChatView: View {
             content
             composer
         }
+    }
+
+    private var chatNavigationContent: some View {
+        chatLayout
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(WhatsAppVisualDesign.surface, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
@@ -186,6 +195,10 @@ struct ChatView: View {
                 .accessibilityLabel("שיחת WhatsApp קולית")
             }
         }
+    }
+
+    private var chatWorkspaceContent: some View {
+        chatNavigationContent
         .environment(\.ultraOpenMedia, { message in ultraMedia = message })
         .sheet(isPresented: $ultraRecents) {
             UltraRecentChats(current: conversation) { chat in ultraDestination = chat }
@@ -198,6 +211,10 @@ struct ChatView: View {
             UltraGalleryView(initial: message, conversation: conversation, onShow: { jumpTo($0) })
         }
         .navigationDestination(item: $ultraDestination) { chat in ChatView(conversation: chat) }
+    }
+
+    private var chatTranslationContent: some View {
+        chatWorkspaceContent
         .onChange(of: autoTranslate) { _, enabled in
             guard UserWorkspace.id == workspaceScope else { return }
             UserWorkspace.defaults.set(enabled, forKey: "ultra.translate.auto." + conversation.id)
@@ -212,6 +229,10 @@ struct ChatView: View {
         .sheet(isPresented: $showCustomerSave) {
             CustomerSaveView(conversation: conversation)
         }
+    }
+
+    private var chatSearchContent: some View {
+        chatTranslationContent
         .searchable(
             text: $searchText,
             isPresented: $isSearching,
@@ -240,6 +261,10 @@ struct ChatView: View {
             }
         }
         .onDisappear { searchTask?.cancel(); recorder.cancel() }
+    }
+
+    private var chatMessageSheets: some View {
+        chatSearchContent
         .sheet(item: $voiceDraft) { draft in UltraVoiceReviewView(draft: draft) { url in await sendVoice(url: url) } }
         .sheet(
             isPresented: $showConversationInfo
@@ -258,6 +283,10 @@ struct ChatView: View {
                 message: message
             )
         }
+    }
+
+    private var chatRealtimeContent: some View {
+        chatMessageSheets
         .onReceive(
             NotificationCenter.default.publisher(
                 for: .bridgeIncomingMessage
@@ -303,6 +332,10 @@ struct ChatView: View {
                 await loadMessages()
             }
         }
+    }
+
+    private var chatLifecycleContent: some View {
+        chatRealtimeContent
         .task {
             let scope = UserWorkspace.id
             workspaceScope = scope
@@ -355,6 +388,10 @@ struct ChatView: View {
         } message: {
             Text(errorMessage ?? "")
         }
+    }
+
+    private var chatPhotoContent: some View {
+        chatLifecycleContent
         .photosPicker(
             isPresented: $showPhotos,
             selection: $selectedPhotoItems,
@@ -379,7 +416,10 @@ struct ChatView: View {
                 Task { await loadMessages() }
             }
         }
+    }
 
+    private var chatCaptureContent: some View {
+        chatPhotoContent
         .sheet(
             isPresented: $showCamera
         ) {
