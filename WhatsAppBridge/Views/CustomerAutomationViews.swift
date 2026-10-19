@@ -20,10 +20,10 @@ struct CustomerAutomationCenter: View {
                 NavigationLink { AutomationAudienceView(source: "all") } label: { Label("בחירה מכל הצ׳אטים", systemImage: "paperplane") }
                 NavigationLink { AutomationAudienceView(source: "stale") } label: { Label("לקוחות שלא דיברו לאחרונה", systemImage: "clock.arrow.circlepath") }
             }
-            Section("מענה ללקוחות חדשים") {
+            Section("פתיחה וה־AI שלי") {
                 NavigationLink { CustomerWelcomeSettingsView() } label: { Label("הודעת פתיחה אוטומטית ללקוח חדש", systemImage: "text.bubble") }
-                NavigationLink { CustomerAutomationSettingsView() } label: { Label("הגדרות אוטומציה ו־AI", systemImage: "slider.horizontal.3") }
-                NavigationLink { CustomerAutomationAIInbox() } label: { Label("תשובות AI ומעקב", systemImage: "sparkles") }
+                NavigationLink { CustomerAutomationSettingsView() } label: { Label("רשימת חוסר פעילות", systemImage: "slider.horizontal.3") }
+                NavigationLink { LocalAgentCenter() } label: { Label("ה־AI שלי · מקומי ופרטי", systemImage: "sparkles") }
             }
             Section("תפוצות שנוצרו") {
                 if campaigns.isEmpty { Text("התפוצות שתיצור כאן יופיעו ברשימה.").foregroundStyle(.secondary) }
