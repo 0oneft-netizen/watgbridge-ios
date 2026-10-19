@@ -6,7 +6,7 @@ struct OutgoingWhatsAppCallView: View {
     let destination: WhatsAppCallDestination
     @StateObject private var call = WhatsAppCallSession()
     @Environment(\.dismiss) private var dismiss
-    @State private var voicePreset = UltraVoiceSettings.selected
+    @State private var showAudioHealth = false
 
     var body: some View {
         ZStack {
@@ -24,8 +24,8 @@ struct OutgoingWhatsAppCallView: View {
                     Text(SessionDirectory.shared.name(for: destination.accountID))
                         .font(.caption).foregroundStyle(.white.opacity(0.7))
                     Text(call.statusText).font(.subheadline)
-                    if voicePreset != .natural {
-                        Label("אפקט קול: \(voicePreset.title)", systemImage: "waveform")
+                    if call.voicePreset != .natural {
+                        Label("אפקט קול: \(call.voicePreset.title)", systemImage: "waveform")
                             .font(.caption).foregroundStyle(.white.opacity(0.8))
                     }
                     if let connected = call.connectedAt, !call.finished {
@@ -53,6 +53,10 @@ struct OutgoingWhatsAppCallView: View {
                         .font(.system(size: 100)).foregroundStyle(.white.opacity(0.6))
                     Spacer()
                 }
+                if !call.finished {
+                    Button("בדיקת מיקרופון ואפקט קול") { showAudioHealth = true }
+                        .font(.caption).foregroundStyle(.white.opacity(0.85))
+                }
                 if let error = call.errorText {
                     Text(error).font(.subheadline).multilineTextAlignment(.center)
                         .foregroundStyle(.white.opacity(0.85))
@@ -79,7 +83,25 @@ struct OutgoingWhatsAppCallView: View {
         }
         .foregroundStyle(.white)
         .interactiveDismissDisabled(!call.finished)
-        .task { voicePreset = UltraVoiceSettings.selected; call.start(destination) }
+        .sheet(isPresented: $showAudioHealth) {
+            NavigationStack {
+                Form {
+                    Section("מצב השמע — מתעדכן כל 5 שניות") {
+                        Text(call.audioHealthText).font(.caption.monospaced()).textSelection(.enabled)
+                    }
+                    Section {
+                        Button("הפעל מחדש את המיקרופון") { call.repairMicrophone() }
+                        Button("השתמש בקול טבעי בשיחה הזו") { call.useNaturalVoice() }
+                            .disabled(call.voicePreset == .natural)
+                        Text("בחירה בקול טבעי מבטלת את האפקט בשיחה הנוכחית בלבד. לא נשמרת הקלטה.")
+                            .font(.footnote).foregroundStyle(.secondary)
+                    }.disabled(call.finished)
+                }
+                .navigationTitle("בדיקת שמע")
+                .toolbar { ToolbarItem(placement: .confirmationAction) { Button("סיום") { showAudioHealth = false } } }
+            }
+        }
+        .task { call.start(destination) }
         .onDisappear { call.hangup() }
     }
     private func control(_ icon: String, title: String, selected: Bool, action: @escaping () -> Void) -> some View {

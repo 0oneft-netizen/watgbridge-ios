@@ -15,6 +15,9 @@ struct WhatsAppAudioMetrics: Sendable {
     let capturePeak: Float
     let receivePeak: Float
     let inputRate: Double
+    let effectPeak: Float
+    let inputRoute: String
+    let outputRoute: String
 }
 
 final class WhatsAppCallAudio {
@@ -32,6 +35,10 @@ final class WhatsAppCallAudio {
     private var capturePeak: Float = 0
     private var receivePeak: Float = 0
     private var inputRate: Double = 0
+    private var inputChannels: AVAudioChannelCount = 0
+    private var effectPeak: Float = 0
+    private var lastCaptureAt = Date()
+    private var graphBuiltAt = Date()
     private let format = AVAudioFormat(standardFormatWithSampleRate: 16000, channels: 1)!
     private var converter: AVAudioConverter?
     private var samples: [Float] = []
@@ -102,6 +109,7 @@ final class WhatsAppCallAudio {
     private func buildGraph() throws {
         // Enable Apple's echo cancellation before starting the engine.
         if !engine.inputNode.isVoiceProcessingEnabled { try engine.inputNode.setVoiceProcessingEnabled(true) }
+        engine.inputNode.isVoiceProcessingInputMuted = muted
         let inputFormat = engine.inputNode.outputFormat(forBus: 0)
         guard inputFormat.sampleRate > 0, inputFormat.channelCount > 0,
               let converter = AVAudioConverter(from: inputFormat, to: format) else {
@@ -109,6 +117,9 @@ final class WhatsAppCallAudio {
         }
         self.converter = converter
         inputRate = inputFormat.sampleRate
+        inputChannels = inputFormat.channelCount
+        graphBuiltAt = Date()
+        lastCaptureAt = graphBuiltAt
         engine.attach(captureMixer)
         engine.attach(player)
         attached = true
@@ -147,7 +158,8 @@ final class WhatsAppCallAudio {
             guard let self else { return }
             // Do not restart the engine inside its configuration notification.
             self.queue.asyncAfter(deadline: .now() + 0.15) { [weak self] in
-                self?.recoverStoppedEngine()
+                guard let self, Date().timeIntervalSince(self.graphBuiltAt) > 0.75 else { return }
+                self.recoverStoppedEngine(force: true)
             }
         }
         let timer = DispatchSource.makeTimerSource(queue: queue)
@@ -173,17 +185,25 @@ final class WhatsAppCallAudio {
         generation += 1
     }
 
-    private func recoverStoppedEngine() {
-        guard running, !engine.isRunning else { return }
+    private func recoverStoppedEngine(force: Bool = false) {
+        guard running else { return }
+        let captureStalled = Date().timeIntervalSince(lastCaptureAt) > 3
+            && Date().timeIntervalSince(graphBuiltAt) > 3
+        let actualFormat = engine.inputNode.outputFormat(forBus: 0)
+        let formatChanged = actualFormat.sampleRate != inputRate || actualFormat.channelCount != inputChannels
+        guard force || !engine.isRunning || captureStalled || formatChanged else { return }
         let now = Date()
         recoveryTimes.removeAll { now.timeIntervalSince($0) > 30 }
-        guard recoveryTimes.count < 3 else {
-            let failure = onFailure
-            cleanup()
-            failure?()
-            return
+        // A deliberate route change is not a failed engine recovery.
+        if !force {
+            guard recoveryTimes.count < 3 else {
+                let failure = onFailure
+                cleanup()
+                failure?()
+                return
+            }
+            recoveryTimes.append(now)
         }
-        recoveryTimes.append(now)
         discardGraph()
         do {
             try activateSession()
@@ -201,6 +221,7 @@ final class WhatsAppCallAudio {
     private func capture(_ input: AVAudioPCMBuffer) {
         guard running, let converter else { return }
         taps += 1
+        lastCaptureAt = Date()
         let capacity = AVAudioFrameCount(ceil(Double(input.frameLength) * 16000 / input.format.sampleRate)) + 32
         guard let output = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: capacity) else { return }
         var provided = false
@@ -222,7 +243,9 @@ final class WhatsAppCallAudio {
         }
         guard transmitting else { samples.removeAll(keepingCapacity: true); return }
         for index in 0..<Int(output.frameLength) {
-            samples.append(voiceEffect.process(values[index]))
+            let processed = voiceEffect.process(values[index])
+            if processed.isFinite { effectPeak = max(effectPeak, abs(processed)) }
+            samples.append(processed)
         }
         while samples.count >= 960 {
             var packet = Data([1])
@@ -279,7 +302,9 @@ final class WhatsAppCallAudio {
                     conversionErrors: self.conversionErrors, produced: self.produced,
                     received: self.received, played: self.played,
                     capturePeak: self.capturePeak, receivePeak: self.receivePeak,
-                    inputRate: self.inputRate
+                    inputRate: self.inputRate, effectPeak: self.effectPeak,
+                    inputRoute: AVAudioSession.sharedInstance().currentRoute.inputs.map { $0.portType.rawValue }.joined(separator: ","),
+                    outputRoute: AVAudioSession.sharedInstance().currentRoute.outputs.map { $0.portType.rawValue }.joined(separator: ",")
                 ))
             }
         }
@@ -289,7 +314,27 @@ final class WhatsAppCallAudio {
         queue.async { self.transmitting = value; self.samples.removeAll(keepingCapacity: true) }
     }
     func setMuted(_ value: Bool) {
-        queue.async { self.muted = value; self.samples.removeAll(keepingCapacity: true) }
+        queue.async {
+            self.muted = value
+            if self.running { self.engine.inputNode.isVoiceProcessingInputMuted = value }
+            self.samples.removeAll(keepingCapacity: true)
+        }
+    }
+    // Rebuild even when isRunning remains true but the input format/route changed.
+    func routeChanged() {
+        queue.asyncAfter(deadline: .now() + 0.2) { [weak self] in
+            self?.recoverStoppedEngine(force: true)
+        }
+    }
+    func repairMicrophone() {
+        queue.async { self.recoverStoppedEngine(force: true) }
+    }
+    func setVoiceEffect(_ preset: UltraVoicePreset) {
+        queue.async {
+            self.voiceEffect = UltraVoiceDSP(preset: preset)
+            self.samples.removeAll(keepingCapacity: true)
+            self.capturePeak = 0; self.effectPeak = 0
+        }
     }
     func setSpeaker(_ value: Bool, onError: @escaping () -> Void) {
         queue.async {

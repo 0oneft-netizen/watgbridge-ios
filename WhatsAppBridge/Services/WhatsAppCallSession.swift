@@ -19,6 +19,8 @@ final class WhatsAppCallSession: ObservableObject {
     @Published private(set) var speaker = false
     @Published private(set) var connectedAt: Date?
     @Published private(set) var receivedVideo = false
+    @Published private(set) var audioHealthText = "ממתין לנתוני שמע…"
+    @Published private(set) var voicePreset = UltraVoiceSettings.selected
     let video = WhatsAppReceiveVideo()
     private let audio = WhatsAppCallAudio()
     private var socket: URLSessionWebSocketTask?
@@ -63,7 +65,7 @@ final class WhatsAppCallSession: ObservableObject {
         routeObserver = NotificationCenter.default.addObserver(forName: AVAudioSession.routeChangeNotification, object: nil, queue: .main) { [weak self] notification in
             let reason = notification.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt
             if reason == AVAudioSession.RouteChangeReason.oldDeviceUnavailable.rawValue || reason == AVAudioSession.RouteChangeReason.newDeviceAvailable.rawValue {
-                Task { @MainActor in self?.end(message: "התקן השמע השתנה. אפשר לחייג שוב עם ההתקן החדש.") }
+                Task { @MainActor in self?.audio.routeChanged() }
             }
         }
         let workspace = UserWorkspace.id
@@ -77,7 +79,7 @@ final class WhatsAppCallSession: ObservableObject {
             guard !Task.isCancelled, !finished else { return }
             guard permitted else { end(message: "צריך לאפשר גישה למיקרופון בהגדרות האייפון כדי לבצע שיחה."); return }
             do {
-                try await audio.start(speaker: speaker, onFailure: { [weak self] in
+                try await audio.start(speaker: speaker, effect: voicePreset, onFailure: { [weak self] in
                     Task { @MainActor in self?.end(message: "מנוע השמע באייפון נעצר ולא ניתן להפעילו מחדש. נסה לחייג שוב.") }
                 }) { [weak self] packet in
                     Task { @MainActor in self?.sendMicrophone(packet) }
@@ -124,12 +126,22 @@ final class WhatsAppCallSession: ObservableObject {
                 }
                 // Only send aggregate diagnostics when this server explicitly supports them.
                 audioDiagnostics = Task { [weak self] in
-                    for _ in 0..<12 {
+                    while !Task.isCancelled {
                         do { try await Task.sleep(nanoseconds: 5_000_000_000) } catch { return }
                         guard let self, !self.finished, !Task.isCancelled else { return }
+                        let meter = await self.audio.metrics()
+                        guard !self.finished, !Task.isCancelled else { return }
+                        self.audioHealthText = """
+                        סוג שיחה: \(self.wantsVideo ? "וידאו" : "קול") · אפקט: \(self.voicePreset.title)
+                        מנוע פעיל: \(meter.running) · משדר: \(meter.transmitting) · מושתק: \(meter.muted)
+                        כניסה: \(meter.inputRoute) · יציאה: \(meter.outputRoute)
+                        דגימות מיקרופון: \(meter.taps) · שגיאות המרה: \(meter.conversionErrors)
+                        חבילות שנוצרו: \(meter.produced) · נשלחו לשרת: \(self.microphoneSent)
+                        עוצמה מהמיקרופון: \(String(format: "%.5f", meter.capturePeak))
+                        עוצמה לאחר האפקט: \(String(format: "%.5f", meter.effectPeak))
+                        חבילות שהתקבלו: \(meter.received) · הושמעו: \(meter.played)
+                        """
                         if self.diagnosticsSupported {
-                            let meter = await self.audio.metrics()
-                            guard !self.finished, !Task.isCancelled else { return }
                             self.enqueueControl(["type": "audio_health", "health": [
                                 "state": self.state, "running": meter.running,
                                 "transmitting": meter.transmitting, "muted": meter.muted,
@@ -215,6 +227,15 @@ final class WhatsAppCallSession: ObservableObject {
             self.sending = nil
             if !self.finished { self.pump() }
         }
+    }
+    func repairMicrophone() {
+        guard !finished else { return }
+        audio.repairMicrophone()
+    }
+    func useNaturalVoice() {
+        guard !finished else { return }
+        voicePreset = .natural
+        audio.setVoiceEffect(.natural)
     }
     func toggleMuted() {
         guard !finished else { return }; muted.toggle()

@@ -35,6 +35,9 @@ jobs:
       - name: Verify complete upgrade isolation and protected media cleanup
         run: bash Tests/run-ultra-complete.sh
 
+      - name: Verify contact card and call voice effects
+        run: bash Tests/run-contact-call-repair.sh
+
       - name: Generate Xcode project
         run: xcodegen generate
 

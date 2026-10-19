@@ -488,6 +488,16 @@ struct ChatView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(spacing: ConversationDesign.messageSpacing) {
+                    if !focusedContext, !messages.isEmpty,
+                       searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                       (conversation.jid.hasSuffix("@s.whatsapp.net") || conversation.jid.hasSuffix("@lid")),
+                       messages.contains(where: { !$0.fromMe }),
+                       customerCRM.customer(for: conversation) == nil {
+                        NewSenderContactCard(conversation: conversation,
+                            onSave: { showCustomerSave = true },
+                            onDetails: { showConversationInfo = true })
+                            .padding(.horizontal, ConversationDesign.horizontalInset)
+                    }
                     ForEach(
                         Array(messages.enumerated()),
                         id: \.element.id
