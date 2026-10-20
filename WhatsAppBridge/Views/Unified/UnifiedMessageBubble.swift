@@ -220,7 +220,7 @@ struct UnifiedMessageBubble: View {
                         onDeleteLocal
                 ) {
                     Label(
-                        "Delete for Me",
+                        "מחיקה…",
                         systemImage:
                             "trash"
                     )

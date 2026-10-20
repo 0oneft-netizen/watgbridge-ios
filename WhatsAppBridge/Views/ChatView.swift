@@ -47,6 +47,10 @@ struct ChatView: View {
     @State private var showCustomerSave = false
     @State private var outgoingCall: WhatsAppCallDestination?
 
+    @State private var deleteTarget: Message?
+    @State private var showDeleteConfirmation = false
+    @State private var deletingMessage = false
+    @State private var showHiddenSentMessages = false
     @State private var messages: [Message] = []
     @State private var isNearBottom = true
     @State private var showNewMessages = false
@@ -152,6 +156,9 @@ struct ChatView: View {
                 Button { ultraRecents = true } label: { Image(systemName: "rectangle.stack") }
                     .accessibilityLabel("מעבר מהיר בין צ׳אטים")
                 Menu {
+                    Button { showHiddenSentMessages = true } label: {
+                        Label("הודעות ששלחתי ומחקתי אצלי", systemImage: "trash")
+                    }
                     Button { ultraTools = true } label: { Label("כלים, גלריה ותרגום", systemImage: "slider.horizontal.3") }
                     Button { showCustomerSave = true } label: {
                         Label("שמירה או שינוי שם לקוח", systemImage: "person.crop.circle.badge.plus")
@@ -197,8 +204,26 @@ struct ChatView: View {
         }
     }
 
-    private var chatWorkspaceContent: some View {
+    private var chatDeleteContent: some View {
         chatNavigationContent
+        .sheet(isPresented: $showHiddenSentMessages, onDismiss: { Task { await loadProductionMessages() } }) {
+            HiddenSentMessagesView(conversation: conversation)
+        }
+        .confirmationDialog("מחיקת הודעה", isPresented: $showDeleteConfirmation, titleVisibility: .visible) {
+            if let target = deleteTarget {
+                if target.fromMe && target.deletedRemote != true {
+                    Button("מחיקה אצל כולם", role: .destructive) { performMessageDelete(target, everyone: true) }
+                }
+                Button("מחיקה אצלי בלבד", role: .destructive) { performMessageDelete(target, everyone: false) }
+            }
+            Button("ביטול", role: .cancel) { deleteTarget = nil }
+        } message: {
+            Text("מחיקה אצלי בלבד אינה מוחקת אצל הלקוח. מחיקה אצל כולם שולחת בקשה לווצאפ להודעות ששלחת בתוך 48 שעות.")
+        }
+    }
+
+    private var chatWorkspaceContent: some View {
+        chatDeleteContent
         .environment(\.ultraOpenMedia, { message in ultraMedia = message })
         .sheet(isPresented: $ultraRecents) {
             UltraRecentChats(current: conversation) { chat in ultraDestination = chat }
@@ -994,30 +1019,28 @@ struct ChatView: View {
     private func loadProductionMessages() async { await loadMessages() }
 
 
-    private func deleteProductionMessage(
-        _ message: Message
-    ) {
-        let messageID =
-            message.messageID
+    private func deleteProductionMessage(_ message: Message) {
+        guard !deletingMessage, workspaceScope == UserWorkspace.id else { return }
+        deleteTarget = message
+        showDeleteConfirmation = true
+    }
 
-        let accountID =
-            message.accountID
-            ?? "default"
-
-        Task {
-            try? await APIClient.shared
-                .deleteLocal(
-                    messageID: messageID,
-                    accountID: accountID
-                )
-
-            await MainActor.run {
-                messages.removeAll {
-                    item in
-
-                    item.messageID
-                        == messageID
-                }
+    private func performMessageDelete(_ message: Message, everyone: Bool) {
+        guard !deletingMessage, workspaceScope == UserWorkspace.id,
+              message.chatJID == conversation.jid,
+              (message.accountID ?? "default") == (conversation.accountID ?? "default") else { return }
+        let scope = workspaceScope
+        deletingMessage = true
+        Task { @MainActor in
+            defer { deletingMessage = false; deleteTarget = nil }
+            do {
+                try await MessageDeleteAPI.remove(account: conversation.accountID ?? "default", chat: conversation.jid,
+                    message: message.messageID, everyone: everyone, workspace: scope)
+                guard scope == UserWorkspace.id else { return }
+                if !everyone { messages.removeAll { $0.id == message.id } }
+                await loadProductionMessages()
+            } catch {
+                if scope == UserWorkspace.id { errorMessage = error.localizedDescription }
             }
         }
     }
