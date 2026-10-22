@@ -192,7 +192,7 @@ actor MediaCache {
             return "mp4"
         }
 
-        if lower == "jpe" {
+        if ["jpe", "jpeg", "jfif", "pjpeg", "pjp"].contains(lower) {
             return "jpg"
         }
 

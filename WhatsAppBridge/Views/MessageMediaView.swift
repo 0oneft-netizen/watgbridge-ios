@@ -654,6 +654,7 @@ private struct MediaViewer: View {
             isDownloading = false
         }
 
+        let scope = UserWorkspace.id
         do {
             // The viewer now receives a local cached file.
             // Reuse it instead of downloading /media again.
@@ -667,46 +668,27 @@ private struct MediaViewer: View {
 
             localFileURL = file
 
-            let permission =
-                await PHPhotoLibrary.requestAuthorization(
-                    for: .addOnly
-                )
-
-            guard permission == .authorized ||
-                  permission == .limited else {
-                statusText =
-                    "Photo permission is required"
-                return
-            }
-
-            try await PHPhotoLibrary.shared()
-                .performChanges {
-                    switch kind {
-                    case .image:
-                        if let data =
-                            try? Data(
-                                contentsOf: file
-                            ),
-                           let image =
-                            UIImage(data: data) {
-                            PHAssetChangeRequest
-                                .creationRequestForAsset(
-                                    from: image
-                                )
-                        }
-
-                    case .video:
-                        PHAssetChangeRequest
-                            .creationRequestForAssetFromVideo(
-                                atFileURL: file
-                            )
-                    }
+            switch kind {
+            case .image:
+                try await PhotoLibrarySaver.saveImage(at: file, workspace: scope)
+            case .video:
+                let permission = await PHPhotoLibrary.requestAuthorization(for: .addOnly)
+                guard permission == .authorized || permission == .limited else {
+                    statusText = "Photo permission is required"
+                    return
                 }
+                guard scope == UserWorkspace.id else { throw CancellationError() }
+                try await PHPhotoLibrary.shared().performChanges {
+                    PHAssetChangeRequest.creationRequestForAssetFromVideo(atFileURL: file)
+                }
+            }
 
             statusText = "Saved to Photos"
 
+        } catch is CancellationError {
+            statusText = nil
         } catch {
-            statusText = "Could not save media"
+            statusText = error.localizedDescription
         }
     }
 
@@ -732,6 +714,13 @@ private struct MediaViewer: View {
         if let fileName = message.fileName,
            !fileName.isEmpty {
             ext = (fileName as NSString).pathExtension
+        }
+
+        switch kind {
+        case .image:
+            if ["jpe", "jpeg", "jfif", "pjpeg", "pjp"].contains(ext.lowercased()) { ext = "jpg" }
+        case .video:
+            break
         }
 
         if ext.isEmpty {

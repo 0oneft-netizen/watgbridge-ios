@@ -159,12 +159,18 @@ struct UltraGalleryView: View {
     private func save() async {
         actionBusy = true; defer { actionBusy = false }
         do {
+            let scope = UserWorkspace.id
             let message = current, url = try await file(message)
-            let status = await PHPhotoLibrary.requestAuthorization(for: .addOnly)
-            guard status == .authorized || status == .limited else { throw URLError(.noPermissionsToReadFile) }
-            try await PHPhotoLibrary.shared().performChanges {
-                if message.type == "image" { PHAssetChangeRequest.creationRequestForAssetFromImage(atFileURL: url) }
-                else { PHAssetChangeRequest.creationRequestForAssetFromVideo(atFileURL: url) }
+            guard scope == UserWorkspace.id else { throw CancellationError() }
+            if message.type == "image" {
+                try await PhotoLibrarySaver.saveImage(at: url, workspace: scope)
+            } else {
+                let status = await PHPhotoLibrary.requestAuthorization(for: .addOnly)
+                guard status == .authorized || status == .limited else { throw URLError(.noPermissionsToReadFile) }
+                guard scope == UserWorkspace.id else { throw CancellationError() }
+                try await PHPhotoLibrary.shared().performChanges {
+                    PHAssetChangeRequest.creationRequestForAssetFromVideo(atFileURL: url)
+                }
             }
             error = "נשמר לתמונות"
         } catch { self.error = error.localizedDescription }

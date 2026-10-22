@@ -38,6 +38,9 @@ jobs:
       - name: Verify contact card and call voice effects
         run: bash Tests/run-contact-call-repair.sh
 
+      - name: Verify photo export and JFIF handling
+        run: bash Tests/run-photo-export.sh
+
       - name: Generate Xcode project
         run: xcodegen generate
 
