@@ -20,7 +20,16 @@ enum VoiceNoteEffectProcessor {
         let target = FileManager.default.temporaryDirectory.appendingPathComponent("voice-effect-\(UUID().uuidString).caf")
         var completed = false
         defer { if !completed { try? FileManager.default.removeItem(at: target) } }
-        let output = try AVAudioFile(forWriting: target, settings: format.settings, commonFormat: .pcmFormatFloat32, interleaved: false)
+        // File storage and DSP buffers have different layouts. CAF stores
+        // interleaved PCM16; the processing buffers remain Float32 planar.
+        let fileSettings: [String: Any] = [
+            AVFormatIDKey: kAudioFormatLinearPCM,
+            AVSampleRateKey: 16000.0, AVNumberOfChannelsKey: 1,
+            AVLinearPCMBitDepthKey: 16, AVLinearPCMIsFloatKey: false,
+            AVLinearPCMIsBigEndianKey: false, AVLinearPCMIsNonInterleaved: false
+        ]
+        var output: AVAudioFile? = try AVAudioFile(forWriting: target, settings: fileSettings, commonFormat: .pcmFormatFloat32, interleaved: false)
+        defer { output = nil }
         let dsp = UltraVoiceDSP(preset: preset)
         var reachedEnd = false
         var inputError: Error?
@@ -46,7 +55,7 @@ enum VoiceNoteEffectProcessor {
             guard status != .error else { throw ProcessingError.conversionFailed }
             if let samples = converted.floatChannelData?[0], converted.frameLength > 0 {
                 for index in 0..<Int(converted.frameLength) { samples[index] = dsp.process(samples[index]) }
-                try output.write(from: converted); written += AVAudioFramePosition(converted.frameLength)
+                try output!.write(from: converted); written += AVAudioFramePosition(converted.frameLength)
             }
             if status == .endOfStream { break }
             if status == .inputRanDry && reachedEnd { break }
@@ -56,9 +65,10 @@ enum VoiceNoteEffectProcessor {
             guard let tail = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 704), let values = tail.floatChannelData?[0] else { throw ProcessingError.conversionFailed }
             tail.frameLength = 704
             for index in 0..<704 { values[index] = dsp.process(0) }
-            try output.write(from: tail)
+            try output!.write(from: tail)
         }
         try Task.checkCancellation()
+        output = nil // Finalize the CAF header before the review reads it.
         completed = true
         return target
     }

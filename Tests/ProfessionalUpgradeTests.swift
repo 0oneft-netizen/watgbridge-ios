@@ -1,8 +1,18 @@
 import Foundation
 import AVFoundation
+import Darwin
 
 @main struct ProfessionalUpgradeTests {
-    @MainActor static func main() async throws {
+    @MainActor static func main() async {
+        setbuf(stdout, nil)
+        do { try await run() }
+        catch {
+            let error = error as NSError
+            fputs("FAIL: professional audio test: \(error.domain) code=\(error.code) \(error.userInfo)\n", stderr)
+            exit(1)
+        }
+    }
+    @MainActor static func run() async throws {
         let phones = [
             ("+97255644465", "055644465"), ("+972 54-123-4567", "0541234567"),
             ("00972541234567", "0541234567"), ("+972(0)541234567", "0541234567"),
@@ -44,7 +54,14 @@ import AVFoundation
         let input = directory.appendingPathComponent("original.caf")
         let format = AVAudioFormat(standardFormatWithSampleRate: 44100, channels: 2)!
         do {
-            let file = try AVAudioFile(forWriting: input, settings: format.settings)
+            print("CHECK: create 44.1 kHz stereo PCM16 fixture")
+            let fileSettings: [String: Any] = [
+                AVFormatIDKey: kAudioFormatLinearPCM,
+                AVSampleRateKey: 44100.0, AVNumberOfChannelsKey: 2,
+                AVLinearPCMBitDepthKey: 16, AVLinearPCMIsFloatKey: false,
+                AVLinearPCMIsBigEndianKey: false, AVLinearPCMIsNonInterleaved: false
+            ]
+            let file = try AVAudioFile(forWriting: input, settings: fileSettings, commonFormat: .pcmFormatFloat32, interleaved: false)
             let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 44100)!
             buffer.frameLength = 44100
             for channel in 0..<2 {
@@ -53,6 +70,7 @@ import AVFoundation
             try file.write(from: buffer)
         }
         for preset in UltraVoicePreset.allCases {
+            print("CHECK: render voice-note preset", preset.rawValue)
             let rendered = try await VoiceNoteEffectProcessor.prepare(input: input, preset: preset)
             defer { if rendered != input { try? FileManager.default.removeItem(at: rendered) } }
             if preset == .natural { precondition(rendered == input); continue }
