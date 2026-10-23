@@ -78,7 +78,7 @@ struct CustomerInfoView: View {
                 }
                 let phone = ChatIdentity.customerPhone(conversation: conversation)
                 if !phone.isEmpty {
-                    Button { UIPasteboard.general.string = phone } label: {
+                    Button { UIPasteboard.general.string = IsraeliPhonePresentation.copyValue(phone) } label: {
                         Label("העתקת המספר האמיתי", systemImage: "doc.on.doc")
                     }
                 }

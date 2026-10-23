@@ -3,6 +3,8 @@ import SwiftUI
 struct ConversationsView: View {
     @Environment(\.scenePhase) private var scenePhase
     @ObservedObject private var sessions = SessionDirectory.shared
+    @ObservedObject private var draftStore = ChatDraftStore.shared
+    @ObservedObject private var sendQueue = UltraSendQueue.shared
     @State private var chatFilter: BusinessChatFilter = .all
     @State private var selectedAccountID: String?
     @State private var isRefreshing = false
@@ -16,10 +18,18 @@ struct ConversationsView: View {
     @State private var notificationConversation:
         Conversation?
 
+    private var attentionRoutes: Set<String> {
+        Set(sendQueue.items.filter { ["failed", "uncertain"].contains($0.state) }.map { $0.account + "|" + $0.chat })
+    }
     private var sortedConversations: [Conversation] {
-        conversations
+        let attentionRoutes = self.attentionRoutes
+        return conversations
             .filter { selectedAccountID == nil || ($0.accountID ?? "default") == selectedAccountID }
-            .filter { !searchText.isEmpty || chatFilter.includes($0) }
+            .filter { conversation in
+                !searchText.isEmpty || chatFilter.includes(conversation,
+                    hasDraft: !draftStore.text(accountID: conversation.accountID ?? "default", chatJID: conversation.jid).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                    needsAttention: attentionRoutes.contains((conversation.accountID ?? "default") + "|" + conversation.jid))
+            }
             .filter { !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || $0.archived != true }
             .filter {
                 searchText.isEmpty ||
@@ -49,11 +59,18 @@ struct ConversationsView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        let visibleConversations = sortedConversations
+        return NavigationStack {
             List {
                 filterBar
                     .listRowSeparator(.hidden)
                     .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 10, trailing: 16))
+                HStack {
+                    Text("\(visibleConversations.count) צ׳אטים")
+                    Spacer()
+                    Text("\(visibleConversations.reduce(0) { $0 + max(0, $1.unread) }) הודעות שלא נקראו")
+                }.font(.caption).foregroundStyle(.secondary)
+                    .listRowSeparator(.hidden).listRowInsets(EdgeInsets(top: 0, leading: 18, bottom: 8, trailing: 18))
                 if let loadError {
                     Button { Task { await loadConversations() } } label: {
                         Label(loadError + " · נסה שוב", systemImage: "wifi.exclamationmark")
@@ -63,7 +80,7 @@ struct ConversationsView: View {
                 if !didLoad && conversations.isEmpty {
                     HStack { Spacer(); ProgressView("טוען צ׳אטים…"); Spacer() }
                         .listRowSeparator(.hidden)
-                } else if sortedConversations.isEmpty && searchText.isEmpty {
+                } else if visibleConversations.isEmpty && searchText.isEmpty {
                     ContentUnavailableView(chatFilter == .unread ? "אין הודעות שלא נקראו" : "אין צ׳אטים להצגה",
                         systemImage: "bubble.left.and.bubble.right")
                         .listRowSeparator(.hidden)
@@ -81,7 +98,7 @@ struct ConversationsView: View {
                     CustomerSearchResults(query: searchText.trimmingCharacters(in: .whitespacesAndNewlines))
                 }
                 ForEach(
-                    sortedConversations,
+                    visibleConversations,
                     id: \.compositeID
                 ) { conversation in
                     NavigationLink {
@@ -92,6 +109,13 @@ struct ConversationsView: View {
                         ProductionConversationRow(
                             conversation: conversation
                         )
+                    }
+                    .contextMenu {
+                        if !draftStore.text(accountID: conversation.accountID ?? "default", chatJID: conversation.jid).isEmpty {
+                            Button("מחיקת טיוטה", role: .destructive) {
+                                draftStore.clear(accountID: conversation.accountID ?? "default", chatJID: conversation.jid)
+                            }
+                        }
                     }
                     .listRowBackground(WhatsAppVisualDesign.surface)
                     .listRowSeparatorTint(WhatsAppVisualDesign.border)

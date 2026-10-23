@@ -1,6 +1,11 @@
 import Foundation
 
 enum ChatIdentity {
+    static func copyPhone(conversation: Conversation) -> String {
+        IsraeliPhonePresentation.copyValue(customerPhone(conversation: conversation))
+    }
+    static func displayPhone(conversation: Conversation) -> String { copyPhone(conversation: conversation) }
+
     static func customerPhone(
         from jid: String
     ) -> String {

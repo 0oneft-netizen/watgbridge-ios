@@ -239,7 +239,7 @@ struct CustomerProfileView: View {
                 Button {
                     UIPasteboard
                         .general
-                        .string = phone
+                        .string = IsraeliPhonePresentation.copyValue(phone)
 
                     Haptics.success()
                 } label: {

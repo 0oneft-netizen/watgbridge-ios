@@ -22,7 +22,7 @@ struct NewSenderContactCard: View {
             Text(name).font(.title3.weight(.semibold))
                 .multilineTextAlignment(.center).textSelection(.enabled)
             if !phone.isEmpty, phone != name {
-                Text(phone).font(.subheadline).foregroundStyle(.secondary)
+                Text(IsraeliPhonePresentation.copyValue(phone)).font(.subheadline).foregroundStyle(.secondary)
                     .environment(\.layoutDirection, .leftToRight).textSelection(.enabled)
             }
             Text("לא נשמר באנשי הקשר באפליקציה")
@@ -45,7 +45,7 @@ struct NewSenderContactCard: View {
             if !phone.isEmpty {
                 Button {
                     guard isCurrentWorkspace else { return }
-                    UIPasteboard.general.string = phone
+                    UIPasteboard.general.string = IsraeliPhonePresentation.copyValue(phone)
                 } label: {
                     Label("העתקת המספר האמיתי", systemImage: "doc.on.doc")
                         .font(.caption)

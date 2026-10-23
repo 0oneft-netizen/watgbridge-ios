@@ -13,14 +13,7 @@ struct CustomerActionGrid: View {
                 icon:
                     "doc.on.doc"
             ) {
-                UIPasteboard
-                    .general
-                    .string =
-                        ChatIdentity
-                            .customerPhone(
-                                from:
-                                    conversation.jid
-                            )
+                UIPasteboard.general.string = ChatIdentity.copyPhone(conversation: conversation)
             }
 
             action(

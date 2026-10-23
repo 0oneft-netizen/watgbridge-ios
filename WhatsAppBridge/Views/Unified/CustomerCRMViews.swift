@@ -43,8 +43,8 @@ struct CustomerSaveView: View {
                 Section("פרטי הלקוח") {
                     TextField("שם לשמירה", text: $name)
                     if !phone.isEmpty {
-                        LabeledContent("מספר אמיתי", value: phone)
-                        Button { UIPasteboard.general.string = phone } label: { Label("העתקת מספר", systemImage: "doc.on.doc") }
+                        LabeledContent("מספר אמיתי", value: IsraeliPhonePresentation.copyValue(phone))
+                        Button { UIPasteboard.general.string = IsraeliPhonePresentation.copyValue(phone) } label: { Label("העתקת מספר", systemImage: "doc.on.doc") }
                     }
                     SessionMiniBadge(name: sessions.name(for: conversation.accountID))
                 }

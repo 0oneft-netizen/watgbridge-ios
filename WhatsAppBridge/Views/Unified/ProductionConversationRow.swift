@@ -3,142 +3,61 @@ import SwiftUI
 struct ProductionConversationRow: View {
     let conversation: Conversation
     @ObservedObject private var customerCRM = CustomerCRMDirectory.shared
-
-    @ObservedObject
-    private var sessions = SessionDirectory.shared
-
-    private var title: String {
-        customerCRM.name(for: conversation)
+    @ObservedObject private var sessions = SessionDirectory.shared
+    @ObservedObject private var drafts = ChatDraftStore.shared
+    @ObservedObject private var queue = UltraSendQueue.shared
+    private var title: String { IsraeliPhonePresentation.copyValue(customerCRM.name(for: conversation)) }
+    private var hasUnread: Bool { conversation.unread > 0 }
+    private var draft: String { drafts.text(accountID: conversation.accountID ?? "default", chatJID: conversation.jid).trimmingCharacters(in: .whitespacesAndNewlines) }
+    private var pending: UltraQueuedSend? {
+        queue.items.filter { $0.account == (conversation.accountID ?? "default") && $0.chat == conversation.jid && $0.state != "sent" && $0.state != "cancelled" }.max { $0.created < $1.created }
     }
-
-    private var sessionName: String {
-        sessions.name(
-            for: conversation.accountID
-        )
+    private func pendingTitle(_ state: String) -> String {
+        switch state {
+        case "uncertain": return "השליחה דורשת בדיקה בצ׳אט"
+        case "failed": return "הודעה לא נשלחה · פתח את תור השליחה"
+        case "sending": return "שולח הודעה…"
+        default: return "הודעה ממתינה לחיבור"
+        }
     }
-
-    private var preview: String {
-        conversation.previewText
-    }
-
-    private var hasUnread: Bool {
-        conversation.unread > 0
-    }
-
     var body: some View {
-        HStack(
-            alignment: .center,
-            spacing: 12
-        ) {
+        HStack(alignment: .center, spacing: 13) {
             avatar
-
-            VStack(
-                alignment: .leading,
-                spacing: 5
-            ) {
-                HStack(
-                    alignment: .firstTextBaseline,
-                    spacing: 6
-                ) {
-                    Text(title)
-                        .font(
-                            .system(
-                                size: 17,
-                                weight:
-                                    hasUnread
-                                    ? .semibold
-                                    : .medium
-                            )
-                        )
-                        .foregroundStyle(.primary)
-                        .lineLimit(1)
-
-                    Spacer(minLength: 6)
-
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(title).font(.system(size: 17, weight: hasUnread ? .semibold : .medium)).lineLimit(1)
+                    Spacer(minLength: 4)
                     if conversation.lastMessageAt > 0 {
-                        Text(timeText)
-                            .font(
-                                .system(
-                                    size: 12,
-                                    weight:
-                                        hasUnread
-                                        ? .medium
-                                        : .regular
-                                )
-                            )
-                            .foregroundStyle(
-                                hasUnread
-                                ? AppVisualDesign.accent
-                                : Color.secondary
-                            )
-                            .lineLimit(1)
+                        Text(timeText).font(.caption).monospacedDigit()
+                            .foregroundStyle(hasUnread ? WhatsAppVisualDesign.accent : Color.secondary)
                     }
                 }
-
                 HStack(spacing: 5) {
-                    SessionMiniBadge(
-                        name: sessionName
-                    )
-
-                    if conversation.pinned == true {
-                        Image(
-                            systemName: "pin.fill"
-                        )
-                        .font(.system(size: 9))
-                        .foregroundStyle(.secondary)
-                    }
-
-                    if conversation.muted == true {
-                        Image(
-                            systemName:
-                                "speaker.slash.fill"
-                        )
-                        .font(.system(size: 9))
-                        .foregroundStyle(.secondary)
-                    }
-
+                    SessionMiniBadge(name: sessions.name(for: conversation.accountID))
+                    if conversation.pinned == true { Image(systemName: "pin.fill").font(.caption2).foregroundStyle(.secondary) }
+                    if conversation.muted == true { Image(systemName: "speaker.slash.fill").font(.caption2).foregroundStyle(.secondary) }
                     Spacer(minLength: 0)
                 }
-
-                HStack(
-                    alignment: .center,
-                    spacing: 6
-                ) {
-                    Text(preview)
-                        .font(
-                            .system(
-                                size: 15,
-                                weight:
-                                    hasUnread
-                                    ? .medium
-                                    : .regular
-                            )
-                        )
-                        .foregroundStyle(
-                            hasUnread
-                            ? Color.primary.opacity(0.82)
-                            : Color.secondary
-                        )
-                        .lineLimit(1)
-
-                    Spacer(minLength: 6)
-
-                    UnreadBadge(
-                        count: conversation.unread
-                    )
+                HStack(alignment: .top, spacing: 8) {
+                    if !draft.isEmpty {
+                        (Text("טיוטה: ").foregroundColor(.orange) + Text(draft).foregroundColor(.secondary))
+                            .font(.subheadline).lineLimit(2)
+                    } else {
+                        Text(conversation.preview).font(.subheadline)
+                            .foregroundStyle(hasUnread ? Color.primary.opacity(0.85) : Color.secondary).lineLimit(2)
+                    }
+                    Spacer(minLength: 0)
+                    UnreadBadge(count: conversation.unread)
                 }
-            }
-            .frame(
-                maxWidth: .infinity,
-                alignment: .leading
-            )
+                if let pending {
+                    Label(pendingTitle(pending.state), systemImage: ["failed", "uncertain"].contains(pending.state) ? "exclamationmark.circle" : "clock")
+                        .font(.caption2).foregroundStyle(["failed", "uncertain"].contains(pending.state) ? Color.orange : Color.secondary)
+                        .lineLimit(1)
+                }
+            }.frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(
-            .vertical,
-            9
-        )
-        .contentShape(Rectangle())
-
+        .padding(.vertical, 12).contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
     }
 
     private var avatar: some View {

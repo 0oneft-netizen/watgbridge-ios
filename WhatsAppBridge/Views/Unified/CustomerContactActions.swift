@@ -19,7 +19,7 @@ struct CustomerContactActions: View {
                 icon: "doc.on.doc"
             ) {
                 UIPasteboard.general.string =
-                    phone
+                    IsraeliPhonePresentation.copyValue(phone)
             }
 
             ShareLink(

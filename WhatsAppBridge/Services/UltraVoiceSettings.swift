@@ -3,6 +3,19 @@ import Foundation
 
 enum UltraVoiceSettings {
     static let key = "ultra.voice.preset.v1"
+    static var notesEnabled: Bool {
+        get { (UserWorkspace.defaults.object(forKey: "ultra.voice.notes.enabled.v1") as? Bool) ?? true }
+        set { UserWorkspace.defaults.set(newValue, forKey: "ultra.voice.notes.enabled.v1") }
+    }
+    static var notesChoice: UltraVoicePreset {
+        get {
+            if let raw = UserWorkspace.defaults.string(forKey: "ultra.voice.notes.preset.v1"), let preset = UltraVoicePreset(rawValue: raw) { return preset }
+            return selected == .natural ? .warm : selected
+        }
+        set { UserWorkspace.defaults.set(newValue.rawValue, forKey: "ultra.voice.notes.preset.v1") }
+    }
+    static var notesPreset: UltraVoicePreset { notesEnabled ? notesChoice : .natural }
+
     static var selected: UltraVoicePreset {
         get { UltraVoicePreset(rawValue: UserWorkspace.defaults.string(forKey: key) ?? "") ?? .natural }
         set { UserWorkspace.defaults.set(newValue.rawValue, forKey: key) }

@@ -1,7 +1,9 @@
 import Foundation
+import Combine
 
 @MainActor
-final class ChatDraftStore {
+final class ChatDraftStore: ObservableObject {
+    @Published private(set) var revision = 0
     static let shared = ChatDraftStore()
 
     private var defaults: UserDefaults { UserWorkspace.defaults }
@@ -43,6 +45,8 @@ final class ChatDraftStore {
             ComposerTextPolicy
                 .limited(text)
 
+        guard (defaults.string(forKey: storageKey) ?? "") != safeText else { return }
+        revision &+= 1
         if safeText.isEmpty {
             defaults.removeObject(
                 forKey: storageKey
@@ -59,6 +63,7 @@ final class ChatDraftStore {
         accountID: String,
         chatJID: String
     ) {
+        revision &+= 1
         defaults.removeObject(
             forKey: key(
                 accountID: accountID,

@@ -41,6 +41,9 @@ jobs:
       - name: Verify photo export and JFIF handling
         run: bash Tests/run-photo-export.sh
 
+      - name: Verify voice notes, Israeli phone copy and draft isolation
+        run: bash Tests/run-professional-upgrade.sh
+
       - name: Generate Xcode project
         run: xcodegen generate
 

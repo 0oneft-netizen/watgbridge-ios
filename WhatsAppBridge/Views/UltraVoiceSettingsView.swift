@@ -2,6 +2,8 @@ import SwiftUI
 
 struct UltraVoiceSettingsView: View {
     @State private var selected = UltraVoiceSettings.selected
+    @State private var notesEnabled = UltraVoiceSettings.notesEnabled
+    @State private var notePreset = UltraVoiceSettings.notesChoice
     @StateObject private var preview = UltraVoicePreview()
     @Environment(\.scenePhase) private var scenePhase
 
@@ -42,6 +44,16 @@ struct UltraVoiceSettingsView: View {
                 }
             } header: { Text("הקול בשיחה") } footer: {
                 Text("אלה אפקטים לקול שלך. איכות התוצאה תלויה במיקרופון ובחיבור; אפשר תמיד לבחור טבעי.")
+            }
+            Section("הודעות קוליות") {
+                Toggle("אפקט קבוע בהקלטות", isOn: $notesEnabled)
+                    .onChange(of: notesEnabled) { _, value in UltraVoiceSettings.notesEnabled = value }
+                Picker("הקול בהקלטות", selection: $notePreset) {
+                    ForEach(UltraVoicePreset.allCases) { preset in Text(preset.title).tag(preset) }
+                }.disabled(!notesEnabled)
+                    .onChange(of: notePreset) { _, value in UltraVoiceSettings.notesChoice = value }
+                Text("הבחירה נשמרת למשתמש שלך. ההקלטה מעובדת באייפון לפני ההאזנה והשליחה. אפשר לכבות את האפקט כאן או לבחור טבעי.")
+                    .font(.caption).foregroundStyle(.secondary)
             }
             Section("תצוגה מקדימה עם הקול שלך") {
                 Button { preview.record() } label: {

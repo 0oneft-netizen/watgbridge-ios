@@ -19,7 +19,7 @@ struct BusinessToolsView: View {
 
                 Section("תפוצות ואוטומציה") {
                     NavigationLink { CustomerAutomationCenter() } label: {
-                        Label("מרכז תפוצות ו־AI", systemImage: "paperplane.fill")
+                        Label("מרכז תפוצות", systemImage: "paperplane.fill")
                     }
                     NavigationLink { AutomationAudienceView(source: "stale") } label: {
                         Label("לקוחות שלא דיברו לאחרונה", systemImage: "clock.arrow.circlepath")

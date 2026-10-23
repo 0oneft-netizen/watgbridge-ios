@@ -16,7 +16,7 @@ struct CustomerSessionHeader: View {
                 Image(systemName: "phone.fill")
                     .font(.caption2)
 
-                Text(customerPhone)
+                Text(IsraeliPhonePresentation.copyValue(customerPhone))
                         .contentShape(Rectangle())
                         .onTapGesture {
                             let value =
@@ -29,8 +29,7 @@ struct CustomerSessionHeader: View {
                                 return
                             }
 
-                            UIPasteboard.general.string =
-                                value
+                            UIPasteboard.general.string = IsraeliPhonePresentation.copyValue(value)
 
                             let generator =
                                 UINotificationFeedbackGenerator()

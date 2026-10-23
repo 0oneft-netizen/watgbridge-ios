@@ -15,7 +15,6 @@ struct CustomerAutomationSettingsView: View {
                 Text("הרשימה מתעדכנת בשרת ואינה שולחת הודעות בעצמה.").font(.footnote)
             }
             Section {
-                NavigationLink("ה־AI שלי · ללא מפתח חיצוני") { LocalAgentCenter() }
                 Button("שמור") { Task { await save() } }.disabled(!loaded || busy)
                 if let errorText { Text(errorText).foregroundStyle(.secondary) }
             }
@@ -31,5 +30,3 @@ struct CustomerAutomationSettingsView: View {
         catch { errorText = error.localizedDescription }
     }
 }
-// Compatibility for links from older screens. No legacy OpenAI editor remains.
-struct CustomerAutomationAIInbox: View { var body: some View { LocalAgentInbox() } }

@@ -4,7 +4,7 @@ import UIKit
 
 private func automationStateLabel(_ state: String) -> String {
     switch state {
-    case "generating": return "AI מנסח תשובה"
+    case "generating": return "מכין טיוטה"
     case "approved": return "אושרה וממתינה לשליחה"
     case "draft": return "טיוטה לבדיקה"
     default: return broadcastStatus(state)
@@ -20,10 +20,9 @@ struct CustomerAutomationCenter: View {
                 NavigationLink { AutomationAudienceView(source: "all") } label: { Label("בחירה מכל הצ׳אטים", systemImage: "paperplane") }
                 NavigationLink { AutomationAudienceView(source: "stale") } label: { Label("לקוחות שלא דיברו לאחרונה", systemImage: "clock.arrow.circlepath") }
             }
-            Section("פתיחה וה־AI שלי") {
+            Section("אוטומציות ללקוחות") {
                 NavigationLink { CustomerWelcomeSettingsView() } label: { Label("הודעת פתיחה אוטומטית ללקוח חדש", systemImage: "text.bubble") }
                 NavigationLink { CustomerAutomationSettingsView() } label: { Label("רשימת חוסר פעילות", systemImage: "slider.horizontal.3") }
-                NavigationLink { LocalAgentCenter() } label: { Label("ה־AI שלי · מקומי ופרטי", systemImage: "sparkles") }
             }
             Section("תפוצות שנוצרו") {
                 if campaigns.isEmpty { Text("התפוצות שתיצור כאן יופיעו ברשימה.").foregroundStyle(.secondary) }
@@ -39,7 +38,7 @@ struct CustomerAutomationCenter: View {
             if let error { Text(error).font(.footnote).foregroundStyle(.secondary) }
         }
         .listStyle(.insetGrouped).modifier(WhatsAppListStyle())
-        .navigationTitle("מרכז תפוצות ו־AI")
+        .navigationTitle("מרכז תפוצות")
         .refreshable { await load() }
         .task(id: scenePhase) {
             guard scenePhase == .active else { return }

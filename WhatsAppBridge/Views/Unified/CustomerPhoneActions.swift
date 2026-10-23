@@ -5,23 +5,12 @@ struct CustomerPhoneActions: View {
     let conversation:
         Conversation
 
-    private var phone:
-        String {
-        CustomerPhoneFormatter
-            .digits(
-                from:
-                    conversation.jid
-            )
-    }
+    private var phone: String { ChatIdentity.customerPhone(conversation: conversation) }
 
     var body: some View {
         HStack(spacing: 18) {
             Button {
-                UIPasteboard
-                    .general
-                    .string =
-                        "+"
-                        + phone
+                UIPasteboard.general.string = IsraeliPhonePresentation.copyValue(phone)
             } label: {
                 item(
                     "Copy",
