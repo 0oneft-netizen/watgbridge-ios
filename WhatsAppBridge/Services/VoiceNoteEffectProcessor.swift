@@ -9,10 +9,19 @@ enum VoiceNoteEffectProcessor {
         case invalidAudio, conversionFailed
         var errorDescription: String? { "לא ניתן להכין את ההקלטה עם האפקט. הקול המקורי לא נשלח." }
     }
+    private static func checked<T>(_ stage: String, _ operation: () throws -> T) throws -> T {
+        do { return try operation() }
+        catch {
+            throw NSError(domain: "ULTRAVoiceNote", code: 1, userInfo: [
+                NSLocalizedDescriptionKey: "Voice-note stage failed: " + stage,
+                NSUnderlyingErrorKey: error as NSError
+            ])
+        }
+    }
     static func render(input: URL, preset: UltraVoicePreset) throws -> URL {
         try Task.checkCancellation()
         if preset == .natural { return input }
-        let source = try AVAudioFile(forReading: input, commonFormat: .pcmFormatFloat32, interleaved: false)
+        let source = try checked("open input") { try AVAudioFile(forReading: input, commonFormat: .pcmFormatFloat32, interleaved: false) }
         let inputFormat = source.processingFormat
         guard source.length > 0, inputFormat.sampleRate > 0,
               let format = AVAudioFormat(standardFormatWithSampleRate: 16000, channels: 1),
@@ -28,7 +37,7 @@ enum VoiceNoteEffectProcessor {
             AVLinearPCMBitDepthKey: 16, AVLinearPCMIsFloatKey: false,
             AVLinearPCMIsBigEndianKey: false, AVLinearPCMIsNonInterleaved: false
         ]
-        var output: AVAudioFile? = try AVAudioFile(forWriting: target, settings: fileSettings, commonFormat: .pcmFormatFloat32, interleaved: false)
+        var output: AVAudioFile? = try checked("open output") { try AVAudioFile(forWriting: target, settings: fileSettings, commonFormat: .pcmFormatFloat32, interleaved: false) }
         defer { output = nil }
         let dsp = UltraVoiceDSP(preset: preset)
         var reachedEnd = false
@@ -39,23 +48,29 @@ enum VoiceNoteEffectProcessor {
             guard let converted = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 4096) else { throw ProcessingError.conversionFailed }
             var conversionError: NSError?
             let status = converter.convert(to: converted, error: &conversionError) { requested, state in
-                if reachedEnd { state.pointee = .endOfStream; return nil }
-                let frames = max(1, min(4096, Int(requested)))
+                // AVAudioFile can report false without NSError when asked to
+                // read beyond EOF; Swift bridges that into _GenericObjCError.
+                // Signal EOF to the converter without attempting that read.
+                let remaining = source.length - source.framePosition
+                if reachedEnd || remaining <= 0 {
+                    reachedEnd = true; state.pointee = .endOfStream; return nil
+                }
+                let frames = min(max(1, min(4096, Int(requested))), Int(remaining))
                 guard let buffer = AVAudioPCMBuffer(pcmFormat: inputFormat, frameCapacity: AVAudioFrameCount(frames)) else {
                     inputError = ProcessingError.conversionFailed; reachedEnd = true; state.pointee = .endOfStream; return nil
                 }
-                do { try source.read(into: buffer, frameCount: AVAudioFrameCount(frames)) }
+                do { try checked("read input before EOF") { try source.read(into: buffer, frameCount: AVAudioFrameCount(frames)) } }
                 catch { inputError = error; reachedEnd = true; state.pointee = .endOfStream; return nil }
                 guard buffer.frameLength > 0 else { reachedEnd = true; state.pointee = .endOfStream; return nil }
                 state.pointee = .haveData
                 return buffer
             }
             if let inputError { throw inputError }
-            if let conversionError { throw conversionError }
+            if let conversionError { throw NSError(domain: "ULTRAVoiceNote", code: 2, userInfo: [NSLocalizedDescriptionKey: "Voice-note stage failed: convert", NSUnderlyingErrorKey: conversionError]) }
             guard status != .error else { throw ProcessingError.conversionFailed }
             if let samples = converted.floatChannelData?[0], converted.frameLength > 0 {
                 for index in 0..<Int(converted.frameLength) { samples[index] = dsp.process(samples[index]) }
-                try output!.write(from: converted); written += AVAudioFramePosition(converted.frameLength)
+                try checked("write converted PCM") { try output!.write(from: converted) }; written += AVAudioFramePosition(converted.frameLength)
             }
             if status == .endOfStream { break }
             if status == .inputRanDry && reachedEnd { break }
@@ -65,7 +80,7 @@ enum VoiceNoteEffectProcessor {
             guard let tail = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 704), let values = tail.floatChannelData?[0] else { throw ProcessingError.conversionFailed }
             tail.frameLength = 704
             for index in 0..<704 { values[index] = dsp.process(0) }
-            try output!.write(from: tail)
+            try checked("write effect tail") { try output!.write(from: tail) }
         }
         try Task.checkCancellation()
         output = nil // Finalize the CAF header before the review reads it.

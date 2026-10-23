@@ -61,13 +61,14 @@ import Darwin
                 AVLinearPCMBitDepthKey: 16, AVLinearPCMIsFloatKey: false,
                 AVLinearPCMIsBigEndianKey: false, AVLinearPCMIsNonInterleaved: false
             ]
-            let file = try AVAudioFile(forWriting: input, settings: fileSettings, commonFormat: .pcmFormatFloat32, interleaved: false)
+            var file: AVAudioFile? = try AVAudioFile(forWriting: input, settings: fileSettings, commonFormat: .pcmFormatFloat32, interleaved: false)
             let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 44100)!
             buffer.frameLength = 44100
             for channel in 0..<2 {
                 for frame in 0..<44100 { buffer.floatChannelData![channel][frame] = Float(0.3 * sin(2 * Double.pi * 440 * Double(frame) / 44100)) }
             }
-            try file.write(from: buffer)
+            try file!.write(from: buffer)
+            file = nil // Finish the fixture before any preset opens it.
         }
         for preset in UltraVoicePreset.allCases {
             print("CHECK: render voice-note preset", preset.rawValue)
@@ -97,6 +98,25 @@ import Darwin
             }
             print("PASS: actual voice-note conversion, PCM, duration and effect:", preset.rawValue)
         }
+        for frames in [1, 4096, 4097] {
+            print("CHECK: EOF boundary", frames)
+            let boundary = directory.appendingPathComponent("boundary-\(frames).caf")
+            let mono = AVAudioFormat(standardFormatWithSampleRate: 16000, channels: 1)!
+            let settings: [String: Any] = [AVFormatIDKey: kAudioFormatLinearPCM,
+                AVSampleRateKey: 16000.0, AVNumberOfChannelsKey: 1,
+                AVLinearPCMBitDepthKey: 16, AVLinearPCMIsFloatKey: false,
+                AVLinearPCMIsBigEndianKey: false, AVLinearPCMIsNonInterleaved: false]
+            var writer: AVAudioFile? = try AVAudioFile(forWriting: boundary, settings: settings, commonFormat: .pcmFormatFloat32, interleaved: false)
+            let buffer = AVAudioPCMBuffer(pcmFormat: mono, frameCapacity: AVAudioFrameCount(frames))!
+            buffer.frameLength = AVAudioFrameCount(frames)
+            for index in 0..<frames { buffer.floatChannelData![0][index] = 0.2 }
+            try writer!.write(from: buffer); writer = nil
+            let processed = try await VoiceNoteEffectProcessor.prepare(input: boundary, preset: .warm)
+            defer { try? FileManager.default.removeItem(at: processed) }
+            let decoded = try AVAudioFile(forReading: processed)
+            precondition(decoded.length >= AVAudioFramePosition(frames) && decoded.length <= AVAudioFramePosition(frames + 1000), "EOF lost or duplicated samples")
+        }
+        print("PASS: short, exact-block and partial-block EOF inputs")
         let malformed = directory.appendingPathComponent("bad.m4a")
         try Data("not audio".utf8).write(to: malformed)
         do { _ = try await VoiceNoteEffectProcessor.prepare(input: malformed, preset: .deep); preconditionFailure("Invalid input must not fall back to natural") } catch {}
