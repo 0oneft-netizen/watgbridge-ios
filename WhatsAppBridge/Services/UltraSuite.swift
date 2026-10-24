@@ -179,6 +179,8 @@ struct UltraQueuedSend: Codable, Identifiable {
                     if (200...299).contains(http.statusCode) {
                         items[current].state = "sent"; items[current].error = ""; try? FileManager.default.removeItem(at: file)
                         NotificationCenter.default.post(name: Notification.Name("bridgeRealtimeUpdate"), object: nil)
+                    } else if http.value(forHTTPHeaderField: "X-Ultra-Send-State") == "not-attempted" {
+                        items[current].state = "failed"; items[current].error = "ההקלטה לא נשלחה: ממיר הקול בשרת אינו זמין. אחרי תיקון השרת אפשר לנסות שוב."
                     } else if http.statusCode == 409 {
                         items[current].state = "uncertain"; items[current].error = "מצב השליחה אינו ודאי. בדוק בצ׳אט; עותק נוסף לא יישלח אוטומטית."
                     } else if http.statusCode == 401 || http.statusCode == 403 {

@@ -237,7 +237,7 @@ struct CRMSavedCustomerRow: View {
     let customer: CRMCustomer
     var body: some View {
         HStack(spacing: 12) {
-            CustomerAvatarView(jid: customer.jid, size: 44)
+            CustomerAvatarView(jid: customer.jid, accountID: customer.accountID, size: 44)
             VStack(alignment: .leading, spacing: 4) {
                 Text(customer.displayName).font(.headline)
                 if !customer.phone.isEmpty { Text(customer.phone).font(.caption).foregroundStyle(.secondary) }

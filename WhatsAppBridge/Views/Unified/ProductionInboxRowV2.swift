@@ -23,7 +23,7 @@ struct ProductionInboxRowV2: View {
         HStack(spacing: 12) {
             CustomerAvatarView(
                 jid:
-                    conversation.jid
+                    conversation.jid, accountID: conversation.accountID
             )
             .frame(
                 width: 52,

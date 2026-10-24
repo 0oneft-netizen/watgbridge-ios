@@ -1689,7 +1689,7 @@ private struct ChatAvatar: View {
                 APIClient.shared
                     .avatarURL(
                         for:
-                            conversation.jid
+                            conversation.jid, accountID: conversation.accountID
                     ) {
 
                 AsyncImage(

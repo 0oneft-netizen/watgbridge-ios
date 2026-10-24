@@ -283,7 +283,7 @@ struct CustomerProfileView: View {
                 } label: {
                     CustomerAvatarView(
                         jid:
-                            conversation.jid,
+                            conversation.jid, accountID: conversation.accountID,
                         size: 112
                     )
                     .overlay(

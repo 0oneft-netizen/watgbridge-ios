@@ -28,7 +28,7 @@ struct CustomerInfoView: View {
                     AsyncImage(
                         url: APIClient.shared
                             .avatarURL(
-                                for: conversation.jid
+                                for: conversation.jid, accountID: conversation.accountID
                             )
                     ) { phase in
                         if case .success(let image) = phase {

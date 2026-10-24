@@ -13,6 +13,12 @@ import Darwin
         }
     }
     @MainActor static func run() async throws {
+        let avatarA = AvatarRequest(accountID: "session-a", jid: "123@s.whatsapp.net")
+        let avatarB = AvatarRequest(accountID: "session-b", jid: "123@s.whatsapp.net")
+        precondition(avatarA.queryItems.contains { $0.name == "account_id" && $0.value == "session-a" })
+        precondition(avatarB.queryItems.contains { $0.name == "account_id" && $0.value == "session-b" })
+        precondition(AvatarIdentity(accountID: "session-a", jid: avatarA.jid).cacheKey != AvatarIdentity(accountID: "session-b", jid: avatarA.jid).cacheKey)
+        print("PASS: avatar requests preserve the selected account")
         let phones = [
             ("+97255644465", "055644465"), ("+972 54-123-4567", "0541234567"),
             ("00972541234567", "0541234567"), ("+972(0)541234567", "0541234567"),
@@ -74,6 +80,19 @@ import Darwin
             print("CHECK: render voice-note preset", preset.rawValue)
             let rendered = try await VoiceNoteEffectProcessor.prepare(input: input, preset: preset)
             defer { if rendered != input { try? FileManager.default.removeItem(at: rendered) } }
+            // Exercise the actual review/send format, including an effected CAF
+            // exported to the M4A uploaded by ChatView.sendVoice.
+            let upload = directory.appendingPathComponent("upload-\(preset.rawValue).m4a")
+            guard let export = AVAssetExportSession(asset: AVURLAsset(url: rendered), presetName: AVAssetExportPresetAppleM4A) else { fatalError("Cannot create voice upload exporter") }
+            export.outputURL = upload; export.outputFileType = .m4a
+            await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in export.exportAsynchronously { continuation.resume() } }
+            guard export.status == .completed else { throw export.error ?? NSError(domain: "VoiceUploadExport", code: 1) }
+            let uploadFile = try AVAudioFile(forReading: upload)
+            precondition(uploadFile.length > 0, "Empty voice upload")
+            let uploadBuffer = AVAudioPCMBuffer(pcmFormat: uploadFile.processingFormat, frameCapacity: 1024)!
+            try uploadFile.read(into: uploadBuffer, frameCount: min(1024, AVAudioFrameCount(uploadFile.length)))
+            precondition(uploadBuffer.frameLength > 0)
+            print("PASS: playable M4A voice upload", preset.rawValue)
             if preset == .natural { precondition(rendered == input); continue }
             precondition(rendered != input)
             let file = try AVAudioFile(forReading: rendered)

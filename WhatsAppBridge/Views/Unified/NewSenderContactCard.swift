@@ -17,7 +17,7 @@ struct NewSenderContactCard: View {
 
     var body: some View {
         VStack(spacing: 14) {
-            CustomerAvatarView(jid: conversation.jid, size: 100)
+            CustomerAvatarView(jid: conversation.jid, accountID: conversation.accountID, size: 100)
                 .accessibilityLabel("תמונת השולח, כאשר זמינה")
             Text(name).font(.title3.weight(.semibold))
                 .multilineTextAlignment(.center).textSelection(.enabled)

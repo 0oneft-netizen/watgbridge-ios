@@ -15,7 +15,7 @@ struct CustomerProfileSummary: View {
         VStack(spacing: 12) {
             CustomerAvatarView(
                 jid:
-                    conversation.jid
+                    conversation.jid, accountID: conversation.accountID
             )
             .frame(
                 width: 108,

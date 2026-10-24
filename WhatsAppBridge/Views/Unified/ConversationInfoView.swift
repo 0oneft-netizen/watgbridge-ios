@@ -48,7 +48,7 @@ struct ConversationInfoView: View {
                             APIClient.shared
                                 .avatarURL(
                                     for:
-                                        conversation.jid
+                                        conversation.jid, accountID: conversation.accountID
                                 )
                     ) { phase in
                         switch phase {

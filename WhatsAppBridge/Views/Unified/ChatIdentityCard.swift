@@ -12,7 +12,7 @@ struct ChatIdentityCard: View {
         HStack(spacing: 10) {
             CustomerAvatarView(
                 jid:
-                    conversation.jid
+                    conversation.jid, accountID: conversation.accountID
             )
             .frame(
                 width: 44,

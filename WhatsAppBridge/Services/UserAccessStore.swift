@@ -98,6 +98,15 @@ final class UserAccessStore: ObservableObject {
         guard http.statusCode == 200 else { throw UserAccessError.unavailable }
         return try JSONDecoder().decode(UserAccessResponse.self, from: data)
     }
+    func avatarRequest(url: URL, workspace: String) -> URLRequest? {
+        guard workspace == UserWorkspace.id, workspace != "signed-out",
+              credential?.user.id == workspace,
+              url.scheme == "https", url.host == UserWorkspace.serverURL.host,
+              url.path.hasPrefix("/u/" + workspace + "/avatar") else { return nil }
+        var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 20)
+        request.setValue("Bearer " + credential!.token, forHTTPHeaderField: "Authorization")
+        return request
+    }
     func restore() async {
         guard !busy else { return }
         if credential == nil { checking = false; return }

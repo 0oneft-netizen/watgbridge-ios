@@ -66,14 +66,16 @@ final class APIClient {
     }
 
 
-    func avatarURL(for jid: String) -> URL? {
+    func avatarURL(for jid: String, accountID: String? = nil) -> URL? {
         var components = URLComponents(
             url: baseURL.appendingPathComponent("avatar"),
             resolvingAgainstBaseURL: false
         )
 
         components?.queryItems = [
-            URLQueryItem(name: "jid", value: jid)
+            URLQueryItem(name: "jid", value: jid),
+            URLQueryItem(name: "account_id", value: accountID ?? "default"),
+            URLQueryItem(name: "refresh", value: String(Int(Date().timeIntervalSince1970 / 300)))
         ]
 
         return components?.url

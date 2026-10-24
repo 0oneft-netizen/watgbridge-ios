@@ -63,27 +63,7 @@ struct ProductionChatHeader: View {
     }
 
     private var avatar: some View {
-        AsyncImage(
-            url: APIClient.shared.avatarURL(
-                for: conversation.jid
-            )
-        ) { phase in
-            switch phase {
-            case .success(let image):
-                image
-                    .resizable()
-                    .scaledToFill()
-
-            default:
-                AppAvatarPlaceholder(
-                    initials:
-                        conversation.initials,
-                    size:
-                        AppVisualDesign
-                            .chatAvatarSize
-                )
-            }
-        }
+        CustomerAvatarView(jid: conversation.jid, accountID: conversation.accountID, size: AppVisualDesign.chatAvatarSize)
         .frame(
             width:
                 AppVisualDesign.chatAvatarSize,

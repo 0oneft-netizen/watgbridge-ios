@@ -13,6 +13,10 @@ xcrun swiftc -swift-version 5 -parse-as-library -O -target "$(uname -m)-apple-ma
   WhatsAppBridge/Services/ComposerTextPolicy.swift \
   WhatsAppBridge/Services/BusinessChatFilter.swift \
   WhatsAppBridge/Models/Conversation.swift \
+  WhatsAppBridge/Models/Message.swift \
+  WhatsAppBridge/Models/ConversationRoute.swift \
+  WhatsAppBridge/Models/AvatarIdentity.swift \
+  WhatsAppBridge/Models/AvatarRequest.swift \
   Tests/ProfessionalUpgradeTests.swift \
   -o "$professional_test_dir/professional-tests"
 "$professional_test_dir/professional-tests"

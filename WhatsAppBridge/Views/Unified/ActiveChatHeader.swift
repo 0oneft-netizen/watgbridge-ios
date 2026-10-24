@@ -15,7 +15,7 @@ struct ActiveChatHeader: View {
             HStack(spacing: 9) {
                 CustomerAvatarView(
                     jid:
-                        conversation.jid
+                        conversation.jid, accountID: conversation.accountID
                 )
                 .frame(
                     width: 36,
