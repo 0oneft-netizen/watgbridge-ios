@@ -3,11 +3,15 @@ import Photos
 
 struct ProfilePhotoViewer: View {
     let jid: String
+    let accountID: String?
     let customerName: String
 
     @Environment(\.dismiss)
     private var dismiss
 
+    @State private var loading = true
+    @State private var reloadID = 0
+    @State private var workspace = UserWorkspace.id
     @State private var image: UIImage?
     @State private var saving = false
     @State private var saved = false
@@ -24,6 +28,12 @@ struct ProfilePhotoViewer: View {
                         image: image
                     )
                     .padding(.vertical, 20)
+                } else if !loading {
+                    VStack(spacing: 14) {
+                        Image(systemName: "person.crop.circle.badge.exclamationmark").font(.largeTitle)
+                        Text("תמונת הפרופיל אינה זמינה כרגע").foregroundStyle(.white)
+                        Button("נסה שוב") { reloadID += 1 }
+                    }
                 } else {
                     ProgressView()
                         .tint(.white)
@@ -103,11 +113,11 @@ struct ProfilePhotoViewer: View {
                     }
                 }
             }
-            .task(id: jid) {
-                image =
-                    await CustomerAvatarService
-                        .shared
-                        .image(jid: jid)
+            .task(id: "\(workspace)|\(accountID ?? "default")|\(jid)|\(reloadID)") {
+                loading = true; image = nil
+                let loaded = await CustomerAvatarService.shared.image(jid: jid, accountID: accountID)
+                guard workspace == UserWorkspace.id, !Task.isCancelled else { return }
+                image = loaded; loading = false
             }
             .alert(
                 "Photo",

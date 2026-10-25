@@ -81,6 +81,8 @@ struct CustomerProfileView: View {
                 }
             }
             profileHeader
+            ChatMuteControls(conversation: conversation)
+            WhatsAppIdentitySection(conversation: conversation)
 
             Section {
                 quickActions
@@ -266,6 +268,7 @@ struct CustomerProfileView: View {
             ProfilePhotoViewer(
                 jid:
                     conversation.jid,
+                accountID: conversation.accountID,
                 customerName:
                     name
             )

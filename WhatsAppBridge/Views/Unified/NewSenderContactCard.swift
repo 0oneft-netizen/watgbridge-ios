@@ -19,6 +19,7 @@ struct NewSenderContactCard: View {
         VStack(spacing: 14) {
             CustomerAvatarView(jid: conversation.jid, accountID: conversation.accountID, size: 100)
                 .accessibilityLabel("תמונת השולח, כאשר זמינה")
+            WhatsAppIdentitySection(conversation: conversation)
             Text(name).font(.title3.weight(.semibold))
                 .multilineTextAlignment(.center).textSelection(.enabled)
             if !phone.isEmpty, phone != name {
