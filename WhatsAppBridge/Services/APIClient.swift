@@ -9,16 +9,24 @@ final class APIClient {
     var baseURL: URL { UserWorkspace.baseURL }
 
     func fetchConversations() async throws -> [Conversation] {
-        let url = baseURL.appendingPathComponent("conversations")
-
-        let (data, response) = try await URLSession.shared.data(from: url)
-
-        guard let http = response as? HTTPURLResponse,
-              (200...299).contains(http.statusCode) else {
-            throw URLError(.badServerResponse)
-        }
-
-        return try JSONDecoder().decode([Conversation].self, from: data)
+        let workspace = UserWorkspace.id
+        guard workspace != "signed-out" else { throw URLError(.userAuthenticationRequired) }
+        let scope = FastChatScope.key(workspace: workspace)
+        let cached = await FastChatArchive.shared.conversations(scope: scope)
+        var request = URLRequest(url: baseURL.appendingPathComponent("conversations"), cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 15)
+        if let tag = cached?.etag { request.setValue(tag, forHTTPHeaderField: "If-None-Match") }
+        let (data, response) = try await URLSession.shared.data(for: request)
+        try Task.checkCancellation()
+        guard workspace == UserWorkspace.id else { throw CancellationError() }
+        guard let http = response as? HTTPURLResponse else { throw URLError(.badServerResponse) }
+        if http.statusCode == 304, let cached { return cached.rows }
+        guard http.statusCode == 200 else { throw URLError(.badServerResponse) }
+        let rows = try await Task.detached(priority: .userInitiated) {
+            try JSONDecoder().decode([Conversation].self, from: data)
+        }.value
+        guard workspace == UserWorkspace.id else { throw CancellationError() }
+        await FastChatArchive.shared.saveConversations(rows, etag: http.value(forHTTPHeaderField: "ETag"), scope: scope)
+        return rows
     }
 
     func fetchMessages(chatJID: String, accountID: String = "default") async throws -> [Message] {

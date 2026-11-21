@@ -41,10 +41,10 @@ struct ProductionConversationRow: View {
                 HStack(alignment: .top, spacing: 8) {
                     if !draft.isEmpty {
                         (Text("טיוטה: ").foregroundColor(.orange) + Text(draft).foregroundColor(.secondary))
-                            .font(.subheadline).lineLimit(2)
+                            .font(.subheadline).lineLimit(1)
                     } else {
                         Text(conversation.preview).font(.subheadline)
-                            .foregroundStyle(hasUnread ? Color.primary.opacity(0.85) : Color.secondary).lineLimit(2)
+                            .foregroundStyle(hasUnread ? Color.primary.opacity(0.85) : Color.secondary).lineLimit(1)
                     }
                     Spacer(minLength: 0)
                     UnreadBadge(count: conversation.unread)
@@ -56,7 +56,7 @@ struct ProductionConversationRow: View {
                 }
             }.frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(.vertical, 12).contentShape(Rectangle())
+        .padding(.vertical, 10).contentShape(Rectangle())
         .accessibilityElement(children: .combine)
     }
 

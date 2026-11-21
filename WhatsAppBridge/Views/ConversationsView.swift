@@ -14,6 +14,9 @@ struct ConversationsView: View {
     @State private var conversations: [Conversation] = []
     @State private var searchText = ""
     @State private var showSettings = false
+    @State private var showNewChat = false
+    @State private var snapshotDate: Date?
+    @State private var lastRefreshStarted = Date.distantPast
 
     @State private var notificationConversation:
         Conversation?
@@ -71,6 +74,12 @@ struct ConversationsView: View {
                     Text("\(visibleConversations.reduce(0) { $0 + max(0, $1.unread) }) הודעות שלא נקראו")
                 }.font(.caption).foregroundStyle(.secondary)
                     .listRowSeparator(.hidden).listRowInsets(EdgeInsets(top: 0, leading: 18, bottom: 8, trailing: 18))
+                if let snapshotDate {
+                    HStack(spacing: 6) {
+                        if isRefreshing { ProgressView().controlSize(.mini) }
+                        Text(loadError == nil ? "עודכן " + snapshotDate.formatted(date: .omitted, time: .shortened) : "מוצג העותק ששמור באייפון")
+                    }.font(.caption2).foregroundStyle(.secondary).listRowSeparator(.hidden)
+                }
                 if let loadError {
                     Button { Task { await loadConversations() } } label: {
                         Label(loadError + " · נסה שוב", systemImage: "wifi.exclamationmark")
@@ -216,6 +225,10 @@ struct ConversationsView: View {
             .modifier(WhatsAppListStyle())
             .navigationTitle("צ׳אטים")
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button { showNewChat = true } label: { Image(systemName: "square.and.pencil") }
+                        .accessibilityLabel("צ׳אט חדש לפי מספר טלפון")
+                }
                 ToolbarItem(
                     placement: .topBarTrailing
                 ) {
@@ -231,6 +244,11 @@ struct ConversationsView: View {
                         }
                     } label: { Image(systemName: "ellipsis.circle") }
 
+                }
+            }
+            .sheet(isPresented: $showNewChat) {
+                NewWhatsAppChatView(conversations: conversations, initialAccount: selectedAccountID) { conversation in
+                    notificationConversation = conversation
                 }
             }
             .sheet(
@@ -253,6 +271,10 @@ struct ConversationsView: View {
                 await loadConversations()
             }
             .task {
+                let scope = UserWorkspace.id
+                if scope != "signed-out", let stored = await FastChatArchive.shared.conversations(scope: FastChatScope.key(workspace: scope)), UserWorkspace.id == scope, conversations.isEmpty {
+                    conversations = stored.rows; snapshotDate = stored.savedAt; didLoad = true
+                }
                 RealtimeClient.shared.start()
 
                 await NotificationManager.shared
@@ -432,22 +454,23 @@ struct ConversationsView: View {
     private func loadConversations(notifyForNewMessages: Bool = false) async {
         if isRefreshing {
             refreshAgain = true
-            while isRefreshing {
-                do { try await Task.sleep(for: .milliseconds(50)) } catch { return }
-            }
             return
         }
         let scope = UserWorkspace.id
         guard scope != "signed-out" else { return }
-        isRefreshing = true
+        guard Date().timeIntervalSince(lastRefreshStarted) >= 1 else { return }
+        lastRefreshStarted = Date(); isRefreshing = true
         defer { isRefreshing = false }
+        var rounds = 0
         repeat {
+            rounds += 1
             refreshAgain = false
             do {
                 let updated = try await APIClient.shared.fetchConversations()
                 try Task.checkCancellation()
                 guard UserWorkspace.id == scope else { return }
-                conversations = updated
+                if conversations != updated { conversations = updated }
+                snapshotDate = Date()
                 didLoad = true; loadError = nil
                 await NotificationManager.shared.setBadgeCount(updated.reduce(0) { $0 + max(0, $1.unread) })
             } catch is CancellationError { return }
@@ -456,7 +479,7 @@ struct ConversationsView: View {
                 loadError = "לא ניתן לעדכן כרגע"
                 return
             }
-        } while refreshAgain && !Task.isCancelled && UserWorkspace.id == scope
+        } while refreshAgain && rounds < 2 && !Task.isCancelled && UserWorkspace.id == scope
     }
 
 }

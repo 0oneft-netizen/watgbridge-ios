@@ -84,7 +84,7 @@ final class UserAccessStore: ObservableObject {
         }
     }
     private func request(_ path: String, body: [String: String]? = nil) async throws -> UserAccessResponse {
-        var request = URLRequest(url: UserWorkspace.serverURL.appendingPathComponent("auth/" + path), cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 30)
+        var request = URLRequest(url: UserWorkspace.serverURL.appendingPathComponent("auth/" + path), cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: path == "me" ? 8 : 30)
         request.setValue(UltraCompleteAPI.deviceLabel, forHTTPHeaderField: "X-Ultra-Device")
         if let body {
             request.httpMethod = "POST"
@@ -111,6 +111,12 @@ final class UserAccessStore: ObservableObject {
         guard !busy else { return }
         if credential == nil { checking = false; return }
         busy = true; let current = epoch
+        // An unexpired credential already held in this device's Keychain may
+        // show its protected local copy while server validation runs. A known
+        // rejection still leaves immediately and purges that workspace cache.
+        if user == nil, let saved = credential, saved.expiresAt > Int64(Date().timeIntervalSince1970) {
+            await enter(saved.user); checking = false
+        }
         defer { busy = false }
         do {
             let response = try await request("me")
@@ -145,6 +151,7 @@ final class UserAccessStore: ObservableObject {
             ChatSnapshotStore.shared.clear()
             RealtimeClient.shared.stop()
             UserWorkspace.select(identity.id)
+            await FastChatArchive.shared.activate(scope: FastChatScope.key(workspace: identity.id))
             UserLocalStores.reload()
             SessionDirectory.shared.resetForUser()
             CustomerCRMDirectory.shared.resetForUser()
@@ -163,6 +170,7 @@ final class UserAccessStore: ObservableObject {
         await leave()
     }
     private func leave() async {
+        let departing = credential?.user.id ?? UserWorkspace.id
         epoch += 1
         ChatSnapshotStore.shared.clear()
         RealtimeClient.shared.stop()
@@ -170,6 +178,7 @@ final class UserAccessStore: ObservableObject {
         user = nil; credential = nil
         SecItemDelete(query as CFDictionary)
         clearCookies(); UserWorkspace.select(nil)
+        await FastChatArchive.shared.purge(scope: FastChatScope.key(workspace: departing))
         UserLocalStores.reload()
         SessionDirectory.shared.resetForUser(); CustomerCRMDirectory.shared.resetForUser()
         AppLockStore.shared.changeUser()

@@ -29,6 +29,7 @@ struct ChatView: View {
     @Environment(\.scenePhase) private var scenePhase
     @ObservedObject private var sessions = SessionDirectory.shared
     @State private var workspaceScope = UserWorkspace.id
+    @State private var networkNotice: String?
     let conversation: Conversation
     var initialMessageID: String? = nil
     @State private var requestedMessageID: String?
@@ -361,6 +362,13 @@ struct ChatView: View {
 
     private var chatLifecycleContent: some View {
         chatRealtimeContent
+        .safeAreaInset(edge: .top, spacing: 0) {
+            if let networkNotice, !messages.isEmpty {
+                Label(networkNotice, systemImage: "wifi.exclamationmark")
+                    .font(.caption).foregroundStyle(.secondary).padding(8)
+                    .frame(maxWidth: .infinity).background(.ultraThinMaterial)
+            }
+        }
         .task {
             let scope = UserWorkspace.id
             workspaceScope = scope
@@ -370,6 +378,10 @@ struct ChatView: View {
                let cached = ChatSnapshotStore.shared.snapshot(workspace: scope,
                    account: conversation.accountID ?? "default", chat: conversation.jid) {
                 messages = cached.messages; messageCursor = cached.cursor; isLoading = false
+            } else if focusMessageID == nil,
+                      let saved = await FastChatArchive.shared.timeline(scope: FastChatScope.key(workspace: scope), account: conversation.accountID ?? "default", chat: conversation.jid), UserWorkspace.id == scope {
+                messages = saved.messages; messageCursor = saved.cursor; isLoading = false
+                networkNotice = "מוצג עותק שמור · מעדכן את השיחה…"
             }
             await loadMessages()
             guard UserWorkspace.id == scope, !Task.isCancelled else { return }
@@ -1037,7 +1049,13 @@ struct ChatView: View {
                 try await MessageDeleteAPI.remove(account: conversation.accountID ?? "default", chat: conversation.jid,
                     message: message.messageID, everyone: everyone, workspace: scope)
                 guard scope == UserWorkspace.id else { return }
-                if !everyone { messages.removeAll { $0.id == message.id } }
+                if !everyone {
+                    messages.removeAll { $0.id == message.id }
+                    if let cursor = messageCursor {
+                        ChatSnapshotStore.shared.save(workspace: scope, account: conversation.accountID ?? "default", chat: conversation.jid, messages: messages, cursor: cursor)
+                        await FastChatArchive.shared.saveTimeline(scope: FastChatScope.key(workspace: scope), account: conversation.accountID ?? "default", chat: conversation.jid, messages: messages, cursor: cursor)
+                    }
+                }
                 await loadProductionMessages()
             } catch {
                 if scope == UserWorkspace.id { errorMessage = error.localizedDescription }
@@ -1422,10 +1440,17 @@ struct ChatView: View {
                 messageCursor = batch.cursor
                 ChatSnapshotStore.shared.save(workspace: scope, account: conversation.accountID ?? "default",
                     chat: conversation.jid, messages: messages, cursor: batch.cursor)
+                await FastChatArchive.shared.saveTimeline(scope: FastChatScope.key(workspace: scope), account: conversation.accountID ?? "default", chat: conversation.jid, messages: messages, cursor: batch.cursor)
+                networkNotice = nil
                 ChatPerformanceMonitor.synced(changed: batch.messages.count, reset: batch.reset, duration: start.duration(to: clock.now))
                 errorMessage = nil
             } catch is CancellationError { return }
-              catch { errorMessage = error.localizedDescription; return }
+              catch {
+                guard UserWorkspace.id == scope else { return }
+                if messages.isEmpty { errorMessage = error.localizedDescription }
+                else { networkNotice = "העדכון ממתין לחיבור · ההודעות השמורות זמינות" }
+                return
+            }
         } while refreshPending && !Task.isCancelled
     }
 

@@ -1,0 +1,14 @@
+name: Fast chat archive and new recipient checks
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  fast-chat:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify persistent cache, deletion sync, isolation and phone input
+        run: bash tools/verify-fast-chat.sh
