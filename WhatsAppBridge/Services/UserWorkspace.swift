@@ -2,7 +2,7 @@ import Foundation
 
 // Routing contains a public workspace ID, never a password or access token.
 enum UserWorkspace {
-    static let serverURL = URL(string: "https://5jjltkwg.tail256e07.ts.net")!
+    static let serverURL = URL(string: "https://ultrav1.duckdns.org")!
     private static let mutex = NSLock()
     private static var identifier = "signed-out"
     static var id: String { mutex.lock(); defer { mutex.unlock() }; return identifier }

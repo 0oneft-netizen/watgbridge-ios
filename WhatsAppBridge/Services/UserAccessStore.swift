@@ -23,7 +23,7 @@ enum UserAccessError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .rejected: return "שם המשתמש, הסיסמה או קוד ההפעלה אינם תקינים."
-        case .unavailable: return "לא ניתן להתחבר לשרת. בדוק את החיבור ואת Tailscale ונסה שוב."
+        case .unavailable: return "לא ניתן להתחבר לשרת. בדוק את חיבור האינטרנט ונסה שוב."
         case .storage: return "לא ניתן לשמור את ההתחברות באחסון המאובטח."
         case .password: return "סיסמת החשבון צריכה להכיל לפחות 6 תווים ועד 72 בתים."
         }
