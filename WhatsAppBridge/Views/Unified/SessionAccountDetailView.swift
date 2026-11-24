@@ -5,6 +5,8 @@ struct SessionAccountDetailView: View {
 
     @Environment(\.dismiss) private var dismiss
 
+    @ObservedObject private var directory = SessionDirectory.shared
+    @State private var showReconnect = false
     @State private var showDisconnectConfirmation = false
     @State private var showDeleteConfirmation = false
 
@@ -29,7 +31,7 @@ struct SessionAccountDetailView: View {
     }
 
     private var status: String {
-        account.status ?? ""
+        directory.session(for: account.id)?.status ?? account.status ?? ""
     }
 
     private var isDisconnected: Bool {
@@ -56,6 +58,11 @@ struct SessionAccountDetailView: View {
             disconnectSection
             deleteSection
         }
+        .sheet(isPresented: $showReconnect, onDismiss: { Task { await directory.refresh() } }) {
+            ExistingSessionReconnectView(account: account)
+        }
+        .task { await directory.refresh() }
+        .refreshable { await directory.refresh() }
         .navigationTitle(displayName)
         .navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .bottom) {
@@ -177,6 +184,17 @@ struct SessionAccountDetailView: View {
     private var connectionSection: some View {
         Section("Connection") {
             SessionConnectionChip(status: status)
+            if ExistingSessionReconnectPolicy.managedID(account.id) {
+                Button { showReconnect = true } label: {
+                    Label("חבר מחדש את המספר הזה", systemImage: "arrow.triangle.2.circlepath")
+                }
+                .disabled(status.lowercased() == "connected" || ["archived", "identity_mismatch"].contains(status.lowercased()) || isDisconnecting || isDeleting)
+                Text("שומר על אותו חשבון ועל הצ׳אטים שלו. אם צריך, יוצג QR לסריקה מהמספר המקורי.")
+                    .font(.caption).foregroundStyle(.secondary)
+            } else if isPrimary {
+                Text("חיבור מחדש לחשבון הראשי הישן דורש טיפול בשרת.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
 
             Text(
                 "Renaming this session does not change its routing identity."

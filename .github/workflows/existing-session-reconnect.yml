@@ -1,0 +1,14 @@
+name: Existing session reconnect checks
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  reconnect:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify same account routing, QR polling and workspace isolation
+        run: bash tools/verify-existing-session-reconnect.sh

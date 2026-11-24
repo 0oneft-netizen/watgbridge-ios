@@ -111,14 +111,11 @@ struct SessionsManagementView: View {
                             }
                     ) { session in
                         NavigationLink {
-                            RenameSessionView(
-                                accountID:
-                                    session.id,
-                                currentName:
-                                    session.effectiveName,
-                                phone:
-                                    session.phone
-                            )
+                            SessionAccountDetailView(account: SessionAccountDTO(
+                                id: session.id, displayName: session.name,
+                                phone: session.phone, jid: session.jid,
+                                status: session.status, accountType: session.accountType
+                            ))
                         } label: {
                             sessionRow(session)
                         }
