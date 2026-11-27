@@ -139,9 +139,7 @@ struct MessageMediaView: View {
 
         case "video", "gif":
             ZStack {
-                VideoPlayer(
-                    player: AVPlayer(url: url)
-                )
+                ChatVideoPoster(url: url)
                 .allowsHitTesting(false)
 
                 Image(systemName: "play.fill")

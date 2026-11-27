@@ -1,33 +1,30 @@
 import SwiftUI
 import AVFoundation
 import UIKit
-import Combine
 
+@MainActor
 struct WhatsAppRoundVideoNote: View {
     let url: URL
     let onExpand: () -> Void
-    @State private var player: AVPlayer?
-    @State private var isPlaying = false
-    @State private var progress: CGFloat = 0
+    @StateObject private var playback = ManagedVideoPlayback()
     @Environment(\.scenePhase) private var scenePhase
-    private let clock = Timer.publish(every: 0.25, on: .main, in: .common).autoconnect()
-
+    private var progress: CGFloat {
+        playback.duration > 0 ? CGFloat(min(1, max(0, playback.position / playback.duration))) : 0
+    }
     var body: some View {
         VStack(spacing: 8) {
-            Button(action: togglePlayback) {
+            Button {
+                if playback.player == nil { playback.prepare(url: url) }
+                else { playback.toggle() }
+            } label: {
                 ZStack {
                     Circle().fill(Color.black)
-                    if let player {
-                        WhatsAppVideoSurface(player: player)
-                    }
-                    Image(systemName: isPlaying ? "pause.fill" : "play.fill")
-                        .font(.system(size: 22, weight: .semibold))
-                        .foregroundStyle(.white)
-                        .padding(16)
-                        .background(.black.opacity(0.35), in: Circle())
+                    if let player = playback.player { WhatsAppVideoSurface(player: player) }
+                    Image(systemName: playback.playing ? "pause.fill" : "play.fill")
+                        .font(.system(size: 22, weight: .semibold)).foregroundStyle(.white)
+                        .padding(16).background(.black.opacity(0.35), in: Circle())
                 }
-                .frame(width: 210, height: 210)
-                .clipShape(Circle())
+                .frame(width: 210, height: 210).clipShape(Circle())
                 .overlay(Circle().stroke(WhatsAppVisualDesign.border, lineWidth: 2))
                 .overlay {
                     Circle().trim(from: 0, to: progress)
@@ -36,84 +33,35 @@ struct WhatsAppRoundVideoNote: View {
                 }
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(isPlaying ? "Pause video message" : "Play video message")
+            .accessibilityLabel(playback.playing ? "Pause video message" : "Play video message")
             .accessibilityAddTraits(.startsMediaSession)
-
-            Button {
-                player?.pause()
-                isPlaying = false
-                onExpand()
-            } label: {
+            Button { playback.stop(); onExpand() } label: {
                 Label("Open video", systemImage: "arrow.up.left.and.arrow.down.right")
-                    .font(.caption)
-                    .foregroundStyle(WhatsAppVisualDesign.accent)
-            }
-            .buttonStyle(.plain)
+                    .font(.caption).foregroundStyle(WhatsAppVisualDesign.accent)
+            }.buttonStyle(.plain)
         }
-        .onAppear {
-            if player == nil { player = AVPlayer(url: url) }
-        }
-        .onChange(of: url) {
-            player?.pause()
-            player = AVPlayer(url: url)
-            isPlaying = false
-            progress = 0
-        }
-        .onDisappear {
-            player?.pause()
-            isPlaying = false
-        }
-        .onChange(of: scenePhase) {
-            if scenePhase != .active {
-                player?.pause()
-                isPlaying = false
-            }
-        }
-        .onReceive(clock) { _ in
-            guard let player, let item = player.currentItem else { return }
-            let duration = item.duration.seconds
-            let position = player.currentTime().seconds
-            if duration.isFinite && duration > 0 && position.isFinite {
-                progress = CGFloat(min(1, max(0, position / duration)))
-            }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .AVPlayerItemDidPlayToEndTime)) { notification in
-            guard let item = notification.object as? AVPlayerItem,
-                  item === player?.currentItem else { return }
-            isPlaying = false
-            player?.seek(to: .zero)
-            progress = 0
-        }
-    }
-
-    private func togglePlayback() {
-        guard let player else { return }
-        if isPlaying {
-            player.pause()
-        } else {
-            player.play()
-        }
-        isPlaying.toggle()
+        .onChange(of: url) { _, _ in playback.stop() }
+        .onChange(of: scenePhase) { _, phase in if phase != .active { playback.stop() } }
+        .onDisappear { playback.stop() }
     }
 }
-
+@MainActor
 private struct WhatsAppVideoSurface: UIViewRepresentable {
     let player: AVPlayer
-    func makeUIView(context: Context) -> WhatsAppPlayerView {
-        let view = WhatsAppPlayerView()
+    func makeUIView(context: Context) -> WhatsAppVideoUIView {
+        let view = WhatsAppVideoUIView()
         view.playerLayer.videoGravity = .resizeAspectFill
         view.playerLayer.player = player
         return view
     }
-    func updateUIView(_ view: WhatsAppPlayerView, context: Context) {
-        view.playerLayer.player = player
+    func updateUIView(_ uiView: WhatsAppVideoUIView, context: Context) {
+        if uiView.playerLayer.player !== player { uiView.playerLayer.player = player }
     }
-    static func dismantleUIView(_ view: WhatsAppPlayerView, coordinator: ()) {
-        view.playerLayer.player = nil
+    static func dismantleUIView(_ uiView: WhatsAppVideoUIView, coordinator: ()) {
+        uiView.playerLayer.player = nil
     }
 }
-
-private final class WhatsAppPlayerView: UIView {
+private final class WhatsAppVideoUIView: UIView {
     override class var layerClass: AnyClass { AVPlayerLayer.self }
     var playerLayer: AVPlayerLayer { layer as! AVPlayerLayer }
 }

@@ -1,0 +1,14 @@
+name: Video playback lifecycle checks
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  playback:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify repeated video close and player cleanup
+        run: bash tools/verify-video-playback.sh

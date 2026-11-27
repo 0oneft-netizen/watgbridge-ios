@@ -1,29 +1,22 @@
 import SwiftUI
 import AVKit
 
+@MainActor
 struct MediaVideoPlayer: View {
     let url: URL
-
-    @State private var player: AVPlayer?
-
+    var autoplay = true
+    @StateObject private var playback = ManagedVideoPlayback()
+    @Environment(\.scenePhase) private var scenePhase
     var body: some View {
         Group {
-            if let player {
-                VideoPlayer(player: player)
-                    .onAppear {
-                        player.play()
-                    }
-            } else {
-                ProgressView()
-                    .tint(.white)
-            }
+            if let player = playback.player { ManagedVideoSurface(player: player) }
+            else { ProgressView().tint(.white) }
         }
-        .task(id: url) {
-            player = AVPlayer(url: url)
+        .task(id: url) { if scenePhase == .active { playback.prepare(url: url, autoplay: autoplay) } }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { playback.prepare(url: url, autoplay: autoplay) }
+            else { playback.stop() }
         }
-        .onDisappear {
-            player?.pause()
-            player = nil
-        }
+        .onDisappear { playback.stop() }
     }
 }

@@ -201,43 +201,58 @@ private struct UltraGalleryPage: View {
             } else if let error { Text(error).font(.caption) }
             else { ProgressView().tint(.white) }
         }.quickLookPreview($quick)
-        .task(id: message.id) {
+        .task(id: active ? message.id : nil) {
+            guard active else { url = nil; image = nil; return }
+            let scope = UserWorkspace.id
             guard !MessageMediaPolicy.isViewOnce(message), message.deletedRemote != true, let remote = APIClient.shared.mediaURL(for: message.messageID, accountID: message.accountID) else { return }
             do {
                 let file = try await MediaCache.shared.localURL(remoteURL: remote, messageID: "\(message.accountID ?? "default")_\(message.messageID)", fileName: message.fileName, mimeType: message.mimeType, chatJID: message.chatJID)
-                try Task.checkCancellation(); url = file
-                if message.type == "image" { image = await ChatImageCache.shared.image(at: file) }
+                try Task.checkCancellation()
+                guard scope == UserWorkspace.id else { return }
+                if message.type == "image" {
+                    let loaded = await ChatImageCache.shared.image(at: file)
+                    try Task.checkCancellation()
+                    guard scope == UserWorkspace.id else { return }
+                    image = loaded
+                } else { url = file }
             } catch is CancellationError { } catch { self.error = error.localizedDescription }
         }
+        .onDisappear { url = nil; image = nil }
     }
 }
+@MainActor
 struct UltraVideoPlayer: View {
     let url: URL
     var active = true
-    @State private var player: AVPlayer?
-    @State private var observer: Any?
-    @State private var position = 0.0
-    @State private var duration = 0.0
-    @State private var speed: Float = 1
-    @State private var playing = true
+    @StateObject private var playback = ManagedVideoPlayback()
+    @Environment(\.scenePhase) private var scenePhase
     var body: some View {
         VStack {
-            if let player { VideoPlayer(player: player) }
-            Slider(value: Binding(get: { min(position, max(0.01, duration)) }, set: { value in position = value; player?.seek(to: CMTime(seconds: value, preferredTimescale: 600)) }), in: 0...max(0.01, duration))
+            if let player = playback.player { ManagedVideoSurface(player: player) }
+            else { Color.black.overlay { Image(systemName: "play.fill").foregroundStyle(.white) } }
+            Slider(value: Binding(
+                get: { min(playback.position, max(0.01, playback.duration)) },
+                set: { playback.setScrubPosition($0) }
+            ), in: 0...max(0.01, playback.duration), onEditingChanged: { playback.scrubEditing($0) })
             HStack {
-                Button { playing.toggle(); if playing && active { player?.playImmediately(atRate: speed) } else { player?.pause() } } label: { Image(systemName: playing ? "pause.fill" : "play.fill") }
-                Text("\(Int(max(0, position))) / \(Int(max(0, duration))) שניות").font(.caption).monospacedDigit()
+                Button { playback.toggle() } label: { Image(systemName: playback.playing ? "pause.fill" : "play.fill") }
+                Text("\(Int(max(0, playback.position))) / \(Int(max(0, playback.duration))) שניות").font(.caption).monospacedDigit()
                 Spacer()
-                Menu("\(speed, specifier: "%.1f")×") { ForEach([Float(0.5),1,1.5,2], id: \.self) { value in Button("\(value, specifier: "%.1f")×") { speed = value; if playing && active { player?.playImmediately(atRate: speed) } } } }
-            }.padding(.horizontal)
-        }.task(id: url) {
-            let media = AVPlayer(url: url); player = media
-            observer = media.addPeriodicTimeObserver(forInterval: CMTime(seconds: 0.25, preferredTimescale: 600), queue: .main) { time in
-                if time.seconds.isFinite { position = time.seconds }
-                if let seconds = media.currentItem?.duration.seconds, seconds.isFinite { duration = seconds }
-            }
-            if active { media.playImmediately(atRate: speed) }
-        }.onChange(of: active) { _, value in if value && playing { player?.playImmediately(atRate: speed) } else { player?.pause() } }
-        .onDisappear { if let observer { player?.removeTimeObserver(observer) }; observer = nil; player?.pause(); player = nil }
+                Menu("\(playback.speed, specifier: "%.1f")×") {
+                    ForEach([Float(0.5), 1, 1.5, 2], id: \.self) { value in
+                        Button("\(value, specifier: "%.1f")×") { playback.setSpeed(value) }
+                    }
+                }
+            }.padding(.horizontal).disabled(!active)
+        }
+        .task(id: active ? url : nil) {
+            if active && scenePhase == .active { playback.prepare(url: url) }
+            else { playback.stop() }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active && active { playback.prepare(url: url) }
+            else { playback.stop() }
+        }
+        .onDisappear { playback.stop() }
     }
 }

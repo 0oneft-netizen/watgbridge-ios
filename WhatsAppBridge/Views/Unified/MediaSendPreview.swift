@@ -92,7 +92,7 @@ struct MediaSendPreview: View {
 
         case .video:
             if let url = preview.fileURL {
-                VideoPlayer(player: AVPlayer(url: url))
+                MediaVideoPlayer(url: url, autoplay: false)
                     .clipShape(RoundedRectangle(cornerRadius: 12))
             }
         }
