@@ -23,23 +23,6 @@ private final class VideoPlaybackLease {
     deinit { invalidate() }
 }
 
-private final class VideoPlaybackLease {
-    let player: AVPlayer
-    var timeToken: Any?
-    var endToken: NSObjectProtocol?
-    init(player: AVPlayer) { self.player = player }
-    func invalidate() {
-        if let timeToken { player.removeTimeObserver(timeToken); self.timeToken = nil }
-        if let endToken { NotificationCenter.default.removeObserver(endToken); self.endToken = nil }
-        player.pause()
-        player.cancelPendingPrerolls()
-        player.currentItem?.cancelPendingSeeks()
-        player.currentItem?.asset.cancelLoading()
-        player.replaceCurrentItem(with: nil)
-    }
-    deinit { invalidate() }
-}
-
 @MainActor
 final class ManagedVideoPlayback: ObservableObject {
     @Published private(set) var player: AVPlayer?
