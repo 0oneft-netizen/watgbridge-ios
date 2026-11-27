@@ -2,7 +2,6 @@ import Foundation
 import SwiftUI
 
 @MainActor
-@MainActor
 struct ReplyQuoteCard: View {
     let message: Message
     let localPreview: ReplyQuotePreview?
