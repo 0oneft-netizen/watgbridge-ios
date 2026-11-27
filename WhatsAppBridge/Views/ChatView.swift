@@ -33,6 +33,7 @@ struct ChatView: View {
     let conversation: Conversation
     var initialMessageID: String? = nil
     @State private var requestedMessageID: String?
+    @State private var replyJumpTask: Task<Void, Never>?
     private var focusMessageID: String? { requestedMessageID ?? initialMessageID }
     @State private var ultraRecents = false
     @State private var ultraTools = false
@@ -286,7 +287,7 @@ struct ChatView: View {
                 } catch is CancellationError {} catch { errorMessage = error.localizedDescription }
             }
         }
-        .onDisappear { searchTask?.cancel(); recorder.cancel() }
+        .onDisappear { searchTask?.cancel(); recorder.cancel(); replyJumpTask?.cancel() }
     }
 
     private var chatMessageSheets: some View {
@@ -387,6 +388,26 @@ struct ChatView: View {
             guard UserWorkspace.id == scope, !Task.isCancelled else { return }
             try? await APIClient.shared.markRead(chatJID: conversation.jid,
                 accountID: conversation.accountID ?? "default")
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .replyQuoteNavigation)) { notification in
+            guard let request = notification.object as? ReplyQuoteNavigation,
+                  request.workspace == UserWorkspace.id,
+                  request.account == (conversation.accountID ?? "default"),
+                  request.chat == conversation.jid else { return }
+            requestedMessageID = request.messageID
+            initialFocusHandled = false
+            focusedContext = false
+            timelineGeneration &+= 1
+            messageCursor = nil
+            replyJumpTask?.cancel()
+            replyJumpTask = Task {
+                while isRefreshingMessages {
+                    do { try await Task.sleep(for: .milliseconds(100)) } catch { return }
+                    guard UserWorkspace.id == request.workspace, requestedMessageID == request.messageID else { return }
+                }
+                guard !Task.isCancelled, UserWorkspace.id == request.workspace else { return }
+                await loadMessages()
+            }
         }
         .task(id: conversation.id) {
             let scope = workspaceScope

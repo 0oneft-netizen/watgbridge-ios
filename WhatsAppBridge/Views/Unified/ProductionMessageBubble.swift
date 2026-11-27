@@ -102,7 +102,8 @@ struct ProductionMessageBubble: View {
                     onReact:
                         onReact,
                     onDeleteLocal:
-                        onDelete
+                        onDelete,
+                    replyPreview: ReplyQuotePreview.local(reply: message, messages: messages)
                 )
             }
             .offset(

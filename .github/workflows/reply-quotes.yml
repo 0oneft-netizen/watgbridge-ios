@@ -1,0 +1,14 @@
+name: Reply quote preview checks
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  reply:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify quote previews and account isolation
+        run: bash tools/verify-reply-quotes.sh

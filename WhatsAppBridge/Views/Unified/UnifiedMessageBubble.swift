@@ -15,6 +15,7 @@ struct UnifiedMessageBubble: View {
     let onReply: () -> Void
     let onReact: (String) -> Void
     let onDeleteLocal: () -> Void
+    var replyPreview: ReplyQuotePreview? = nil
 
     private var messageTextColor: Color {
         message.fromMe
@@ -71,8 +72,9 @@ struct UnifiedMessageBubble: View {
                         .lineLimit(1)
                 }
 
-                if let quotedText,
-                   !quotedText.isEmpty {
+                if message.deletedRemote != true, message.deletedLocal != true, let replyID = message.replyToID, !replyID.isEmpty {
+                    ReplyQuoteCard(message: message, localPreview: replyPreview)
+                } else if let quotedText, !quotedText.isEmpty {
                     quotedMessage(quotedText)
                 }
 
